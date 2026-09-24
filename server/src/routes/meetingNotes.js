@@ -45,7 +45,7 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
               'status', mai.status
             ) ORDER BY mai.due_date ASC NULLS LAST, mai.created_at ASC)
             FROM meeting_action_items mai
-            WHERE mai.meeting_id = mn.id
+            WHERE mai.meeting_id = mn.id AND mai.tenant_id = mn.tenant_id
           ),
           '[]'::json
         ) as action_items
@@ -70,6 +70,12 @@ router.post('/', authorize('projects:manage'), validate(meetingNoteSchema), asyn
     const body  = req.body;
 
     await client.query('BEGIN');
+
+    const projCheck = await client.query('SELECT 1 FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
+    if (projCheck.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
 
     const noteQuery = `
       INSERT INTO meeting_notes (
@@ -185,7 +191,7 @@ router.patch('/:id', authorize('projects:manage'), validate(meetingNoteSchema), 
     const updatedNote = noteRes.rows[0];
 
     // Delete existing action items
-    await client.query('DELETE FROM meeting_action_items WHERE meeting_id = $1', [id]);
+    await client.query('DELETE FROM meeting_action_items WHERE meeting_id = $1 AND project_id = $2 AND tenant_id = $3', [id, projectId, tenantId]);
 
     const insertedActionItems = [];
     if (body.action_items && body.action_items.length > 0) {

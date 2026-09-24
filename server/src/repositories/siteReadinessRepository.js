@@ -2,6 +2,14 @@ const pool = require('../config/db');
 
 class SiteReadinessRepository {
   async findChecklist(tenantId, projectId) {
+    const projCheck = await pool.query(
+      'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+      [projectId, tenantId]
+    );
+    if (projCheck.rows.length === 0) {
+      throw new Error('PROJECT_NOT_FOUND');
+    }
+
     const query = `
       SELECT psr.*,
         u.name as completed_by_name
@@ -35,8 +43,8 @@ class SiteReadinessRepository {
       for (const item of defaults) {
         // Prevent duplicate insertion errors
         const checkRes = await client.query(
-          'SELECT id FROM project_site_readiness WHERE project_id = $1 AND item_key = $2',
-          [projectId, item.key]
+          'SELECT id FROM project_site_readiness WHERE project_id = $1 AND item_key = $2 AND tenant_id = $3',
+          [projectId, item.key, tenantId]
         );
         if (checkRes.rows.length === 0) {
           const res = await client.query(`
@@ -111,6 +119,14 @@ class SiteReadinessRepository {
   }
 
   async signOffAll(tenantId, projectId, userId) {
+    const projCheck = await pool.query(
+      'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+      [projectId, tenantId]
+    );
+    if (projCheck.rows.length === 0) {
+      throw new Error('PROJECT_NOT_FOUND');
+    }
+
     const completedAt = new Date().toISOString();
     const query = `
       UPDATE project_site_readiness

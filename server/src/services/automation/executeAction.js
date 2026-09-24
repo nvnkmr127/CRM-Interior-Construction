@@ -65,8 +65,8 @@ async function executeAction(action, context) {
     // 2. Mark success
     const duration = Date.now() - startTime;
     await pool.query(`
-      UPDATE automation_events SET status = 'success', duration_ms = $1 WHERE id = $2
-    `, [duration, eventId]);
+      UPDATE automation_events SET status = 'success', duration_ms = $1 WHERE id = $2 AND tenant_id = $3
+    `, [duration, eventId, context.tenantId]);
 
     // Also insert timeline event if it involves a lead
     if (context.record?.id) {
@@ -81,8 +81,8 @@ async function executeAction(action, context) {
     if (eventId) {
       const duration = Date.now() - startTime;
       await pool.query(`
-        UPDATE automation_events SET status = 'failed', duration_ms = $1, error_message = $2 WHERE id = $3
-      `, [duration, error.message || 'Unknown error', eventId]);
+        UPDATE automation_events SET status = 'failed', duration_ms = $1, error_message = $2 WHERE id = $3 AND tenant_id = $4
+      `, [duration, error.message || 'Unknown error', eventId, context.tenantId]);
     }
   }
 }

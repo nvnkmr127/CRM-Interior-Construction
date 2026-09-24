@@ -14,6 +14,14 @@ async function createClaim({
   natureOfDefect,
   userId = null
 }) {
+  const projCheck = await pool.query(
+    'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+    [projectId, tenantId]
+  );
+  if (projCheck.rows.length === 0) {
+    throw new Error('PROJECT_NOT_FOUND');
+  }
+
   let isRepeat = false;
   let repeatCount = 0;
   
@@ -25,6 +33,16 @@ async function createClaim({
     );
     repeatCount = countRes.rows[0].count;
     isRepeat = repeatCount > 0;
+  }
+
+  if (amcId) {
+    const amcCheck = await pool.query(
+      'SELECT id FROM amcs WHERE id = $1 AND tenant_id = $2',
+      [amcId, tenantId]
+    );
+    if (amcCheck.rows.length === 0) {
+      throw new Error('AMC_NOT_FOUND');
+    }
   }
 
   const query = `
@@ -47,9 +65,9 @@ async function createClaim({
   // Send notifications for repeat claims
   if (isRepeat) {
     try {
-      const projRes = await pool.query('SELECT name, pm_id FROM projects WHERE id = $1', [projectId]);
+      const projRes = await pool.query('SELECT name, pm_id FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
       const project = projRes.rows[0];
-      const prodRes = await pool.query('SELECT product_name FROM warranties WHERE id = $1', [warrantyId]);
+      const prodRes = await pool.query('SELECT product_name FROM warranties WHERE id = $1 AND tenant_id = $2', [warrantyId, tenantId]);
       const productName = prodRes.rows[0]?.product_name || 'Product';
 
       const notifyUsers = [];
@@ -59,7 +77,7 @@ async function createClaim({
       
       const adminUsersRes = await pool.query(
         `SELECT u.id FROM users u
-         JOIN roles r ON u.role_id = r.id
+         JOIN roles r ON u.role_id = r.id AND (r.tenant_id = u.tenant_id OR r.tenant_id IS NULL)
          WHERE u.tenant_id = $1 AND (r.name IN ('superadmin', 'admin', 'finance'))`,
         [tenantId]
       );
@@ -209,9 +227,9 @@ async function getClaimsByProject(projectId, tenantId) {
       u.name AS technician_name,
       a.contract_number AS amc_contract_number
     FROM warranty_claims c
-    LEFT JOIN warranties w ON c.warranty_id = w.id
-    LEFT JOIN amcs a ON c.amc_id = a.id
-    LEFT JOIN users u ON c.assigned_technician_id = u.id
+    LEFT JOIN warranties w ON c.warranty_id = w.id AND w.tenant_id = c.tenant_id
+    LEFT JOIN amcs a ON c.amc_id = a.id AND a.tenant_id = c.tenant_id
+    LEFT JOIN users u ON c.assigned_technician_id = u.id AND u.tenant_id = c.tenant_id
     WHERE c.project_id = $1 AND c.tenant_id = $2
     ORDER BY c.claim_date DESC, c.created_at DESC
   `;

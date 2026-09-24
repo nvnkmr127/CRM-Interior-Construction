@@ -1,6 +1,7 @@
 import { lazy, Suspense, useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AuthProvider } from './store/authContext'
+import { AuthProvider, useAuth } from './store/authContext'
+import { getDefaultRouteForUser } from './constants/permissions'
 import { GlobalToast } from './store/toastContext'
 import { BreadcrumbsProvider } from './store/breadcrumbsContext'
 import { ConfirmProvider } from './store/confirmContext'
@@ -88,6 +89,13 @@ const LoginHistoryPage = lazy(() => import('./pages/config/LoginHistoryPage'))
 
 
 
+function DefaultRouteRedirect() {
+  const { user, loading } = useAuth();
+  if (loading) return null;
+  const target = getDefaultRouteForUser(user);
+  return <Navigate to={target} replace />;
+}
+
 export default function App() {
   return (
     <BrowserRouter>
@@ -106,9 +114,9 @@ export default function App() {
                   <Route path='/forms/:slug' element={<PublicLeadFormPage />} />
                   <Route path='/portal/*' element={<PortalApp />} />
                   <Route element={<ProtectedRoute><Shell /></ProtectedRoute>}>
-                    <Route index element={<Navigate to='/dashboard/sales' replace />} />
+                    <Route index element={<DefaultRouteRedirect />} />
                     <Route path='/dashboard/:tab' element={<ProtectedRoute requiredModule="dashboards" requiredTab="dashboard"><Dashboard /></ProtectedRoute>} />
-                    <Route path='/dashboard' element={<Navigate to='/dashboard/sales' replace />} />
+                    <Route path='/dashboard' element={<DefaultRouteRedirect />} />
                     <Route path='/leads' element={<ProtectedRoute requiredModule="leads" requiredTab="leads"><LeadsPage /></ProtectedRoute>} />
                     <Route path='/leads/forms' element={<ProtectedRoute requiredModule="leads" requiredTab="lead-forms"><LeadFormsListPage /></ProtectedRoute>} />
                     <Route path='/leads/forms/new' element={<ProtectedRoute requiredModule="leads" requiredTab="lead-forms"><LeadFormBuilderPage /></ProtectedRoute>} />

@@ -35,7 +35,7 @@ router.get('/rounds', authorize('projects:read'), async (req, res, next) => {
              COUNT(d.id) FILTER (WHERE d.status = 'approved')::int as approved_drawings,
              COUNT(d.id) FILTER (WHERE d.status = 'revision_requested')::int as revision_drawings
       FROM design_review_rounds r
-      LEFT JOIN documents d ON d.design_review_round_id = r.id
+      LEFT JOIN documents d ON d.design_review_round_id = r.id AND d.tenant_id = r.tenant_id
       WHERE r.project_id = $1 AND r.tenant_id = $2
       GROUP BY r.id
       ORDER BY r.created_at ASC
@@ -186,10 +186,18 @@ router.get('/drawings/:documentId/comments', authorize('projects:read'), async (
 
 router.post('/drawings/:documentId/comments', authorize('design:manage'), validate(createCommentSchema), async (req, res, next) => {
   try {
-    const { documentId } = req.params;
+    const { projectId, documentId } = req.params;
     const tenantId = req.tenantId;
     const data = req.body;
     const creatorName = req.user?.name || req.user?.username || 'Project Team';
+
+    const docCheck = await pool.query(
+      'SELECT id FROM documents WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
+      [documentId, projectId, tenantId]
+    );
+    if (docCheck.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Drawing/render not found.', 404);
+    }
 
     const query = `
       INSERT INTO design_item_comments (tenant_id, document_id, comment, created_by_client, created_by_name)

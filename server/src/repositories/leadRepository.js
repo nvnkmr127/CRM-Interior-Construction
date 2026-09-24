@@ -544,8 +544,8 @@ async function completeLeadConversion(tenantId, leadId, newProjectId, lead, proj
            stage_id = $2,
            stage_updated_at = NOW(),
            updated_at = NOW() 
-       WHERE id = $3`,
-      [newProjectId, convertedStageId, leadId]
+       WHERE id = $3 AND tenant_id = $4`,
+      [newProjectId, convertedStageId, leadId, tenantId]
     );
 
     // 1. Transfer Estimates to Quotations
@@ -556,8 +556,8 @@ async function completeLeadConversion(tenantId, leadId, newProjectId, lead, proj
     if (estimatesRes.rows.length > 0) {
       for (const est of estimatesRes.rows) {
         await client.query(
-          `UPDATE lead_estimates SET project_id = $1, updated_at = NOW() WHERE id = $2`,
-          [newProjectId, est.id]
+          `UPDATE lead_estimates SET project_id = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3`,
+          [newProjectId, est.id, tenantId]
         );
         const existingQuote = await client.query(
           `SELECT id FROM quotations WHERE tenant_id = $1 AND lead_id = $2 AND project_id = $3 LIMIT 1`,

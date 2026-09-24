@@ -21,6 +21,7 @@ import DiscoveryCallChecklist from './DiscoveryCallChecklist';
 import LeadForm from './LeadForm';
 import LeadSiteVisitsTab from './LeadSiteVisitsTab';
 import LeadScheduleHub from './LeadScheduleHub';
+import { isSuperMasterDeveloper } from '../../utils/isSuperMasterDeveloper';
 
 import NegotiationDesk from './NegotiationDesk';
 import DesignPresentationModal from './DesignPresentationModal';
@@ -98,8 +99,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   const navigate = useNavigate();
   const toast = useToast();
 
-  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
-    (user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role === 'admin' || user?.role?.name?.toLowerCase() === 'admin');
+  const isPlatformDeveloperAdmin = isSuperMasterDeveloper(user);
 
   const [lead, setLead] = useState(null);
   const [loading, setLoading] = useState(false);

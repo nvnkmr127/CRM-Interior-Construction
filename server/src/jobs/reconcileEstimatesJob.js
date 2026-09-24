@@ -24,8 +24,8 @@ async function reconcilePendingEstimates() {
         await pool.query(
           `UPDATE lead_estimates 
            SET status = $1, total_amount = $2, payload = $3, updated_at = NOW()
-           WHERE id = $4`,
-          [externalData.status, externalData.total_amount, externalData.payload, est.id]
+           WHERE id = $4 AND tenant_id = $5`,
+          [externalData.status, externalData.total_amount, externalData.payload, est.id, est.tenant_id]
         );
 
         eventBus.emit('lead.estimates_synced', {

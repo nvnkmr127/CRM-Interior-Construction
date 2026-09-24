@@ -6,6 +6,26 @@ class QuotationService {
   async createQuotation(tenantId, data) {
     const { leadId, projectId, createdBy, quotationNumber, notes, termsConditions, validUntil, changeReason, taxTreatment, worksContractRate, worksContractHsn } = data;
     
+    if (projectId) {
+      const projCheck = await pool.query(
+        `SELECT id FROM projects WHERE id = $1 AND tenant_id = $2`,
+        [projectId, tenantId]
+      );
+      if (projCheck.rows.length === 0) {
+        throw new Error('PROJECT_NOT_FOUND');
+      }
+    }
+
+    if (leadId) {
+      const leadCheck = await pool.query(
+        `SELECT id FROM leads WHERE id = $1 AND tenant_id = $2`,
+        [leadId, tenantId]
+      );
+      if (leadCheck.rows.length === 0) {
+        throw new Error('LEAD_NOT_FOUND');
+      }
+    }
+
     const query = `
       INSERT INTO quotations 
       (tenant_id, lead_id, project_id, created_by, quotation_number, notes, terms_conditions, valid_until, change_reason, tax_treatment, works_contract_rate, works_contract_hsn)
@@ -30,7 +50,7 @@ class QuotationService {
     const query = `
       SELECT q.*, u.name as creator_name 
       FROM quotations q
-      LEFT JOIN users u ON q.created_by = u.id
+      LEFT JOIN users u ON q.created_by = u.id AND u.tenant_id = q.tenant_id
       WHERE q.project_id = $1 AND q.tenant_id = $2
       ORDER BY q.version DESC, q.created_at DESC
     `;
@@ -39,6 +59,14 @@ class QuotationService {
   }
 
   async addBOQItem(tenantId, quotationId, itemData) {
+    const quoteCheck = await pool.query(
+      `SELECT id FROM quotations WHERE id = $1 AND tenant_id = $2`,
+      [quotationId, tenantId]
+    );
+    if (quoteCheck.rows.length === 0) {
+      throw new Error('QUOTATION_NOT_FOUND');
+    }
+
     const { parentItemId, roomOrArea, itemName, description, unit, quantity, unitPrice, markupPercentage, materialSpecifications, brand, sortOrder, itemKey, scopeType, changeOrderId, hsnCode, gstRate, laborTrade, laborRateType, laborUnitRate, laborMarkupPercentage } = itemData;
 
     const query = `
@@ -67,7 +95,7 @@ class QuotationService {
     const currentRes = await pool.query(
       `SELECT qi.*, q.project_id, q.status as quotation_status 
        FROM quotation_items qi
-       JOIN quotations q ON qi.quotation_id = q.id
+       JOIN quotations q ON qi.quotation_id = q.id AND q.tenant_id = qi.tenant_id
        WHERE qi.id = $1 AND qi.tenant_id = $2`,
       [itemId, tenantId]
     );
@@ -254,7 +282,7 @@ class QuotationService {
           END
         ), 0) as new_igst
       FROM quotation_items qi
-      LEFT JOIN project_change_orders pco ON qi.change_order_id = pco.id
+      LEFT JOIN project_change_orders pco ON qi.change_order_id = pco.id AND pco.tenant_id = qi.tenant_id
       WHERE qi.quotation_id = $2 AND qi.tenant_id = $3
     `;
     const sumResult = await client.query(sumQuery, [status, quotationId, tenantId]);
@@ -295,7 +323,7 @@ class QuotationService {
     const itemsQuery = `
       SELECT qi.*, pco.title as change_order_title 
       FROM quotation_items qi
-      LEFT JOIN project_change_orders pco ON qi.change_order_id = pco.id
+      LEFT JOIN project_change_orders pco ON qi.change_order_id = pco.id AND pco.tenant_id = qi.tenant_id
       WHERE qi.quotation_id = $1 AND qi.tenant_id = $2
       ORDER BY qi.sort_order ASC, qi.created_at ASC
     `;
@@ -490,10 +518,10 @@ class QuotationService {
     const creatorsQuery = `
       SELECT id, name FROM users 
       WHERE id IN (
-        SELECT created_by FROM quotations WHERE id IN ($1, $2)
-      )
+        SELECT created_by FROM quotations WHERE id IN ($1, $2) AND tenant_id = $3
+      ) AND tenant_id = $3
     `;
-    const creatorsRes = await pool.query(creatorsQuery, [baseId, targetId]);
+    const creatorsRes = await pool.query(creatorsQuery, [baseId, targetId, tenantId]);
     const creatorsMap = new Map(creatorsRes.rows.map(u => [u.id, u.name]));
 
     base.creator_name = creatorsMap.get(base.created_by) || 'System';

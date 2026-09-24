@@ -74,11 +74,11 @@ router.get('/', async (req, res) => {
   const tenantId = req.tenantId;
 
   try {
-    // Automatically purge unassigned placeholder roles ('manager', 'user') with 0 users
+    // Automatically purge unassigned placeholder / preset roles with 0 users to maintain a clean slate
     await pool.query(`
       DELETE FROM roles 
       WHERE tenant_id = $1 
-        AND name IN ('manager', 'user') 
+        AND name IN ('Project Manager', 'Designer', 'Sales', 'Site Supervisor', 'Accountant', 'manager', 'user') 
         AND id NOT IN (SELECT DISTINCT role_id FROM users WHERE tenant_id = $1 AND role_id IS NOT NULL)
     `).catch(() => {});
 
@@ -611,7 +611,7 @@ router.get('/:id/versions', authorize('users:manage'), async (req, res) => {
     const { rows } = await pool.query(`
       SELECT rv.*, u.name as editor_name 
       FROM role_versions rv
-      LEFT JOIN users u ON rv.user_id = u.id
+      LEFT JOIN users u ON rv.user_id = u.id AND u.tenant_id = rv.tenant_id
       WHERE rv.role_id = $1 AND rv.tenant_id = $2
       ORDER BY rv.version_number DESC
     `, [roleId, tenantId]);
@@ -646,7 +646,7 @@ router.patch('/:id/rollback/:versionId', authorize('users:manage'), async (req, 
       UPDATE roles SET permissions = $1 WHERE id = $2 AND tenant_id = $3 RETURNING *
     `, [JSON.stringify(newPermsObj), roleId, tenantId]);
 
-    const { rows: maxVRows } = await pool.query(`SELECT COALESCE(MAX(version_number), 0) as max_v FROM role_versions WHERE role_id=$1`, [roleId]);
+    const { rows: maxVRows } = await pool.query(`SELECT COALESCE(MAX(version_number), 0) as max_v FROM role_versions WHERE role_id=$1 AND tenant_id=$2`, [roleId, tenantId]);
     const nextV = (parseInt(maxVRows[0].max_v, 10) || 0) + 1;
     const change_summary = `Rolled back to Version ${targetVersion.version_number}`;
 

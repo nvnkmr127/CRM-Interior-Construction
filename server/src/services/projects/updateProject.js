@@ -397,7 +397,7 @@ async function updateProject({ tenantId, userId, projectId, data }) {
         } else if (['crm_executive_id', 'pm_id', 'designer_id', 'sales_rep_id', 'site_engineer_id', 'procurement_manager_id'].includes(key)) {
           const label = fieldLabels[key] || key.replace(/_/g, ' ');
           if (val) {
-            const uRes = await pool.query('SELECT name, role FROM users WHERE id = $1', [val]);
+            const uRes = await pool.query('SELECT name, role FROM users WHERE id = $1 AND tenant_id = $2', [val, tenantId]);
             const uName = uRes.rows[0]?.name ? `${uRes.rows[0].name}${uRes.rows[0].role ? ` (${uRes.rows[0].role.replace(/_/g, ' ')})` : ''}` : val;
             changeSummaries.push(`${label} assigned to ${uName}`);
           } else {

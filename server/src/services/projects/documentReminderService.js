@@ -37,7 +37,7 @@ async function checkAndSendDocumentApprovalReminders(projectId = null) {
         p.name as project_name, p.client_name, p.client_email, p.client_phone, p.pm_id,
         u.name as pm_name
       FROM documents d
-      JOIN projects p ON d.project_id = p.id
+      JOIN projects p ON d.project_id = p.id AND p.tenant_id = d.tenant_id
       LEFT JOIN users u ON p.pm_id = u.id
       WHERE d.status = 'pending_review'
         AND d.is_visible_to_client = true
@@ -75,9 +75,10 @@ async function checkAndSendDocumentApprovalReminders(projectId = null) {
             AND entity_id = $1
             AND action = 'document_approval_reminder'
             AND new_value = $2
+            AND tenant_id = $3
           LIMIT 1
         `;
-        const checkRes = await pool.query(checkQuery, [d.id, reminderType]);
+        const checkRes = await pool.query(checkQuery, [d.id, reminderType, d.tenant_id]);
 
         if (checkRes.rowCount === 0) {
           logger.info(`[Document Approval Reminder] Sending "${reminderType}" alert for document "${d.document_name}" (${d.id})`);

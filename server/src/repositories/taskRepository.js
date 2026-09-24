@@ -9,6 +9,26 @@ class TaskRepository {
       lead_id, room_name
     } = data;
 
+    if (project_id) {
+      const projCheck = await pool.query(
+        'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+        [project_id, tenantId]
+      );
+      if (projCheck.rows.length === 0) {
+        throw new Error('Project not found or unauthorized');
+      }
+    }
+
+    if (lead_id) {
+      const leadCheck = await pool.query(
+        'SELECT id FROM leads WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+        [lead_id, tenantId]
+      );
+      if (leadCheck.rows.length === 0) {
+        throw new Error('Lead not found or unauthorized');
+      }
+    }
+
     const query = `
       INSERT INTO tasks (
         tenant_id, project_id, milestone_id, parent_task_id,
@@ -51,7 +71,7 @@ class TaskRepository {
     const query = `
       SELECT t.*, u.name as assignee_name
       FROM tasks t
-      LEFT JOIN users u ON t.assignee_id = u.id
+      LEFT JOIN users u ON t.assignee_id = u.id AND u.tenant_id = t.tenant_id
       WHERE t.id = $1 AND t.tenant_id = $2 ${deletedFilter}
     `;
     const { rows } = await pool.query(query, [taskId, tenantId]);
@@ -63,7 +83,7 @@ class TaskRepository {
     const subQuery = `
       SELECT t.*, u.name as assignee_name
       FROM tasks t
-      LEFT JOIN users u ON t.assignee_id = u.id
+      LEFT JOIN users u ON t.assignee_id = u.id AND u.tenant_id = t.tenant_id
       WHERE t.parent_task_id = $1 AND t.tenant_id = $2 ${deletedFilter}
       ORDER BY t.sort_order ASC, t.created_at ASC
     `;
@@ -74,11 +94,11 @@ class TaskRepository {
     const commentsQuery = `
       SELECT c.*, u.name as user_name
       FROM task_comments c
-      LEFT JOIN users u ON c.user_id = u.id
+      LEFT JOIN users u ON c.user_id = u.id AND u.tenant_id = $2
       WHERE c.task_id = $1
       ORDER BY c.created_at ASC
     `;
-    const commentsRes = await pool.query(commentsQuery, [taskId]);
+    const commentsRes = await pool.query(commentsQuery, [taskId, tenantId]);
     task.comments = commentsRes.rows;
 
     return task;
@@ -153,11 +173,11 @@ class TaskRepository {
         u.name as assignee_name,
         p.name as project_name,
         l.name as lead_name,
-        (SELECT count(id)::int FROM tasks sub WHERE sub.parent_task_id = t.id AND sub.deleted_at IS NULL) as subtask_count
+        (SELECT count(id)::int FROM tasks sub WHERE sub.parent_task_id = t.id AND sub.tenant_id = $1 AND sub.deleted_at IS NULL) as subtask_count
       FROM tasks t
-      LEFT JOIN users u ON t.assignee_id = u.id
-      LEFT JOIN projects p ON t.project_id = p.id
-      LEFT JOIN leads l ON t.lead_id = l.id
+      LEFT JOIN users u ON t.assignee_id = u.id AND u.tenant_id = t.tenant_id
+      LEFT JOIN projects p ON t.project_id = p.id AND p.tenant_id = t.tenant_id
+      LEFT JOIN leads l ON t.lead_id = l.id AND l.tenant_id = t.tenant_id
       WHERE ${whereClause}
       ORDER BY t.sort_order ASC, t.created_at DESC
       LIMIT $${idx++} OFFSET $${idx}
@@ -242,6 +262,15 @@ class TaskRepository {
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
+      if (projectId) {
+        const projCheck = await client.query(
+          'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+          [projectId, tenantId]
+        );
+        if (projCheck.rows.length === 0) {
+          throw new Error('Project not found or unauthorized');
+        }
+      }
       const createdTasks = [];
       for (const t of tasksData) {
         const { rows } = await client.query(`
@@ -272,6 +301,15 @@ class TaskRepository {
     try {
       await client.query('BEGIN');
 
+      const checkRes = await client.query(
+        'SELECT id FROM tasks WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+        [taskId, tenantId]
+      );
+      if (checkRes.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return false;
+      }
+
       const safeQuery = async (queryText, params) => {
         try {
           await client.query('SAVEPOINT sp_soft');
@@ -285,14 +323,14 @@ class TaskRepository {
       // Soft delete parent task
       await safeQuery(`
         UPDATE tasks SET deleted_at = NOW(), status = 'deleted'
-        WHERE id = $1 AND deleted_at IS NULL
-      `, [taskId]);
+        WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL
+      `, [taskId, tenantId]);
 
       // Cascade soft delete to subtasks
       await safeQuery(`
         UPDATE tasks SET deleted_at = NOW()
-        WHERE parent_task_id = $1 AND deleted_at IS NULL
-      `, [taskId]);
+        WHERE parent_task_id = $1 AND tenant_id = $2 AND deleted_at IS NULL
+      `, [taskId, tenantId]);
 
       await client.query('COMMIT');
       return true;
@@ -309,6 +347,15 @@ class TaskRepository {
     try {
       await client.query('BEGIN');
 
+      const checkRes = await client.query(
+        'SELECT id FROM tasks WHERE id = $1 AND tenant_id = $2',
+        [taskId, tenantId]
+      );
+      if (checkRes.rowCount === 0) {
+        await client.query('ROLLBACK');
+        return false;
+      }
+
       const safeQuery = async (queryText, params) => {
         try {
           await client.query('SAVEPOINT sp_hard');
@@ -322,8 +369,8 @@ class TaskRepository {
       // 1. Delete task dependencies referencing this task
       await safeQuery(`
         DELETE FROM task_dependencies
-        WHERE task_id = $1 OR depends_on_task_id = $1
-      `, [taskId]);
+        WHERE (task_id = $1 OR depends_on_task_id = $1) AND tenant_id = $2
+      `, [taskId, tenantId]);
 
       // 2. Delete task comments
       await safeQuery(`
@@ -332,28 +379,28 @@ class TaskRepository {
 
       // 3. Delete task attachments
       await safeQuery(`
-        DELETE FROM task_attachments WHERE task_id = $1
-      `, [taskId]);
+        DELETE FROM task_attachments WHERE task_id = $1 AND tenant_id = $2
+      `, [taskId, tenantId]);
 
       // 4. Delete time logs if present
       await safeQuery(`
-        DELETE FROM task_time_logs WHERE task_id = $1
-      `, [taskId]);
+        DELETE FROM task_time_logs WHERE task_id = $1 AND tenant_id = $2
+      `, [taskId, tenantId]);
 
       // 5. Delete resource allocations if present
       await safeQuery(`
-        DELETE FROM resource_allocations WHERE (entity_id = $1 AND entity_type = 'task') OR task_id = $1
-      `, [taskId]);
+        DELETE FROM resource_allocations WHERE ((entity_id = $1 AND entity_type = 'task') OR task_id = $1) AND tenant_id = $2
+      `, [taskId, tenantId]);
 
       // 6. Unlink subtasks
       await safeQuery(`
-        UPDATE tasks SET parent_task_id = NULL WHERE parent_task_id = $1
-      `, [taskId]);
+        UPDATE tasks SET parent_task_id = NULL WHERE parent_task_id = $1 AND tenant_id = $2
+      `, [taskId, tenantId]);
 
       // 7. Delete the task
       await safeQuery(`
-        DELETE FROM tasks WHERE id = $1
-      `, [taskId]);
+        DELETE FROM tasks WHERE id = $1 AND tenant_id = $2
+      `, [taskId, tenantId]);
 
       await client.query('COMMIT');
       return true;

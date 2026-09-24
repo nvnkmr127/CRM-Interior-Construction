@@ -116,6 +116,9 @@ router.put('/bulk', authorize('projects:manage'), async (req, res) => {
       }
     }
 
+    const projCheck = await client.query('SELECT 1 FROM projects WHERE id = $1 AND tenant_id = $2', [req.params.projectId, req.tenantId]);
+    if (projCheck.rows.length === 0) return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+
     await client.query('BEGIN');
     
     // Delete all current dependencies for this project

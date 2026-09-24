@@ -76,7 +76,9 @@ router.post('/', authorize('payments:create'), validate(createSchema), async (re
     });
     return success(res, milestone, {}, 201);
   } catch (error) {
-    
+    if (error.message === 'PROJECT_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
     next(error);
   }
 });

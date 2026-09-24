@@ -151,7 +151,7 @@ router.post('/my-security/change-password', authenticate, async (req, res) => {
     await validatePasswordPolicy(newPassword, req.tenantId, req.user.id);
     const passwordHash = await hashPassword(newPassword);
 
-    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2', [passwordHash, req.user.id]);
+    await pool.query('UPDATE users SET password_hash = $1 WHERE id = $2 AND tenant_id = $3', [passwordHash, req.user.id, req.tenantId]);
     await recordPasswordChange(req.user.id, passwordHash);
 
     return success(res, { message: 'Password changed successfully' });

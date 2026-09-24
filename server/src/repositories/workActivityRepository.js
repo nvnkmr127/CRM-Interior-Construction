@@ -118,8 +118,8 @@ class WorkActivityRepository {
         u.name as assignee_name,
         cb.name as completed_by_name
       FROM project_work_activities pwa
-      LEFT JOIN users u ON pwa.assignee_id = u.id
-      LEFT JOIN users cb ON pwa.completed_by = cb.id
+      LEFT JOIN users u ON pwa.assignee_id = u.id AND u.tenant_id = pwa.tenant_id
+      LEFT JOIN users cb ON pwa.completed_by = cb.id AND cb.tenant_id = pwa.tenant_id
       WHERE ${whereClause}
       ORDER BY pwa.created_at ASC
     `;
@@ -131,7 +131,7 @@ class WorkActivityRepository {
       const { rows: photos } = await pool.query(`
         SELECT wap.*, u.name as uploader_name
         FROM work_activity_photos wap
-        LEFT JOIN users u ON wap.uploaded_by = u.id
+        LEFT JOIN users u ON wap.uploaded_by = u.id AND u.tenant_id = wap.tenant_id
         WHERE wap.activity_id = $1 AND wap.tenant_id = $2
         ORDER BY wap.created_at ASC
       `, [activity.id, tenantId]);
@@ -144,7 +144,7 @@ class WorkActivityRepository {
       const { rows: dependencies } = await pool.query(`
         SELECT wad.*, pwa.activity_name as depends_on_activity_name, pwa.status as depends_on_activity_status
         FROM work_activity_dependencies wad
-        JOIN project_work_activities pwa ON wad.depends_on_activity_id = pwa.id
+        JOIN project_work_activities pwa ON wad.depends_on_activity_id = pwa.id AND pwa.tenant_id = wad.tenant_id
         WHERE wad.activity_id = $1 AND wad.tenant_id = $2
       `, [activity.id, tenantId]);
       activity.dependencies = dependencies;
@@ -159,8 +159,8 @@ class WorkActivityRepository {
         u.name as assignee_name,
         cb.name as completed_by_name
       FROM project_work_activities pwa
-      LEFT JOIN users u ON pwa.assignee_id = u.id
-      LEFT JOIN users cb ON pwa.completed_by = cb.id
+      LEFT JOIN users u ON pwa.assignee_id = u.id AND u.tenant_id = pwa.tenant_id
+      LEFT JOIN users cb ON pwa.completed_by = cb.id AND cb.tenant_id = pwa.tenant_id
       WHERE pwa.id = $1 AND pwa.tenant_id = $2
     `;
     const { rows } = await pool.query(query, [id, tenantId]);
@@ -171,7 +171,7 @@ class WorkActivityRepository {
       const { rows: photos } = await pool.query(`
         SELECT wap.*, u.name as uploader_name
         FROM work_activity_photos wap
-        LEFT JOIN users u ON wap.uploaded_by = u.id
+        LEFT JOIN users u ON wap.uploaded_by = u.id AND u.tenant_id = wap.tenant_id
         WHERE wap.activity_id = $1 AND wap.tenant_id = $2
         ORDER BY wap.created_at ASC
       `, [id, tenantId]);
@@ -185,7 +185,7 @@ class WorkActivityRepository {
       const { rows: dependencies } = await pool.query(`
         SELECT wad.*, pwa.activity_name as depends_on_activity_name, pwa.status as depends_on_activity_status
         FROM work_activity_dependencies wad
-        JOIN project_work_activities pwa ON wad.depends_on_activity_id = pwa.id
+        JOIN project_work_activities pwa ON wad.depends_on_activity_id = pwa.id AND pwa.tenant_id = wad.tenant_id
         WHERE wad.activity_id = $1 AND wad.tenant_id = $2
       `, [id, tenantId]);
       activity.dependencies = dependencies;
@@ -198,6 +198,11 @@ class WorkActivityRepository {
       project_id, phase_id, room_name, trade, activity_name,
       description, assignee_id, due_date, status = 'todo', notes, qc_checklist
     } = data;
+
+    const projCheck = await pool.query('SELECT 1 FROM projects WHERE id = $1 AND tenant_id = $2', [project_id, tenantId]);
+    if (projCheck.rows.length === 0) {
+      throw new Error('Project not found');
+    }
 
     const resolvedChecklist = await resolveQcChecklist(tenantId, trade, qc_checklist);
 
@@ -244,7 +249,7 @@ class WorkActivityRepository {
           const { rows: deps } = await pool.query(`
             SELECT wad.*, pwa.activity_name as depends_on_name, pwa.status as depends_on_status
             FROM work_activity_dependencies wad
-            JOIN project_work_activities pwa ON wad.depends_on_activity_id = pwa.id
+            JOIN project_work_activities pwa ON wad.depends_on_activity_id = pwa.id AND pwa.tenant_id = wad.tenant_id
             WHERE wad.activity_id = $1 AND wad.tenant_id = $2
           `, [id, tenantId]);
 

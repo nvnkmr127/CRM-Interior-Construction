@@ -5,6 +5,9 @@ import { useState, useEffect } from 'react'
 import NotificationsPanel from './NotificationsPanel'
 import api from '../../api/axios'
 import { useToast } from '../../store/toastContext'
+import { clearTenantClientStorage } from '../../utils/storageCleanup'
+import Avatar from '../ui/Avatar'
+import { isSuperMasterDeveloper } from '../../utils/isSuperMasterDeveloper'
 
 const getInitials = (name) => {
   if (!name) return 'U'
@@ -22,17 +25,18 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
   const isProjectDetail = location.pathname.startsWith('/projects/') && !['/projects/resources', '/projects/coordination', '/projects/handover-dashboard', '/projects/retention-dashboard', '/projects/absences'].includes(location.pathname);
   const [userMenuOpen, setUserMenuOpen] = useState(false)
   const [switcherOpen, setSwitcherOpen] = useState(false)
+  const [workspaceSearch, setWorkspaceSearch] = useState('')
   const [tenants, setTenants] = useState([])
   const [switching, setSwitching] = useState(false)
   const [isDark, setIsDark] = useState(() => {
     return localStorage.getItem('theme') === 'dark'
   })
 
-  const isSuperAdmin = 
-    user?.role === 'superadmin' || 
-    user?.role?.name?.toLowerCase() === 'superadmin' || 
-    user?.role?.name?.toLowerCase() === 'super admin' ||
-    user?.is_platform_admin === true
+  // Strictly identify Super Master Developer - NEVER client superadmins
+  const isMasterDev = isSuperMasterDeveloper(user);
+  const isInspectingClientWorkspace = Boolean(
+    user?.masterSession || (isMasterDev && user?.tenant?.slug !== 'demo')
+  );
 
   useEffect(() => {
     if (isDark) {
@@ -45,7 +49,7 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
   }, [isDark])
 
   useEffect(() => {
-    if (isSuperAdmin && switcherOpen) {
+    if (isMasterDev && switcherOpen) {
       api.get('/superadmin/tenants')
         .then(res => {
           setTenants(res.data.data || [])
@@ -55,7 +59,7 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
           setTenants([])
         })
     }
-  }, [isSuperAdmin, switcherOpen])
+  }, [isMasterDev, switcherOpen])
 
   // Close menus when clicking anywhere
   useEffect(() => {
@@ -75,8 +79,14 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
       const res = await api.post('/superadmin/switch-tenant', { tenantId })
       if (res.data.success) {
         const payload = res.data.data;
+        // Wipe prior workspace's client-cached data
+        clearTenantClientStorage();
         if (payload.accessToken) {
+          localStorage.setItem('accessToken', payload.accessToken);
           api.defaults.headers.common['Authorization'] = `Bearer ${payload.accessToken}`;
+        }
+        if (payload.refreshToken) {
+          localStorage.setItem('refreshToken', payload.refreshToken);
         }
         setUser(payload.user)
         window.dispatchEvent(new Event('app:sidebar-config-updated'))
@@ -88,7 +98,39 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
       }
     } catch (err) {
       console.error(err)
-      toast.error(err.response?.data?.error?.message || 'Failed to switch workspace')
+      toast.error(err.response?.data?.message || err.response?.data?.error?.message || 'Failed to switch workspace')
+    } finally {
+      setSwitching(false)
+    }
+  }
+
+  const handleExitToMaster = async (e) => {
+    e.stopPropagation()
+    if (switching) return
+    setSwitching(true)
+    try {
+      const res = await api.post('/superadmin/exit-workspace')
+      if (res.data?.success) {
+        const payload = res.data.data;
+        clearTenantClientStorage();
+        if (payload.accessToken) {
+          localStorage.setItem('accessToken', payload.accessToken);
+          api.defaults.headers.common['Authorization'] = `Bearer ${payload.accessToken}`;
+        }
+        if (payload.refreshToken) {
+          localStorage.setItem('refreshToken', payload.refreshToken);
+        }
+        setUser(payload.user)
+        window.dispatchEvent(new Event('app:sidebar-config-updated'))
+        window.dispatchEvent(new Event('app:tenant-updated'))
+        window.dispatchEvent(new Event('app:auth-change'))
+        toast.success('Returned to Master Developer Workspace')
+        setSwitcherOpen(false)
+        navigate('/')
+      }
+    } catch (err) {
+      console.error(err)
+      toast.error(err.response?.data?.message || 'Failed to exit workspace')
     } finally {
       setSwitching(false)
     }
@@ -157,13 +199,13 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
 
       {/* Right: notifications + user */}
       <div className={styles.right}>
-        {isSuperAdmin && (
+        {isMasterDev && (
           <div className={styles.switcherContainer} onClick={(e) => e.stopPropagation()}>
             <button 
               className={styles.jumpBtn} 
               onClick={() => setSwitcherOpen(!switcherOpen)}
-              data-tooltip="Direct Jump"
-              aria-label="Direct Jump"
+              data-tooltip="Direct Workspace Jump"
+              aria-label="Direct Workspace Jump"
             >
               <span>🏢</span>
               <span className={styles.desktopOnly}>Direct Jump</span>
@@ -171,23 +213,63 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
             </button>
             {switcherOpen && (
               <div className={styles.switcherMenu}>
-                <div className={styles.switcherHeader}>Active Workspaces</div>
-                {tenants.map(t => (
+                <div className={styles.switcherHeader}>
+                  <span>Workspaces</span>
+                  <span className={styles.workspaceCountBadge}>{tenants.length}</span>
+                </div>
+                {isInspectingClientWorkspace && (
                   <button 
-                    key={t.id} 
-                    className={`${styles.switcherItem} ${user?.tenant?.id === t.id ? styles.switcherActiveItem : ''}`}
-                    onClick={(e) => handleSwitchTenant(e, t.id, t.name)}
+                    className={styles.exitToMasterBtn}
+                    onClick={handleExitToMaster}
                     disabled={switching}
                   >
-                    <div className={styles.switcherLabel}>
-                      <div className={styles.switcherLogo}>
-                        {t.name ? t.name.charAt(0).toUpperCase() : 'C'}
-                      </div>
-                      <span>{t.name}</span>
-                    </div>
-                    {user?.tenant?.id === t.id && <div className={styles.activeDot} />}
+                    <span>🔙</span>
+                    <span>Exit to Master Workspace</span>
                   </button>
-                ))}
+                )}
+                <div className={styles.switcherSearchWrapper}>
+                  <input 
+                    type="text" 
+                    placeholder="Search workspaces..." 
+                    value={workspaceSearch}
+                    onChange={(e) => setWorkspaceSearch(e.target.value)}
+                    className={styles.switcherSearchInput}
+                    onClick={(e) => e.stopPropagation()}
+                    autoFocus
+                  />
+                </div>
+                {tenants
+                  .filter(t => 
+                    !workspaceSearch || 
+                    t.name?.toLowerCase().includes(workspaceSearch.toLowerCase()) || 
+                    t.slug?.toLowerCase().includes(workspaceSearch.toLowerCase())
+                  )
+                  .map(t => (
+                    <button 
+                      key={t.id} 
+                      className={`${styles.switcherItem} ${user?.tenant?.id === t.id ? styles.switcherActiveItem : ''}`}
+                      onClick={(e) => handleSwitchTenant(e, t.id, t.name)}
+                      disabled={switching}
+                    >
+                      <div className={styles.switcherLabel}>
+                        <div className={styles.switcherLogo}>
+                          {t.name ? t.name.charAt(0).toUpperCase() : 'C'}
+                        </div>
+                        <span>{t.name}</span>
+                        {t.plan && <span className={styles.switcherPlanBadge}>{t.plan}</span>}
+                      </div>
+                      {user?.tenant?.id === t.id && <div className={styles.activeDot} title="Current Workspace" />}
+                    </button>
+                  ))}
+                {tenants.filter(t => 
+                    !workspaceSearch || 
+                    t.name?.toLowerCase().includes(workspaceSearch.toLowerCase()) || 
+                    t.slug?.toLowerCase().includes(workspaceSearch.toLowerCase())
+                  ).length === 0 && (
+                    <div style={{ padding: '12px', textAlign: 'center', fontSize: '12px', color: 'var(--color-text-muted)' }}>
+                      No workspaces found
+                    </div>
+                )}
               </div>
             )}
           </div>
@@ -207,7 +289,7 @@ export default function Topbar({ onMenuClick, onToggleSidebar, sidebarCollapsed,
         <NotificationsPanel />
         <div className={styles.userMenuContainer} onClick={(e) => e.stopPropagation()}>
           <button className={styles.userBtn} onClick={() => setUserMenuOpen(o => !o)} data-tooltip='User Menu'>
-            <div className={styles.avatar}>{getInitials(user?.name)}</div>
+            <Avatar src={user?.avatar_url || user?.avatar} name={user?.name} size="sm" style={{ width: 28, height: 28, fontSize: 12 }} />
             <span className={styles.name}>{user?.name?.split(' ')[0] || 'User'}</span>
             <span>▾</span>
           </button>

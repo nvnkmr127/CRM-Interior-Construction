@@ -48,6 +48,7 @@ async function authenticatePortal(req, res, next) {
       name: user.name,
       phone: user.phone
     };
+    req.tenantId = user.tenant_id;
 
     next();
   } catch (error) {

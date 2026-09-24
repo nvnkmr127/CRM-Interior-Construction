@@ -7,6 +7,10 @@ async function createChecklist({ tenantId, projectId, items = [] }) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+    const projectCheck = await client.query('SELECT project_type FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
+    if (projectCheck.rows.length === 0) {
+      throw new Error('Project not found');
+    }
 
     const checklistResult = await client.query(
       `INSERT INTO handover_checklists (tenant_id, project_id, status)
@@ -19,7 +23,7 @@ async function createChecklist({ tenantId, projectId, items = [] }) {
     // Auto-populate default items if none provided
     let itemsToInsert = items;
     if (itemsToInsert.length === 0) {
-      const projectRes = await client.query('SELECT project_type FROM projects WHERE id = $1', [projectId]);
+      const projectRes = await client.query('SELECT project_type FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
       const pType = projectRes.rows[0]?.project_type || 'full_home';
       
       switch (pType) {
@@ -178,6 +182,7 @@ async function addDefaultItems(checklistId, projectType) {
 }
 
 async function updateItem({ 
+  tenantId,
   checklistId, 
   itemId, 
   isChecked, 
@@ -190,6 +195,16 @@ async function updateItem({
   keyDetails,
   hasBrandRegistrationCard
 }) {
+  if (tenantId) {
+    const checkRes = await pool.query(
+      'SELECT id FROM handover_checklists WHERE id = $1 AND tenant_id = $2',
+      [checklistId, tenantId]
+    );
+    if (checkRes.rows.length === 0) {
+      throw new Error('Handover checklist not found or unauthorized');
+    }
+  }
+
   const result = await pool.query(
     `UPDATE handover_items
      SET is_checked = COALESCE($1, is_checked),
@@ -229,8 +244,8 @@ async function updateItem({
   setImmediate(async () => {
     try {
       const checklistInfo = await pool.query(
-        'SELECT project_id, tenant_id FROM handover_checklists WHERE id = $1',
-        [checklistId]
+        tenantId ? 'SELECT project_id, tenant_id FROM handover_checklists WHERE id = $1 AND tenant_id = $2' : 'SELECT project_id, tenant_id FROM handover_checklists WHERE id = $1',
+        tenantId ? [checklistId, tenantId] : [checklistId]
       );
       if (checklistInfo.rows.length > 0) {
         const { project_id, tenant_id } = checklistInfo.rows[0];
@@ -411,8 +426,8 @@ async function checkAndNotifyHandoverReadiness(tenantId, projectId) {
 
     // 3. Count unresolved snags
     const unresolvedSnagsRes = await pool.query(
-      `SELECT COUNT(*) FROM snags WHERE project_id = $1 AND status NOT IN ('resolved', 'closed', 'client_verified')`,
-      [projectId]
+      `SELECT COUNT(*) FROM snags WHERE project_id = $1 AND tenant_id = $2 AND status NOT IN ('resolved', 'closed', 'client_verified')`,
+      [projectId, tenantId]
     );
     const unresolvedCount = parseInt(unresolvedSnagsRes.rows[0].count, 10);
     if (unresolvedCount > 0) return;
@@ -420,8 +435,8 @@ async function checkAndNotifyHandoverReadiness(tenantId, projectId) {
     // 4. Check if readiness alert has already been sent to prevent duplicates
     const checkLog = await pool.query(
       `SELECT 1 FROM audit_logs 
-       WHERE entity = 'project' AND entity_id = $1 AND action = 'handover_readiness_notification'`,
-      [projectId]
+       WHERE entity = 'project' AND entity_id = $1 AND tenant_id = $2 AND action = 'handover_readiness_notification'`,
+      [projectId, tenantId]
     );
     if (checkLog.rows.length > 0) return;
 
@@ -430,7 +445,7 @@ async function checkAndNotifyHandoverReadiness(tenantId, projectId) {
       `SELECT p.name, p.client_name, p.client_email, p.client_phone, p.pm_id,
               u.name as pm_name, u.email as pm_email
        FROM projects p
-       LEFT JOIN users u ON p.pm_id = u.id
+       LEFT JOIN users u ON p.pm_id = u.id AND u.tenant_id = p.tenant_id
        WHERE p.id = $1 AND p.tenant_id = $2`,
       [projectId, tenantId]
     );
@@ -468,7 +483,7 @@ async function checkAndNotifyHandoverReadiness(tenantId, projectId) {
     const financeRes = await pool.query(
       `SELECT u.id, u.email, u.name 
        FROM users u
-       JOIN roles r ON u.role_id = r.id
+       JOIN roles r ON u.role_id = r.id AND (r.tenant_id = u.tenant_id OR r.tenant_id IS NULL)
        WHERE u.tenant_id = $1 
          AND (r.name = 'finance' OR r.name = 'superadmin' OR r.name = 'admin')
          AND u.status = 'active'`,

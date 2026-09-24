@@ -52,8 +52,8 @@ router.get('/', authorize('projects:read'), async (req, res) => {
     const query = `
       SELECT dr.*, u.name as issued_by_name, d.name as document_name, d.storage_key
       FROM drawing_register dr
-      LEFT JOIN users u ON dr.issued_by = u.id
-      LEFT JOIN documents d ON dr.document_id = d.id
+      LEFT JOIN users u ON dr.issued_by = u.id AND u.tenant_id = dr.tenant_id
+      LEFT JOIN documents d ON dr.document_id = d.id AND d.tenant_id = dr.tenant_id
       WHERE dr.project_id = $1 AND dr.tenant_id = $2
       ORDER BY dr.drawing_number ASC, dr.created_at DESC
     `;
@@ -84,6 +84,16 @@ router.post('/', authorize('design:manage'), validate(drawingRegisterSchema), as
     }
 
     await client.query('BEGIN');
+
+    // Verify project belongs to tenant
+    const { rows: projCheck } = await client.query(
+      `SELECT id FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [projectId, tenantId]
+    );
+    if (projCheck.length === 0) {
+      await client.query('ROLLBACK');
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
 
     // Check if combination already exists
     const { rows: existing } = await client.query(
@@ -318,8 +328,8 @@ router.delete('/:id', authorize('design:manage'), async (req, res) => {
         await client.query(
           `UPDATE drawing_register 
            SET is_superseded = FALSE, status = $1, updated_at = NOW() 
-           WHERE id = $2`,
-          [newStatus, latestRemainingId]
+           WHERE id = $2 AND project_id = $3 AND tenant_id = $4`,
+          [newStatus, latestRemainingId, projectId, tenantId]
         );
       }
     }

@@ -11,6 +11,14 @@ exports.getExternalInspections = async ({ tenantId, projectId }) => {
 };
 
 exports.createExternalInspection = async ({ tenantId, projectId, inspectorName, organization, inspectionDate, findings, severity, userId }) => {
+  const projCheck = await pool.query(
+    'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+    [projectId, tenantId]
+  );
+  if (projCheck.rows.length === 0) {
+    throw new Error('PROJECT_NOT_FOUND');
+  }
+
   const result = await pool.query(
     `INSERT INTO external_inspections 
       (tenant_id, project_id, inspector_name, organization, inspection_date, findings, severity, created_by) 

@@ -9,7 +9,7 @@ async function getTemplates(tenantId) {
     
     if (templatesRes.rows.length === 0) {
       templatesRes = await pool.query(
-        'SELECT * FROM qc_stage_templates WHERE is_active = true ORDER BY sort_order'
+        'SELECT * FROM qc_stage_templates WHERE tenant_id IS NULL AND is_active = true ORDER BY sort_order'
       );
     }
     
@@ -72,11 +72,15 @@ async function initializeQcStage(tenantId, projectId, phaseId, templateId) {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
+
+    // Verify project belongs to tenant
+    const projectCheck = await client.query('SELECT id FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
+    if (projectCheck.rows.length === 0) throw new Error('Project not found');
     
     // Get template
     let templateRes = await client.query('SELECT * FROM qc_stage_templates WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL)', [templateId, tenantId]);
     if (templateRes.rows.length === 0) {
-      templateRes = await client.query('SELECT * FROM qc_stage_templates WHERE id = $1', [templateId]);
+      templateRes = await client.query('SELECT * FROM qc_stage_templates WHERE id = $1 AND tenant_id IS NULL', [templateId]);
     }
     if (templateRes.rows.length === 0) throw new Error('Template not found');
     const template = templateRes.rows[0];
@@ -113,6 +117,10 @@ async function initializeQcStage(tenantId, projectId, phaseId, templateId) {
 async function updateChecklistItem(tenantId, stageId, itemId, payload) {
   const { is_passed, photo_url, notes, userId } = payload;
   
+  // Verify stage belongs to tenant
+  const stageCheck = await pool.query('SELECT id FROM project_qc_stages WHERE id = $1 AND tenant_id = $2', [stageId, tenantId]);
+  if (stageCheck.rows.length === 0) throw new Error('Stage not found');
+
   // Update item
   const updateRes = await pool.query(
     `UPDATE project_qc_checklist_items 
@@ -131,14 +139,21 @@ async function updateChecklistItem(tenantId, stageId, itemId, payload) {
   // Update stage status if it was pending
   await pool.query(
     `UPDATE project_qc_stages SET status = 'in_progress', updated_at = NOW() 
-     WHERE id = $1 AND status = 'pending'`,
-    [stageId]
+     WHERE id = $1 AND tenant_id = $2 AND status = 'pending'`,
+    [stageId, tenantId]
   );
   
   return updateRes.rows[0];
 }
 
 async function signOffStage(tenantId, projectId, stageId, userId) {
+  // Validate stage belongs to tenant and project
+  const stageCheck = await pool.query(
+    'SELECT id FROM project_qc_stages WHERE id = $1 AND tenant_id = $2 AND project_id = $3',
+    [stageId, tenantId, projectId]
+  );
+  if (stageCheck.rows.length === 0) throw new Error('Stage not found');
+
   // Validate all items are passed and photos provided if mandatory
   const itemsRes = await pool.query('SELECT * FROM project_qc_checklist_items WHERE stage_id = $1', [stageId]);
   

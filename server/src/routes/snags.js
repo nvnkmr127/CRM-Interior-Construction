@@ -52,6 +52,9 @@ router.post('/', async (req, res, next) => {
     
     return success(res, snag, 201);
   } catch (error) {
+    if (error.message === 'Project not found') {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
     next(error);
   }
 });

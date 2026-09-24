@@ -66,6 +66,14 @@ exports.createQuotation = async (req, res) => {
     
     if (!data.project_id) return fail(res, 'project_id is required', [], 400);
 
+    const projectCheck = await pool.query(
+      'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+      [data.project_id, tenantId]
+    );
+    if (!projectCheck.rows.length) {
+      return fail(res, 'Project not found or unauthorized', [], 404);
+    }
+
     const { rows } = await pool.query(
       `INSERT INTO quotations (tenant_id, project_id, status, version)
        VALUES ($1, $2, $3, $4) RETURNING *`,

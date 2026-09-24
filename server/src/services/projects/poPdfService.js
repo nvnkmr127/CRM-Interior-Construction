@@ -7,11 +7,11 @@ async function generatePurchaseOrderPDF(tenantId, projectId, poId, userId) {
   const poQuery = `
     SELECT po.*, v.vendor_name, v.payment_terms as vendor_payment_terms, p.name as project_name, p.site_address as project_site_address
     FROM purchase_orders po
-    LEFT JOIN project_vendors v ON po.vendor_id = v.id
-    JOIN projects p ON po.project_id = p.id
-    WHERE po.tenant_id = $1 AND po.id = $2
+    LEFT JOIN project_vendors v ON po.vendor_id = v.id AND v.tenant_id = po.tenant_id
+    JOIN projects p ON po.project_id = p.id AND p.tenant_id = po.tenant_id
+    WHERE po.tenant_id = $1 AND po.id = $2 AND po.project_id = $3
   `;
-  const poRes = await pool.query(poQuery, [tenantId, poId]);
+  const poRes = await pool.query(poQuery, [tenantId, poId, projectId]);
   if (poRes.rows.length === 0) throw new Error('Purchase Order not found');
   const po = poRes.rows[0];
 

@@ -21,6 +21,9 @@ router.get('/', authorize('projects:read'), async (req, res) => {
     const checklist = await siteReadinessRepository.findChecklist(req.tenantId, req.params.projectId);
     return success(res, checklist);
   } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
     logger.error('[SiteReadiness Router] Fetch error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch site readiness checklist.', 500);
   }
@@ -55,6 +58,9 @@ router.post('/sign-off', authorize('projects:manage'), async (req, res) => {
     );
     return success(res, checklist);
   } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
     logger.error('[SiteReadiness Router] Sign off error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to sign off checklist.', 500);
   }

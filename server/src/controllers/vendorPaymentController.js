@@ -10,6 +10,9 @@ exports.createVendorPaymentMilestone = async (req, res, next) => {
     const milestone = await vendorPaymentService.createVendorPaymentMilestone(tenantId, projectId, req.body);
     res.status(201).json({ success: true, data: milestone });
   } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.message === 'VENDOR_NOT_FOUND') {
+      return res.status(404).json({ success: false, message: error.message });
+    }
     next(error);
   }
 };

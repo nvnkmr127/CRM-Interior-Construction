@@ -10,6 +10,7 @@ import { useToast } from '../../store/toastContext';
 import { Button, Input, Modal, Textarea, Checkbox } from '../../components/ui';
 import { formatCurrency } from '../../utils/format';
 import api from '../../api/axios';
+import { isSuperMasterDeveloper } from '../../utils/isSuperMasterDeveloper';
 import styles from './ReportsHubPage.module.css';
 
 const PLAN_DEFAULTS = {
@@ -258,6 +259,7 @@ export default function ReportsHubPage() {
   const [isExporting, setIsExporting] = useState(false);
 
   const isDeveloperWorkspace = 
+    isSuperMasterDeveloper(user) ||
     !user?.tenant || 
     user?.tenant?.slug === 'admin' || 
     user?.tenant?.slug === 'default' || 

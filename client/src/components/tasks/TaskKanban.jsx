@@ -159,7 +159,7 @@ export default function TaskKanban({ projectId }) {
                     <div className={styles.bottomRow}>
                       <div className={styles.assignee}>
                         {task.assignee
-                          ? <div className={styles.avatar}>{task.assignee.charAt(0)}</div>
+                          ? <div className={styles.avatar}>{(typeof task.assignee === 'string' ? task.assignee : task.assignee?.name || '?').charAt(0).toUpperCase()}</div>
                           : <div className={styles.avatar} style={{ opacity: 0.3 }}>?</div>
                         }
                       </div>

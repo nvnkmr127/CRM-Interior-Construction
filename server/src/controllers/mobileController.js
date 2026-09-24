@@ -19,7 +19,7 @@ exports.getMobileDashboard = async (req, res, next) => {
       pool.query(`
         SELECT f.id, f.title as notes, f.created_at, l.id as lead_id, l.name as lead_name 
         FROM lead_followups f
-        JOIN leads l ON f.lead_id = l.id
+        JOIN leads l ON f.lead_id = l.id AND l.tenant_id = f.tenant_id AND l.deleted_at IS NULL
         WHERE f.tenant_id = $1 AND l.assigned_rep_id = $2
           AND f.created_at >= CURRENT_DATE
         ORDER BY f.created_at DESC LIMIT 10
@@ -28,7 +28,7 @@ exports.getMobileDashboard = async (req, res, next) => {
       pool.query(`
         SELECT v.id, v.scheduled_date, v.status, l.id as lead_id, l.name as lead_name, l.address
         FROM site_visits v
-        JOIN leads l ON v.lead_id = l.id
+        JOIN leads l ON v.lead_id = l.id AND l.tenant_id = v.tenant_id AND l.deleted_at IS NULL
         WHERE v.tenant_id = $1 AND l.assigned_rep_id = $2
           AND v.scheduled_date >= CURRENT_DATE AND v.scheduled_date < CURRENT_DATE + INTERVAL '1 day'
           AND v.status != 'completed' AND v.status != 'cancelled'

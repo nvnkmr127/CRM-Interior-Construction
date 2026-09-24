@@ -49,7 +49,7 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
     const query = `
       SELECT mp.*, qi.item_name AS boq_item_name, qi.room_or_area AS boq_room_or_area
       FROM project_material_palettes mp
-      LEFT JOIN quotation_items qi ON mp.boq_item_id = qi.id
+      LEFT JOIN quotation_items qi ON mp.boq_item_id = qi.id AND qi.tenant_id = mp.tenant_id
       WHERE mp.project_id = $1 AND mp.tenant_id = $2
       ORDER BY mp.room_name ASC, mp.created_at DESC
     `;
@@ -71,8 +71,8 @@ router.get('/boq-items', authorize('projects:read'), async (req, res, next) => {
     const query = `
       SELECT qi.id, qi.room_or_area, qi.item_name, qi.description, qi.brand, q.quotation_number
       FROM quotation_items qi
-      JOIN quotations q ON qi.quotation_id = q.id
-      WHERE q.project_id = $1 AND q.tenant_id = $2
+      JOIN quotations q ON qi.quotation_id = q.id AND q.tenant_id = qi.tenant_id
+      WHERE q.project_id = $1 AND q.tenant_id = $2 AND qi.tenant_id = $2
       ORDER BY qi.room_or_area ASC, qi.item_name ASC
     `;
 
@@ -90,6 +90,26 @@ router.post('/', authorize('design:manage'), validate(createPaletteSchema), asyn
     const { projectId } = req.params;
     const tenantId = req.tenantId;
     const data  = req.body;
+
+    const { rows: projCheck } = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [projectId, tenantId]
+    );
+    if (projCheck.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+
+    if (data.boq_item_id) {
+      const { rows: boqCheck } = await pool.query(
+        `SELECT qi.id FROM quotation_items qi
+         JOIN quotations q ON qi.quotation_id = q.id AND q.tenant_id = qi.tenant_id
+         WHERE qi.id = $1 AND q.project_id = $2 AND q.tenant_id = $3 AND qi.tenant_id = $3`,
+        [data.boq_item_id, projectId, tenantId]
+      );
+      if (boqCheck.length === 0) {
+        return fail(res, 'NOT_FOUND', 'BOQ item not found in this project.', 404);
+      }
+    }
 
     const clientApprovedAt = data.client_decision === 'approved' ? new Date() : null;
     const status = data.status || (data.client_decision === 'approved' ? 'approved' : data.client_decision === 'rejected' ? 'revision_requested' : 'pending_approval');

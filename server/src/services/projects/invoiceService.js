@@ -83,7 +83,7 @@ async function getInvoiceDraftDetails(tenantId, milestoneId) {
     billingName: project.client_name,
     billingAddress: project.site_address || '',
     billingGstin: '',
-    companyName: project.tenant_name || 'Demo Company',
+    companyName: project.tenant_name || '',
     companyAddress: '',
     companyGstin: '',
     gstType,
@@ -109,14 +109,14 @@ async function createInvoice({ tenantId, userId, milestoneId, projectId, data })
       `SELECT pm.*, m.name as linked_milestone_name 
        FROM payment_milestones pm 
        LEFT JOIN milestones m ON m.id = pm.milestone_id 
-       WHERE pm.id = $1`,
-      [milestoneId]
+       WHERE pm.id = $1 AND pm.tenant_id = $2`,
+      [milestoneId, tenantId]
     );
     if (msRes.rowCount > 0) {
       milestone = msRes.rows[0];
       const projRes = await pool.query(
-        `SELECT * FROM projects WHERE id = $1`,
-        [milestone.project_id]
+        `SELECT * FROM projects WHERE id = $1 AND tenant_id = $2`,
+        [milestone.project_id, tenantId]
       );
       if (projRes.rowCount > 0) project = projRes.rows[0];
     }
@@ -125,8 +125,8 @@ async function createInvoice({ tenantId, userId, milestoneId, projectId, data })
   const targetProjectId = projectId || milestone?.project_id || data?.projectId;
   if (!project && targetProjectId && isUuid(targetProjectId)) {
     const projRes = await pool.query(
-      `SELECT * FROM projects WHERE id = $1`,
-      [targetProjectId]
+      `SELECT * FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [targetProjectId, tenantId]
     );
     if (projRes.rowCount > 0) project = projRes.rows[0];
   }
@@ -169,7 +169,7 @@ async function createInvoice({ tenantId, userId, milestoneId, projectId, data })
   const invoiceNumber = await generateInvoiceNumber(tenantId || project.tenant_id);
 
   // Billing and company info
-  const companyName = data.companyName || 'Demo Company';
+  const companyName = data.companyName || '';
   const companyAddress = data.companyAddress || '';
   const companyGstin = data.companyGstin || '';
   const billingName = data.billingName || project.client_name || project.customer_name || 'Customer';
@@ -179,7 +179,7 @@ async function createInvoice({ tenantId, userId, milestoneId, projectId, data })
   const invoiceDate = data.invoiceDate || new Date().toISOString().split('T')[0];
   const dueDate = data.dueDate || (milestone ? milestone.due_date : null);
 
-  const safeTenantId = tenantId || project.tenant_id || '00000000-0000-0000-0000-000000000001';
+  const safeTenantId = tenantId || project.tenant_id;
   const threshold = await getTenantThreshold(safeTenantId, 'finance_invoice_threshold', 100000.00);
   const isSuperadmin = (userId && isUuid(userId)) ? await isUserSuperadmin(userId) : true;
   const requiresApproval = !isSuperadmin && totalAmount > threshold;
@@ -214,8 +214,8 @@ async function createInvoice({ tenantId, userId, milestoneId, projectId, data })
     const storageKey = `tenants/${safeTenantId}/invoices/${invoice.id}.pdf`;
     await storage.uploadBuffer(storageKey, pdfBuffer, 'application/pdf');
     await pool.query(
-      `UPDATE invoices SET pdf_storage_key = $1 WHERE id = $2`,
-      [storageKey, invoice.id]
+      `UPDATE invoices SET pdf_storage_key = $1 WHERE id = $2 AND tenant_id = $3`,
+      [storageKey, invoice.id, safeTenantId]
     );
     invoice.pdf_storage_key = storageKey;
   } catch (pdfErr) {
@@ -240,8 +240,8 @@ async function createInvoice({ tenantId, userId, milestoneId, projectId, data })
     await pool.query(
       `UPDATE payment_milestones 
        SET invoice_reference = $1, status = 'invoice_raised' 
-       WHERE id = $2`,
-      [invoiceNumber, milestone.id]
+       WHERE id = $2 AND tenant_id = $3`,
+      [invoiceNumber, milestone.id, safeTenantId]
     );
   }
 
@@ -417,9 +417,9 @@ async function getInvoicesByProject(tenantId, projectId) {
   const query = `
     SELECT i.*, m.name as milestone_name, p.name as project_name 
     FROM invoices i
-    LEFT JOIN payment_milestones pm ON pm.id = i.payment_milestone_id
-    LEFT JOIN milestones m ON m.id = pm.milestone_id
-    LEFT JOIN projects p ON p.id = COALESCE(i.project_id, pm.project_id)
+    LEFT JOIN payment_milestones pm ON pm.id = i.payment_milestone_id AND pm.tenant_id = i.tenant_id
+    LEFT JOIN milestones m ON m.id = pm.milestone_id AND m.tenant_id = i.tenant_id
+    LEFT JOIN projects p ON p.id = COALESCE(i.project_id, pm.project_id) AND p.tenant_id = i.tenant_id
     WHERE i.tenant_id = $1 AND (i.project_id = $2 OR pm.project_id = $2)
     ORDER BY i.created_at DESC
   `;
@@ -431,9 +431,9 @@ async function getAllInvoices(tenantId) {
   const query = `
     SELECT i.*, m.name as milestone_name, p.name as project_name 
     FROM invoices i
-    LEFT JOIN payment_milestones pm ON pm.id = i.payment_milestone_id
-    LEFT JOIN milestones m ON m.id = pm.milestone_id
-    LEFT JOIN projects p ON p.id = pm.project_id
+    LEFT JOIN payment_milestones pm ON pm.id = i.payment_milestone_id AND pm.tenant_id = i.tenant_id
+    LEFT JOIN milestones m ON m.id = pm.milestone_id AND m.tenant_id = i.tenant_id
+    LEFT JOIN projects p ON p.id = pm.project_id AND p.tenant_id = i.tenant_id
     WHERE i.tenant_id = $1
     ORDER BY i.created_at DESC
   `;

@@ -13,16 +13,13 @@ router.post('/send-otp', async (req, res, next) => {
 
     const cleanPhone = (phone || '').replace(/\D/g, '').slice(-10);
 
-    // 1. Resolve tenantId (case-insensitive + fallback to first tenant in dev)
-    let tenantResult = await pool.query(
+    // 1. Resolve tenantId (case-insensitive)
+    const tenantResult = await pool.query(
       'SELECT id, is_active FROM tenants WHERE LOWER(slug) = LOWER($1) OR id::text = $1',
       [tenantSlug.trim()]
     );
     if (tenantResult.rows.length === 0) {
-      tenantResult = await pool.query('SELECT id, is_active FROM tenants ORDER BY created_at ASC LIMIT 1');
-    }
-    if (tenantResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Tenant not found' });
+      return res.status(404).json({ success: false, message: 'Workspace not found' });
     }
     if (!tenantResult.rows[0].is_active) {
       return res.status(403).json({ success: false, error: 'TENANT_DEACTIVATED', message: 'This workspace has been deactivated.' });
@@ -74,16 +71,13 @@ router.post('/verify-otp', async (req, res, next) => {
 
     const cleanPhone = (phone || '').replace(/\D/g, '').slice(-10);
 
-    // 1. Resolve tenantId (case-insensitive + fallback to first tenant in dev)
-    let tenantResult = await pool.query(
+    // 1. Resolve tenantId (case-insensitive)
+    const tenantResult = await pool.query(
       'SELECT id, is_active FROM tenants WHERE LOWER(slug) = LOWER($1) OR id::text = $1',
       [tenantSlug.trim()]
     );
     if (tenantResult.rows.length === 0) {
-      tenantResult = await pool.query('SELECT id, is_active FROM tenants ORDER BY created_at ASC LIMIT 1');
-    }
-    if (tenantResult.rows.length === 0) {
-      return res.status(404).json({ success: false, message: 'Tenant not found' });
+      return res.status(404).json({ success: false, message: 'Workspace not found' });
     }
     if (!tenantResult.rows[0].is_active) {
       return res.status(403).json({ success: false, error: 'TENANT_DEACTIVATED', message: 'This workspace has been deactivated.' });

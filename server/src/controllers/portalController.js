@@ -11,9 +11,9 @@ exports.getProjectStatusHandler = async (req, res, next) => {
 
     // We locate the lead by searching for the tracking code inside custom_fields
     const leadRes = await pool.query(
-      `SELECT id, name, status, stage_id, budget_max, custom_fields, created_at, updated_at
+      `SELECT id, tenant_id, name, status, stage_id, budget_max, custom_fields, created_at, updated_at
        FROM leads
-       WHERE custom_fields->>'tracking_code' = $1`,
+       WHERE custom_fields->>'tracking_code' = $1 AND deleted_at IS NULL`,
       [trackingCode]
     );
 
@@ -27,9 +27,9 @@ exports.getProjectStatusHandler = async (req, res, next) => {
     const timelineRes = await pool.query(
       `SELECT type, created_at
        FROM lead_activities
-       WHERE lead_id = $1 AND type IN ('stage_change', 'meeting', 'quote_sent')
+       WHERE lead_id = $1 AND tenant_id = $2 AND type IN ('stage_change', 'meeting', 'quote_sent')
        ORDER BY created_at DESC`,
-      [lead.id]
+      [lead.id, lead.tenant_id]
     );
 
     res.json({
@@ -38,7 +38,7 @@ exports.getProjectStatusHandler = async (req, res, next) => {
         project: {
           name: lead.name,
           status: lead.status,
-          readiness: lead.custom_fields.project_readiness || {},
+          readiness: (lead.custom_fields && lead.custom_fields.project_readiness) || {},
           started_at: lead.created_at,
           last_updated: lead.updated_at
         },

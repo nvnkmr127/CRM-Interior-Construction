@@ -76,6 +76,9 @@ router.post('/', authorize('support:manage'), validate(createWarrantySchema), as
 
     return success(res, warranty, {}, 201);
   } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
     next(error);
   }
 });

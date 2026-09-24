@@ -5,6 +5,7 @@ import { dashboardApi } from '../../api/dashboard';
 import { Card, Button, Modal } from '../ui';
 import { useAuth } from '../../store/authContext';
 import { usePermissions } from '../../hooks/usePermissions';
+import { isSuperMasterDeveloper } from '../../utils/isSuperMasterDeveloper';
 import styles from './LeadDashboard.module.css';
 
 export default function LeadDashboard({ leads, stages = [], loading, statusFilter = 'active', onLeadClick, onViewChange, onSiteVisitsTodayClick }) {
@@ -140,8 +141,7 @@ export default function LeadDashboard({ leads, stages = [], loading, statusFilte
   const roleName = (typeof user?.role === 'string' ? user.role : user?.role?.name || '').toLowerCase();
   const permissions = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
 
-  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
-    (roleName === 'superadmin' || roleName === 'admin');
+  const isPlatformDeveloperAdmin = isSuperMasterDeveloper(user);
 
   const isAdmin = isPlatformDeveloperAdmin || 
     roleName === 'superadmin' || 

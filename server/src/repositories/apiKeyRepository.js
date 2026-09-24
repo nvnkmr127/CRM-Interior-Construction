@@ -119,7 +119,7 @@ async function getDashboardStats(tenantId) {
       const logsRes = await pool.query(
         `SELECT l.id, k.name as key_name, l.endpoint, l.method, l.status_code, l.execution_time_ms, l.created_at
          FROM api_logs l
-         LEFT JOIN api_keys k ON l.api_key_id = k.id
+         LEFT JOIN api_keys k ON l.api_key_id = k.id AND k.tenant_id = l.tenant_id
          WHERE l.tenant_id = $1
          ORDER BY l.created_at DESC
          LIMIT 50`,

@@ -10,10 +10,10 @@ import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { Button, Input, Badge, Card, Modal, PageHeader, Toggle, Select } from '../../components/ui';
 
 export default function SuperAdminSettings() {
-  usePageTitle('Super Admin command Center');
+  usePageTitle('Platform Command Center');
   useBreadcrumbs([
     { label: 'Settings', to: '/settings' },
-    { label: 'Super Admin command Center' }
+    { label: 'Platform Command Center' }
   ]);
 
   const { confirm } = useConfirm();
@@ -85,6 +85,7 @@ export default function SuperAdminSettings() {
     { id: 'lead-stages', label: 'Lead Stages', group: 'SALES SETUP' },
     { id: 'custom-fields', label: 'Custom Fields', group: 'SALES SETUP' },
     { id: 'lead-forms', label: 'Lead Forms', group: 'SALES SETUP' },
+    { id: 'email-templates', label: 'Email Templates', group: 'SALES SETUP' },
     
     { id: 'templates', label: 'Project Templates', group: 'PROJECT SETUP' },
     { id: 'trade-activities', label: 'Work Templates', group: 'PROJECT SETUP' },
@@ -115,13 +116,12 @@ export default function SuperAdminSettings() {
     { id: 'organization', label: 'Organization', group: 'TEAM & SECURITY' },
     { id: 'login-history', label: 'Login History', group: 'TEAM & SECURITY' },
     { id: 'audit-trail', label: 'Audit Trail', group: 'TEAM & SECURITY' },
+    { id: 'logs', label: 'Delivery & Activity Logs', group: 'TEAM & SECURITY' },
     
-    { id: 'superadmin', label: 'Super Admin Center', group: 'DEVELOPER TOOLS' },
+    { id: 'superadmin', label: 'Platform Command Center', group: 'DEVELOPER TOOLS' },
     { id: 'api-keys', label: 'API Keys', group: 'DEVELOPER TOOLS' },
     { id: 'api-integration', label: 'API Integration', group: 'DEVELOPER TOOLS' },
-    { id: 'webhooks', label: 'Webhooks', group: 'DEVELOPER TOOLS' },
-    { id: 'email-templates', label: 'Email Templates', group: 'DEVELOPER TOOLS' },
-    { id: 'logs', label: 'Logs', group: 'DEVELOPER TOOLS' }
+    { id: 'webhooks', label: 'Webhooks', group: 'DEVELOPER TOOLS' }
   ];
 
   // New tenant form state
@@ -459,7 +459,7 @@ export default function SuperAdminSettings() {
   return (
     <div className={styles.container}>
       <PageHeader 
-        title="Super Admin Command Center" 
+        title="Platform Command Center" 
         description="Organization-wide workspace provisioning, license optimization, access controls, and navigation settings." 
       />
 

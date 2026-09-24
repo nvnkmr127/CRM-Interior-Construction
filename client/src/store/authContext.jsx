@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api/axios';
 import { loadMockDatabase } from '../api/mockData';
 import { ROLE_DEFAULTS } from '../constants/roleDefaults';
+import { clearTenantClientStorage } from '../utils/storageCleanup';
 
 const AuthContext = createContext();
 
@@ -489,7 +490,8 @@ export function AuthProvider({ children }) {
     } catch (error) {
       console.error('Server-side logout failed:', error);
     } finally {
-      // Regardless of server response, terminate local session
+      // Regardless of server response, terminate local session and wipe tenant storage
+      clearTenantClientStorage();
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('isAuthenticated');

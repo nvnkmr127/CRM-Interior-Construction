@@ -78,6 +78,15 @@ router.post('/', authorize('projects:manage'), validate(createReportSchema), asy
       return fail(res, 'PAST_CUTOFF_TIME', `Daily site reports must be submitted before ${cutoffTime}.`, 400);
     }
 
+    // Verify project belongs to tenant
+    const projectCheck = await pool.query(
+      'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+      [req.params.projectId, req.tenantId]
+    );
+    if (projectCheck.rows.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+
     // Check if report already exists for this project on this date
     const reportDate = data.reportDate || new Date().toISOString().split('T')[0];
     const existingCheck = await pool.query(

@@ -16,15 +16,32 @@ async function enforceLeadAccess(req, res, next) {
     const leadId = req.params.id;
     if (!leadId) return next();
 
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    if (!tenantId) {
+      return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'Tenant context missing' });
+    }
+
+    // Verify lead exists in this tenant first
+    const { rows: leadCheck } = await pool.query(
+      'SELECT 1 FROM leads WHERE id = $1 AND tenant_id = $2',
+      [leadId, tenantId]
+    );
+
+    if (leadCheck.length === 0) {
+      return res.status(404).json({
+        success: false,
+        error: 'NOT_FOUND',
+        message: 'Lead not found in this workspace.'
+      });
+    }
+
     const rawRole = typeof req.user.role === 'string' ? req.user.role : (req.user.role?.name || '');
     const role = rawRole.toLowerCase().replace(/[\s_-]+/g, '');
     
-    // Superadmin, admin, manager, gm bypass individual lead assignment ownership check
+    // Superadmin, admin, manager, gm bypass individual lead assignment ownership check within this workspace
     if (['superadmin', 'admin', 'administrator', 'owner', 'manager', 'gm'].includes(role) || role.includes('admin') || role.includes('manager')) {
       return next();
     }
-
-    const tenantId = req.tenantId || (req.user && req.user.tenantId);
 
     // Build SQL scope filter (defaults to l.assignee_id = userId for regular team members)
     const scopeFilter = dataScope.buildScopeFilter(req.user, 'leads', 'assignee_id', 'l');

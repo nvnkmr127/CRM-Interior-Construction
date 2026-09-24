@@ -5,7 +5,7 @@ class VendorLeadTimeService {
     const query = `
       SELECT lt.*, v.vendor_name
       FROM vendor_lead_times lt
-      LEFT JOIN project_vendors v ON lt.vendor_id = v.id
+      LEFT JOIN project_vendors v ON lt.vendor_id = v.id AND v.tenant_id = lt.tenant_id
       WHERE lt.tenant_id = $1
       ORDER BY lt.material_category ASC, v.vendor_name ASC
     `;
@@ -15,6 +15,17 @@ class VendorLeadTimeService {
 
   async saveLeadTime(tenantId, data) {
     const { vendorId, materialCategory, leadTimeDays } = data;
+
+    if (vendorId) {
+      const vCheck = await pool.query(
+        'SELECT id FROM project_vendors WHERE id = $1 AND tenant_id = $2',
+        [vendorId, tenantId]
+      );
+      if (vCheck.rows.length === 0) {
+        throw new Error('VENDOR_NOT_FOUND');
+      }
+    }
+
     const query = `
       INSERT INTO vendor_lead_times (tenant_id, vendor_id, material_category, lead_time_days)
       VALUES ($1, $2, $3, $4)

@@ -15,6 +15,9 @@ exports.createQuotation = async (req, res, next) => {
     quotation = filterAllowedFields(quotation, req.user, 'quotations');
     res.status(201).json({ success: true, data: quotation });
   } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.message === 'LEAD_NOT_FOUND') {
+      return res.status(404).json({ success: false, message: error.message.replace(/_/g, ' ') });
+    }
     next(error);
   }
 };
@@ -51,6 +54,9 @@ exports.addBOQItem = async (req, res, next) => {
     const item = await quotationService.addBOQItem(tenantId, req.params.id, req.body);
     res.status(201).json({ success: true, data: item });
   } catch (error) {
+    if (error.message === 'QUOTATION_NOT_FOUND') {
+      return res.status(404).json({ success: false, message: 'Quotation not found' });
+    }
     next(error);
   }
 };

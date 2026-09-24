@@ -163,4 +163,11 @@ describe('Material Substitution Approvals API', () => {
     expect(itemDbRes.rows[0].brand).toBe('Premium Brand');
     expect(Number(itemDbRes.rows[0].unit_price)).toBe(1200.00);
   });
+
+  afterAll(async () => {
+    const { cleanupProject } = require('../helpers/cleanup');
+    if (projectId) {
+      await cleanupProject(projectId);
+    }
+  });
 });

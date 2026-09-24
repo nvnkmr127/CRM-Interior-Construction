@@ -25,7 +25,8 @@ export const NAV_ITEMS = [
   { group: 'SALES SETUP', adminOnly: true, items: [
     { id: 'lead-stages', to: '/lead-stages', icon: '◎', label: 'Lead Stages', module: 'settings' },
     { id: 'custom-fields', to: '/custom-fields', icon: '⊡', label: 'Custom Fields', module: 'settings' },
-    { id: 'lead-forms', to: '/leads/forms', icon: '📝', label: 'Lead Forms', module: 'leads' }
+    { id: 'lead-forms', to: '/leads/forms', icon: '📝', label: 'Lead Forms', module: 'leads' },
+    { id: 'email-templates', to: '/email-templates', icon: '📧', label: 'Email Templates', module: 'settings' }
   ]},
   { group: 'PROJECT SETUP', adminOnly: true, items: [
     { id: 'templates', to: '/templates', icon: '◈', label: 'Project Templates', module: 'settings' },
@@ -65,17 +66,16 @@ export const NAV_ITEMS = [
     { id: 'organization', to: '/organization', icon: '🏢', label: 'Organization', module: 'settings' },
     { id: 'company-settings', to: '/settings/company', icon: '🏢', label: 'Company Settings', module: 'settings' },
     { id: 'login-history', to: '/login-history', icon: '🛡️', label: 'Login History', module: 'settings' },
-    { id: 'audit-trail', to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail', module: 'settings' }
+    { id: 'audit-trail', to: '/settings/audit-trail', icon: '📜', label: 'Audit Trail', module: 'settings' },
+    { id: 'logs', to: '/logs', icon: '≡', label: 'Delivery & Activity Logs', module: 'settings' }
   ]},
   { group: 'REPORTS', items: [
     { id: 'reports', to: '/reports', icon: '📋', label: 'Reports Hub', module: ['reports', 'analytics'] }
   ]},
-  { group: 'DEVELOPER TOOLS', adminOnly: true, items: [
-    { id: 'superadmin', to: '/settings/superadmin', icon: '⚡', label: 'Super Admin Center', module: 'settings' },
-    { id: 'api-keys', to: '/api-keys', icon: '⊙', label: 'API Keys', module: 'settings' },
-    { id: 'api-integration', to: '/developer/api', icon: '🔌', label: 'API Integration', module: 'settings' },
-    { id: 'webhooks', to: '/developer/webhooks', icon: '🪝', label: 'Webhooks', module: 'settings' },
-    { id: 'email-templates', to: '/email-templates', icon: '📧', label: 'Email Templates', module: 'settings' },
-    { id: 'logs', to: '/logs', icon: '≡', label: 'Logs', module: 'settings' },
+  { group: 'DEVELOPER TOOLS', developerOnly: true, items: [
+    { id: 'superadmin', to: '/settings/superadmin', icon: '⚡', label: 'Platform Command Center', module: 'settings', developerOnly: true },
+    { id: 'api-keys', to: '/api-keys', icon: '⊙', label: 'API Keys', module: 'settings', developerOnly: true },
+    { id: 'api-integration', to: '/developer/api', icon: '🔌', label: 'API Integration', module: 'settings', developerOnly: true },
+    { id: 'webhooks', to: '/developer/webhooks', icon: '🪝', label: 'Webhooks', module: 'settings', developerOnly: true }
   ]}
 ];

@@ -22,7 +22,7 @@ exports.applyTemplate = async (projectId, templateId, tenantId) => {
         );
       } else if (action.type === 'notify') {
         // Find project manager
-        const pmRes = await pool.query(`SELECT project_manager_id FROM projects WHERE id = $1`, [projectId]);
+        const pmRes = await pool.query(`SELECT project_manager_id FROM projects WHERE id = $1 AND tenant_id = $2`, [projectId, tenantId]);
         if (pmRes.rows.length > 0 && pmRes.rows[0].project_manager_id) {
           const pmId = pmRes.rows[0].project_manager_id;
           const notificationQuery = `

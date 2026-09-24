@@ -42,13 +42,56 @@ export default function CompanySettingsPage() {
         headers: { 'Content-Type': 'multipart/form-data' }
       })
       if (res.data?.success) {
-        setLogoUrl(res.data.data.logoUrl)
+        const newLogoUrl = res.data.data.logoUrl || res.data.data.logo_url
+        setLogoUrl(newLogoUrl)
         toast.success('Logo uploaded successfully!')
+
+        // Immediately update global auth context and sync sidebar
+        if (user) {
+          const updatedUser = {
+            ...user,
+            tenant: {
+              ...user.tenant,
+              logoUrl: newLogoUrl,
+              logo_url: newLogoUrl
+            }
+          }
+          updateUser(updatedUser)
+        }
+
+        window.dispatchEvent(new Event('app:tenant-updated'))
+        window.dispatchEvent(new Event('app:sidebar-config-updated'))
+        window.dispatchEvent(new Event('app:auth-change'))
       }
     } catch (err) {
       toast.error('Failed to upload logo')
     } finally {
       setUploadingLogo(false)
+    }
+  }
+
+  const handleRemoveLogo = async () => {
+    setLogoUrl('')
+    if (user) {
+      const updatedUser = {
+        ...user,
+        tenant: {
+          ...user.tenant,
+          logoUrl: '',
+          logo_url: ''
+        }
+      }
+      updateUser(updatedUser)
+    }
+
+    try {
+      await api.patch('/config/tenant-settings', { logo_url: '' })
+      toast.success('Logo removed successfully')
+      window.dispatchEvent(new Event('app:tenant-updated'))
+      window.dispatchEvent(new Event('app:sidebar-config-updated'))
+      window.dispatchEvent(new Event('app:auth-change'))
+    } catch (err) {
+      console.warn('Failed to auto-persist logo removal:', err)
     }
   }
 
@@ -63,8 +106,8 @@ export default function CompanySettingsPage() {
       if (res.data?.success) {
         const data = res.data.data
         setCompanyName(data.companyName || '')
-        setLogoUrl(data.logo_url || '')
-        setAccentColour(data.accent_colour || '#4f46e5')
+        setLogoUrl(data.logo_url || data.logoUrl || '')
+        setAccentColour(data.accent_colour || data.accentColour || '#4f46e5')
         setDescription(data.description || '')
         setAddress(data.address || '')
         setPhone(data.phone || '')
@@ -92,7 +135,9 @@ export default function CompanySettingsPage() {
         const payload = {
           companyName,
           logo_url: logoUrl,
+          logoUrl: logoUrl,
           accent_colour: accentColour,
+          accentColour: accentColour,
           description,
           address,
           phone,
@@ -112,7 +157,9 @@ export default function CompanySettingsPage() {
                 ...user.tenant,
                 name: companyName,
                 logoUrl: logoUrl,
+                logo_url: logoUrl,
                 accentColour: accentColour,
+                accent_colour: accentColour,
                 description,
                 address,
                 phone,
@@ -122,6 +169,10 @@ export default function CompanySettingsPage() {
             }
             updateUser(updatedUser)
           }
+
+          window.dispatchEvent(new Event('app:tenant-updated'))
+          window.dispatchEvent(new Event('app:sidebar-config-updated'))
+          window.dispatchEvent(new Event('app:auth-change'))
         }
       } catch (err) {
         toast.error('Failed to save company settings')
@@ -195,7 +246,7 @@ export default function CompanySettingsPage() {
                   {logoUrl && (
                     <button 
                       type="button"
-                      onClick={() => setLogoUrl('')}
+                      onClick={handleRemoveLogo}
                       style={{
                         background: 'var(--color-danger-bg, #fee2e2)',
                         border: '1px solid var(--color-danger, #ef4444)', 

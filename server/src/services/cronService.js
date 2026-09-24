@@ -20,9 +20,12 @@ function startCronJobs() {
       // For PostgreSQL, checking MM-DD inside JSON is a bit complex, so we'll fetch active users and process in JS for simplicity.
       
       const { rows: users } = await pool.query(`
-        SELECT id, tenant_id, name, email, profile_data, status, created_at 
-        FROM users 
-        WHERE status IN ('active', 'probation', 'onboarding')
+        SELECT u.id, u.tenant_id, u.name, u.email, u.profile_data, u.status, u.created_at 
+        FROM users u
+        JOIN tenants t ON u.tenant_id = t.id
+        WHERE t.is_active = true 
+          AND u.deleted_at IS NULL
+          AND u.status IN ('active', 'probation', 'onboarding')
       `)
 
       const today = new Date()

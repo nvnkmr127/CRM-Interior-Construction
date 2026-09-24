@@ -7,7 +7,7 @@ async function getCreditNotes(tenantId, projectId) {
   const query = `
     SELECT cn.*, inv.invoice_number as linked_invoice_number
     FROM credit_notes cn
-    LEFT JOIN invoices inv ON cn.invoice_id = inv.id
+    LEFT JOIN invoices inv ON cn.invoice_id = inv.id AND inv.tenant_id = cn.tenant_id
     WHERE cn.tenant_id = $1 AND cn.project_id = $2
     ORDER BY cn.credit_note_date DESC, cn.created_at DESC
   `;
@@ -19,7 +19,7 @@ async function getRefunds(tenantId, projectId) {
   const query = `
     SELECT r.*, pm.name as linked_milestone_name
     FROM refunds r
-    LEFT JOIN payment_milestones pm ON r.payment_milestone_id = pm.id
+    LEFT JOIN payment_milestones pm ON r.payment_milestone_id = pm.id AND pm.tenant_id = r.tenant_id
     WHERE r.tenant_id = $1 AND r.project_id = $2
     ORDER BY r.refund_date DESC, r.created_at DESC
   `;
@@ -78,6 +78,25 @@ async function generateRefundNumber(tenantId) {
 async function createCreditNote({ tenantId, userId, data, bypassApproval = false }) {
   const { projectId, invoiceId, subtotal, gstType, gstRate, reason, notes, creditNoteDate } = data;
   
+  // Verify project belongs to tenant
+  const projectCheck = await pool.query(
+    'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+    [projectId, tenantId]
+  );
+  if (projectCheck.rows.length === 0) {
+    throw new Error('Project not found or unauthorized');
+  }
+
+  if (invoiceId) {
+    const invCheck = await pool.query(
+      'SELECT id FROM invoices WHERE id = $1 AND tenant_id = $2 AND project_id = $3',
+      [invoiceId, tenantId, projectId]
+    );
+    if (invCheck.rows.length === 0) {
+      throw new Error('Invoice not found or unauthorized');
+    }
+  }
+
   // Calculate tax components
   const amount = Number(subtotal || 0);
   const rate = Number(gstRate !== undefined ? gstRate : 18.00);
@@ -147,6 +166,25 @@ async function createCreditNote({ tenantId, userId, data, bypassApproval = false
 async function createRefund({ tenantId, userId, data, bypassApproval = false }) {
   const { projectId, paymentMilestoneId, amount, paymentMethod, referenceNumber, reason, notes, refundDate } = data;
   
+  // Verify project belongs to tenant
+  const projectCheck = await pool.query(
+    'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+    [projectId, tenantId]
+  );
+  if (projectCheck.rows.length === 0) {
+    throw new Error('Project not found or unauthorized');
+  }
+
+  if (paymentMilestoneId) {
+    const pmCheck = await pool.query(
+      'SELECT id FROM payment_milestones WHERE id = $1 AND tenant_id = $2 AND project_id = $3',
+      [paymentMilestoneId, tenantId, projectId]
+    );
+    if (pmCheck.rows.length === 0) {
+      throw new Error('Payment milestone not found or unauthorized');
+    }
+  }
+
   const refundNumber = await generateRefundNumber(tenantId);
   const refDate = refundDate || new Date().toISOString().split('T')[0];
 

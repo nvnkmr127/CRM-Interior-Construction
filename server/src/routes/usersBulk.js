@@ -262,9 +262,9 @@ router.post('/export', authorize('users:export_csv'), async (req, res, next) => 
     let query = `
       SELECT u.id, u.name, u.email, r.name as role_name, u.status, d.name as department_name, m.name as manager_name
       FROM users u
-      LEFT JOIN roles r ON u.role_id = r.id
-      LEFT JOIN departments d ON u.department_id = d.id
-      LEFT JOIN users m ON u.manager_id = m.id
+      LEFT JOIN roles r ON u.role_id = r.id AND (r.tenant_id = u.tenant_id OR r.is_system = true)
+      LEFT JOIN departments d ON u.department_id = d.id AND d.tenant_id = u.tenant_id
+      LEFT JOIN users m ON u.manager_id = m.id AND m.tenant_id = u.tenant_id
       WHERE u.tenant_id = $1
     `;
     const params = [tenantId];

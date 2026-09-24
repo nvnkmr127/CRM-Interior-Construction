@@ -8,7 +8,7 @@ const eventBus = require('../../utils/eventBus');
  * Checks approaching warranty expiries (at 90 and 30 days) and sends reminders with AMC offers.
  * Returns the count of reminders sent.
  */
-async function checkAndSendWarrantyExpiryReminders(projectId = null) {
+async function checkAndSendWarrantyExpiryReminders(projectId = null, tenantId = null) {
   let remindersSent = 0;
 
   try {
@@ -19,16 +19,20 @@ async function checkAndSendWarrantyExpiryReminders(projectId = null) {
         p.name as project_name, p.client_name, p.client_email, p.client_phone, p.pm_id,
         u.name as pm_name
       FROM warranties w
-      JOIN projects p ON w.project_id = p.id
-      LEFT JOIN users u ON p.pm_id = u.id
+      JOIN projects p ON w.project_id = p.id AND p.tenant_id = w.tenant_id
+      LEFT JOIN users u ON p.pm_id = u.id AND u.tenant_id = p.tenant_id
       WHERE w.status = 'active'
         AND w.end_date IS NOT NULL
         AND p.deleted_at IS NULL
     `;
     const params = [];
     if (projectId) {
-      query += ` AND w.project_id = $1`;
       params.push(projectId);
+      query += ` AND w.project_id = $${params.length}`;
+    }
+    if (tenantId) {
+      params.push(tenantId);
+      query += ` AND w.tenant_id = $${params.length}`;
     }
     const { rows } = await pool.query(query, params);
 
@@ -69,9 +73,10 @@ async function checkAndSendWarrantyExpiryReminders(projectId = null) {
             AND entity_id = $1
             AND action = 'warranty_expiry_reminder'
             AND new_value = $2
+            AND tenant_id = $3
           LIMIT 1
         `;
-        const checkRes = await pool.query(checkQuery, [w.id, reminderType]);
+        const checkRes = await pool.query(checkQuery, [w.id, reminderType, w.tenant_id]);
 
         if (checkRes.rowCount === 0) {
           logger.info(`[Warranty Expiry Alert] Sending "${reminderType}" alert for warranty "${w.product_name}" (${w.id})`);

@@ -36,7 +36,7 @@ async function evaluateReadinessGates(projectId, tenantId, client = pool) {
   const punchRes = await client.query(
     `SELECT COUNT(pli.id)::int as count 
      FROM punch_list_items pli 
-     JOIN punch_lists pl ON pli.punch_list_id = pl.id 
+     JOIN punch_lists pl ON pli.punch_list_id = pl.id AND pl.tenant_id = pli.tenant_id 
      WHERE pl.project_id = $1 AND pli.tenant_id = $2 
        AND pli.status NOT IN ('resolved', 'verified')`,
     [projectId, tenantId]
@@ -96,7 +96,7 @@ async function evaluateReadinessGates(projectId, tenantId, client = pool) {
   // 5. PM Sign-Off check
   const gateRes = await client.query(
     `SELECT pm_signed_off, pm_signed_off_at, pm_signed_off_by,
-            (SELECT name FROM users WHERE id = pm_signed_off_by) as pm_name
+            (SELECT name FROM users WHERE id = pm_signed_off_by AND tenant_id = handover_readiness_gates.tenant_id) as pm_name
      FROM handover_readiness_gates
      WHERE project_id = $1 AND tenant_id = $2`,
     [projectId, tenantId]
@@ -214,8 +214,8 @@ async function scheduleAppointment(projectId, tenantId, appointmentDate, notes, 
     // 4. Update the project status to signify handover stage if required
     // (We keep project active or update property_handover_date)
     await client.query(
-      `UPDATE projects SET property_handover_date = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2`,
-      [appointmentDate, projectId]
+      `UPDATE projects SET property_handover_date = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND tenant_id = $3`,
+      [appointmentDate, projectId, tenantId]
     );
 
     await client.query('COMMIT');
@@ -247,7 +247,7 @@ async function getProjectAppointments(projectId, tenantId) {
     `SELECT ha.id, ha.appointment_date::TEXT as appointment_date, ha.status, ha.notes, ha.created_at,
             u.name as creator_name
      FROM handover_appointments ha
-     LEFT JOIN users u ON ha.created_by = u.id
+     LEFT JOIN users u ON ha.created_by = u.id AND u.tenant_id = ha.tenant_id
      WHERE ha.project_id = $1 AND ha.tenant_id = $2
      ORDER BY ha.appointment_date DESC`,
     [projectId, tenantId]
@@ -272,7 +272,7 @@ async function getReadinessDashboard(tenantId) {
        -- Open snags + punch items count
        (
          (SELECT COUNT(*)::int FROM snags WHERE project_id = p.id AND tenant_id = p.tenant_id AND status NOT IN ('resolved', 'closed', 'client_verified')) +
-         (SELECT COUNT(pli.id)::int FROM punch_list_items pli JOIN punch_lists pl ON pli.punch_list_id = pl.id WHERE pl.project_id = p.id AND pli.tenant_id = p.tenant_id AND pli.status NOT IN ('resolved', 'verified'))
+         (SELECT COUNT(pli.id)::int FROM punch_list_items pli JOIN punch_lists pl ON pli.punch_list_id = pl.id AND pl.tenant_id = pli.tenant_id WHERE pl.project_id = p.id AND pli.tenant_id = p.tenant_id AND pli.status NOT IN ('resolved', 'verified'))
        ) as open_snags_count,
        -- Unpaid payment milestones count
        (SELECT COUNT(*)::int FROM payment_milestones WHERE project_id = p.id AND tenant_id = p.tenant_id AND status != 'paid' AND is_deferred = false) as unpaid_milestones_count,
@@ -283,7 +283,7 @@ async function getReadinessDashboard(tenantId) {
        -- Scheduled appointment date
        (SELECT appointment_date::TEXT FROM handover_appointments WHERE project_id = p.id AND tenant_id = p.tenant_id AND status = 'scheduled' ORDER BY appointment_date DESC LIMIT 1) as next_appointment_date
      FROM projects p
-     LEFT JOIN users u ON p.pm_id = u.id
+     LEFT JOIN users u ON p.pm_id = u.id AND u.tenant_id = p.tenant_id
      LEFT JOIN handover_readiness_gates hrg ON p.id = hrg.project_id AND p.tenant_id = hrg.tenant_id
      WHERE p.tenant_id = $1 AND p.deleted_at IS NULL AND p.status IN ('active', 'pending_booking')
      ORDER BY p.name ASC`,

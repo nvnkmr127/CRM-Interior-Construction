@@ -457,8 +457,8 @@ export default function ProjectAnalyticsPage() {
                     <td className={styles.td} style={{ color: 'var(--color-text-secondary)' }}>{row.client}</td>
                     <td className={styles.td}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                        <div className={styles.pmAvatar}>{row.pm.charAt(0)}</div>
-                        <span style={{ fontSize: 'var(--text-sm)' }}>{row.pm}</span>
+                        <div className={styles.pmAvatar}>{(row.pm || '?').charAt(0).toUpperCase()}</div>
+                        <span style={{ fontSize: 'var(--text-sm)' }}>{row.pm || 'Unassigned'}</span>
                       </div>
                     </td>
                     <td className={styles.td}>

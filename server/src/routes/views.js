@@ -78,7 +78,7 @@ router.patch('/:id', authenticate, async (req, res, next) => {
 router.delete('/:id', authenticate, async (req, res, next) => {
   try {
     const tenantId = req.tenantId || req.user.tenantId;
-    const userId = req.user.userId;
+    const userId = req.user.userId || req.user.id;
     const { id } = req.params;
 
     const query = `DELETE FROM saved_views WHERE id = $1 AND tenant_id = $2 AND user_id = $3`;

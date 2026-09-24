@@ -41,8 +41,8 @@ describe('Vendor Lead Time and Inspection Notification API', () => {
   });
 
   afterAll(async () => {
+    const { cleanupProject } = require('../helpers/cleanup');
     if (projectId) {
-      await pool.query('DELETE FROM notifications WHERE tenant_id = $1', [tenantId]);
       await pool.query('DELETE FROM material_delivery_items WHERE tenant_id = $1', [tenantId]);
       await pool.query('DELETE FROM material_deliveries WHERE tenant_id = $1', [tenantId]);
       await pool.query('DELETE FROM purchase_order_items WHERE tenant_id = $1', [tenantId]);
@@ -50,8 +50,7 @@ describe('Vendor Lead Time and Inspection Notification API', () => {
       await pool.query('DELETE FROM purchase_request_items WHERE tenant_id = $1', [tenantId]);
       await pool.query('DELETE FROM purchase_requests WHERE tenant_id = $1', [tenantId]);
       await pool.query('DELETE FROM vendor_lead_times WHERE tenant_id = $1 AND vendor_id IS NULL AND material_category = $2', [tenantId, 'test-paint-cat']);
-      await pool.query('DELETE FROM project_vendors WHERE tenant_id = $1', [tenantId]);
-      await pool.query('DELETE FROM projects WHERE id = $1', [projectId]);
+      await cleanupProject(projectId);
     }
   });
 

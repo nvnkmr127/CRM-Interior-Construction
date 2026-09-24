@@ -1016,7 +1016,7 @@ router.get('/snags', async (req, res, next) => {
     const tenantId = req.tenantId;
     const { projectId } = req.query;
 
-    let whereClause = `WHERE (s.tenant_id = $1 OR s.tenant_id IS NULL)`;
+    let whereClause = `WHERE s.tenant_id = $1`;
     const params = [tenantId];
 
     if (projectId) {

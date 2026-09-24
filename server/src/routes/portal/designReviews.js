@@ -145,8 +145,17 @@ router.post('/drawings/:documentId/revision', async (req, res, next) => {
 // GET /api/portal/design-reviews/drawings/:documentId/comments
 router.get('/drawings/:documentId/comments', async (req, res, next) => {
   try {
-    const { tenantId } = req.portalUser;
+    const { projectId, tenantId } = req.portalUser;
     const { documentId } = req.params;
+
+    // Verify document belongs to project and tenant
+    const docCheck = await pool.query(
+      'SELECT id FROM documents WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
+      [documentId, projectId, tenantId]
+    );
+    if (docCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Drawing not found' });
+    }
 
     const query = `
       SELECT * FROM design_item_comments 
@@ -164,7 +173,7 @@ router.get('/drawings/:documentId/comments', async (req, res, next) => {
 // POST /api/portal/design-reviews/drawings/:documentId/comments
 router.post('/drawings/:documentId/comments', async (req, res, next) => {
   try {
-    const { tenantId, id: clientPortalUserId } = req.portalUser;
+    const { projectId, tenantId, id: clientPortalUserId } = req.portalUser;
     const { documentId } = req.params;
     const { comment } = req.body;
 
@@ -172,8 +181,17 @@ router.post('/drawings/:documentId/comments', async (req, res, next) => {
       return res.status(400).json({ success: false, message: 'Comment is required' });
     }
 
+    // Verify document belongs to project and tenant
+    const docCheck = await pool.query(
+      'SELECT id FROM documents WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
+      [documentId, projectId, tenantId]
+    );
+    if (docCheck.rows.length === 0) {
+      return res.status(404).json({ success: false, message: 'Drawing not found' });
+    }
+
     // Get client name
-    const { rows: clientInfo } = await pool.query('SELECT name FROM client_portal_users WHERE id = $1', [clientPortalUserId]);
+    const { rows: clientInfo } = await pool.query('SELECT name FROM client_portal_users WHERE id = $1 AND tenant_id = $2', [clientPortalUserId, tenantId]);
     const clientName = clientInfo[0]?.name || 'Client';
 
     const query = `

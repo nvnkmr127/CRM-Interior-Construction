@@ -44,6 +44,10 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 // POST /api/projects/:projectId/phases
 router.post('/', authorize('projects:manage'), validate(createPhaseSchema), async (req, res, next) => {
   try {
+    const pool = require('../config/db');
+    const projectCheck = await pool.query('SELECT id FROM projects WHERE id = $1 AND tenant_id = $2', [req.params.projectId, req.tenantId]);
+    if (projectCheck.rows.length === 0) return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+
     const data = req.body;
     const phase = await phaseRepository.createPhase(req.tenantId, req.params.projectId, data);
     return success(res, phase, {}, 201);

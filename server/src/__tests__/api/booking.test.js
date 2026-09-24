@@ -173,4 +173,12 @@ describe('Project Booking Confirmation Module & Gate Validation', () => {
     expect(res.body.success).toBe(true);
     expect(res.body.data.title).toBe('Draft Design Layout');
   });
+
+  afterAll(async () => {
+    const { cleanupProject } = require('../helpers/cleanup');
+    if (projectId) {
+      await cleanupProject(projectId);
+    }
+    await pool.query("UPDATE tenants SET config = '{}' WHERE slug = 'demo'");
+  });
 });

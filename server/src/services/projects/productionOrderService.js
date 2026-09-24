@@ -15,6 +15,15 @@ class ProductionOrderService {
     try {
       await client.query('BEGIN');
 
+      // Verify project belongs to tenant
+      const projCheck = await client.query(
+        'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+        [projectId, tenantId]
+      );
+      if (projCheck.rows.length === 0) {
+        throw new AppError('Project not found', 404);
+      }
+
       // 1. Create main Production Order
       const poQuery = `
         INSERT INTO production_orders 
@@ -99,7 +108,7 @@ class ProductionOrderService {
              COALESCE(COUNT(poi.id), 0) as total_items,
              COALESCE(SUM(CASE WHEN poi.status = 'completed' THEN 1 ELSE 0 END), 0) as completed_items
       FROM production_orders po
-      LEFT JOIN production_order_items poi ON po.id = poi.production_order_id
+      LEFT JOIN production_order_items poi ON po.id = poi.production_order_id AND poi.tenant_id = po.tenant_id
       WHERE po.project_id = $1 AND po.tenant_id = $2
       GROUP BY po.id
       ORDER BY po.created_at DESC
@@ -205,7 +214,7 @@ class ProductionOrderService {
       // Verify the item belongs to the order and tenant
       const itemCheck = await client.query(
         `SELECT poi.* FROM production_order_items poi
-         JOIN production_orders po ON poi.production_order_id = po.id
+         JOIN production_orders po ON poi.production_order_id = po.id AND po.tenant_id = poi.tenant_id
          WHERE poi.id = $1 AND poi.production_order_id = $2 AND po.project_id = $3 AND poi.tenant_id = $4`,
         [itemId, orderId, projectId, tenantId]
       );
@@ -320,7 +329,7 @@ class ProductionOrderService {
       // 1. Verify item context
       const itemCheck = await client.query(
         `SELECT poi.* FROM production_order_items poi
-         JOIN production_orders po ON poi.production_order_id = po.id
+         JOIN production_orders po ON poi.production_order_id = po.id AND po.tenant_id = poi.tenant_id
          WHERE poi.id = $1 AND poi.production_order_id = $2 AND po.project_id = $3 AND poi.tenant_id = $4`,
         [itemId, orderId, projectId, tenantId]
       );
@@ -389,7 +398,7 @@ class ProductionOrderService {
       // 1. Verify item fails or has failed inspection
       const itemCheck = await client.query(
         `SELECT poi.* FROM production_order_items poi
-         JOIN production_orders po ON poi.production_order_id = po.id
+         JOIN production_orders po ON poi.production_order_id = po.id AND po.tenant_id = poi.tenant_id
          WHERE poi.id = $1 AND poi.production_order_id = $2 AND po.project_id = $3 AND poi.tenant_id = $4`,
         [itemId, orderId, projectId, tenantId]
       );
@@ -452,8 +461,8 @@ class ProductionOrderService {
       // Verify rework order context
       const rwCheck = await client.query(
         `SELECT pro.*, pro.production_order_item_id FROM production_rework_orders pro
-         JOIN production_order_items poi ON pro.production_order_item_id = poi.id
-         JOIN production_orders po ON poi.production_order_id = po.id
+         JOIN production_order_items poi ON pro.production_order_item_id = poi.id AND poi.tenant_id = pro.tenant_id
+         JOIN production_orders po ON poi.production_order_id = po.id AND po.tenant_id = pro.tenant_id
          WHERE pro.id = $1 AND poi.production_order_id = $2 AND po.project_id = $3 AND pro.tenant_id = $4`,
         [reworkId, orderId, projectId, tenantId]
       );
@@ -551,8 +560,8 @@ class ProductionOrderService {
     const inspectionsQuery = `
       SELECT pqi.*, poi.item_name, u.name as inspector_name
       FROM production_qc_inspections pqi
-      JOIN production_order_items poi ON pqi.production_order_item_id = poi.id
-      LEFT JOIN users u ON pqi.inspected_by = u.id
+      JOIN production_order_items poi ON pqi.production_order_item_id = poi.id AND poi.tenant_id = pqi.tenant_id
+      LEFT JOIN users u ON pqi.inspected_by = u.id AND u.tenant_id = pqi.tenant_id
       WHERE poi.production_order_id = $1 AND pqi.tenant_id = $2
       ORDER BY pqi.created_at DESC
     `;
@@ -562,7 +571,7 @@ class ProductionOrderService {
     const reworksQuery = `
       SELECT pro.*, poi.item_name
       FROM production_rework_orders pro
-      JOIN production_order_items poi ON pro.production_order_item_id = poi.id
+      JOIN production_order_items poi ON pro.production_order_item_id = poi.id AND poi.tenant_id = pro.tenant_id
       WHERE poi.production_order_id = $1 AND pro.tenant_id = $2
       ORDER BY pro.created_at DESC
     `;
@@ -654,7 +663,7 @@ class ProductionOrderService {
           const projQuery = `
             SELECT p.name, p.pm_id, u.name as pm_name, u.email as pm_email
             FROM projects p
-            LEFT JOIN users u ON p.pm_id = u.id
+            LEFT JOIN users u ON p.pm_id = u.id AND u.tenant_id = p.tenant_id
             WHERE p.id = $1 AND p.tenant_id = $2
           `;
           const projRes = await pool.query(projQuery, [projectId, tenantId]);
@@ -774,7 +783,7 @@ class ProductionOrderService {
         const projQuery = `
           SELECT p.name, p.pm_id, u.name as pm_name, u.email as pm_email
           FROM projects p
-          LEFT JOIN users u ON p.pm_id = u.id
+          LEFT JOIN users u ON p.pm_id = u.id AND u.tenant_id = p.tenant_id
           WHERE p.id = $1 AND p.tenant_id = $2
         `;
         const projRes = await pool.query(projQuery, [projectId, tenantId]);
@@ -850,7 +859,7 @@ class ProductionOrderService {
     const query = `
       SELECT pd.*, u.name as receiver_user_name
       FROM production_dispatches pd
-      LEFT JOIN users u ON pd.received_by_user_id = u.id
+      LEFT JOIN users u ON pd.received_by_user_id = u.id AND u.tenant_id = pd.tenant_id
       WHERE pd.production_order_id = $1 AND pd.project_id = $2 AND pd.tenant_id = $3
       ORDER BY pd.created_at DESC
     `;
@@ -868,7 +877,7 @@ class ProductionOrderService {
       // 1. Verify dispatch and item exist and belong to the project
       const dispatchCheck = await client.query(
         `SELECT pd.*, poi.quantity as shipped_qty, poi.item_name FROM production_dispatches pd
-         JOIN production_order_items poi ON pd.production_order_id = poi.production_order_id
+         JOIN production_order_items poi ON pd.production_order_id = poi.production_order_id AND poi.tenant_id = pd.tenant_id
          WHERE pd.id = $1 AND poi.id = $2 AND pd.project_id = $3 AND pd.tenant_id = $4`,
         [dispatchId, itemId, projectId, tenantId]
       );
@@ -928,9 +937,9 @@ class ProductionOrderService {
       const query = `
         SELECT ptd.*, poi.boq_item_id, poi.item_name, poi.unit, po.order_number as original_order_number, po.factory_name
         FROM production_transit_damages ptd
-        JOIN production_order_items poi ON ptd.production_order_item_id = poi.id
-        JOIN production_dispatches pd ON ptd.production_dispatch_id = pd.id
-        JOIN production_orders po ON pd.production_order_id = po.id
+        JOIN production_order_items poi ON ptd.production_order_item_id = poi.id AND poi.tenant_id = ptd.tenant_id
+        JOIN production_dispatches pd ON ptd.production_dispatch_id = pd.id AND pd.tenant_id = ptd.tenant_id
+        JOIN production_orders po ON pd.production_order_id = po.id AND po.tenant_id = ptd.tenant_id
         WHERE ptd.id = $1 AND ptd.project_id = $2 AND ptd.tenant_id = $3
       `;
       const damageRes = await client.query(query, [damageId, projectId, tenantId]);
@@ -1096,7 +1105,7 @@ class ProductionOrderService {
     const query = `
       SELECT cr.*, u.name as designer_name
       FROM production_cnc_requests cr
-      LEFT JOIN users u ON cr.designer_id = u.id
+      LEFT JOIN users u ON cr.designer_id = u.id AND u.tenant_id = cr.tenant_id
       WHERE cr.production_order_id = $1 AND cr.tenant_id = $2
       ORDER BY cr.created_at DESC
     `;
@@ -1164,11 +1173,11 @@ class ProductionOrderService {
              u.name as reported_by_name,
              ro.order_number as replacement_order_number
       FROM production_transit_damages ptd
-      JOIN production_order_items poi ON ptd.production_order_item_id = poi.id
-      JOIN production_dispatches pd ON ptd.production_dispatch_id = pd.id
-      JOIN production_orders po ON pd.production_order_id = po.id
-      LEFT JOIN users u ON ptd.reported_by = u.id
-      LEFT JOIN production_orders ro ON ptd.replacement_order_id = ro.id
+      JOIN production_order_items poi ON ptd.production_order_item_id = poi.id AND poi.tenant_id = ptd.tenant_id
+      JOIN production_dispatches pd ON ptd.production_dispatch_id = pd.id AND pd.tenant_id = ptd.tenant_id
+      JOIN production_orders po ON pd.production_order_id = po.id AND po.tenant_id = ptd.tenant_id
+      LEFT JOIN users u ON ptd.reported_by = u.id AND u.tenant_id = ptd.tenant_id
+      LEFT JOIN production_orders ro ON ptd.replacement_order_id = ro.id AND ro.tenant_id = ptd.tenant_id
       WHERE ptd.project_id = $1 AND ptd.tenant_id = $2
     `;
     const params = [projectId, tenantId];
@@ -1190,9 +1199,9 @@ class ProductionOrderService {
              COALESCE(COUNT(poi.id), 0) as total_items,
              COALESCE(SUM(CASE WHEN poi.status = 'completed' THEN 1 ELSE 0 END), 0) as completed_items
       FROM production_orders po
-      JOIN projects p ON po.project_id = p.id
-      LEFT JOIN users u ON p.pm_id = u.id
-      LEFT JOIN production_order_items poi ON po.id = poi.production_order_id
+      JOIN projects p ON po.project_id = p.id AND p.tenant_id = po.tenant_id
+      LEFT JOIN users u ON p.pm_id = u.id AND u.tenant_id = p.tenant_id
+      LEFT JOIN production_order_items poi ON po.id = poi.production_order_id AND poi.tenant_id = po.tenant_id
       WHERE po.tenant_id = $1 AND p.deleted_at IS NULL
     `;
     const params = [tenantId];
@@ -1220,9 +1229,9 @@ class ProductionOrderService {
     const query = `
       SELECT cr.*, po.order_number, p.name as project_name, u.name as designer_name
       FROM production_cnc_requests cr
-      JOIN production_orders po ON cr.production_order_id = po.id
-      JOIN projects p ON cr.project_id = p.id
-      LEFT JOIN users u ON cr.designer_id = u.id
+      JOIN production_orders po ON cr.production_order_id = po.id AND po.tenant_id = cr.tenant_id
+      JOIN projects p ON cr.project_id = p.id AND p.tenant_id = cr.tenant_id
+      LEFT JOIN users u ON cr.designer_id = u.id AND u.tenant_id = cr.tenant_id
       WHERE cr.tenant_id = $1 AND p.deleted_at IS NULL
       ORDER BY cr.created_at DESC
     `;

@@ -169,7 +169,7 @@ export const PAGE_PERMISSIONS_SCHEMA = {
     { id: 'company-settings', label: 'Company Settings' },
     { id: 'login-history', label: 'Login History' },
     { id: 'audit-trail', label: 'Audit Trail' },
-    { id: 'superadmin', label: 'Super Admin Center' },
+    { id: 'superadmin', label: 'Platform Command Center' },
     { id: 'api-keys', label: 'API Keys' },
     { id: 'api-integration', label: 'API Integration' },
     { id: 'webhooks', label: 'Webhooks' },

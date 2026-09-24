@@ -27,6 +27,19 @@ describe('Lead-to-Project Conversion Checklist API', () => {
   }, 30000);
 
   afterAll(async () => {
+    const { cleanupProject, cleanupLead } = require('../helpers/cleanup');
+    if (leadId) {
+      await cleanupLead(leadId);
+    }
+    // Safety cleanup of any leads/projects created by this test suite
+    const testProjs = await pool.query("SELECT id FROM projects WHERE name ILIKE '%conversion%' OR name ILIKE '%contract%'");
+    if (testProjs.rows.length > 0) {
+      await cleanupProject(testProjs.rows.map(r => r.id));
+    }
+    const testLeads = await pool.query("SELECT id FROM leads WHERE name ILIKE '%conversion test lead%'");
+    if (testLeads.rows.length > 0) {
+      await cleanupLead(testLeads.rows.map(r => r.id));
+    }
     // Reset tenant config to empty after tests
     await pool.query("UPDATE tenants SET config = '{}' WHERE slug = 'demo'");
   });

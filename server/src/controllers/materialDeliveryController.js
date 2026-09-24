@@ -11,6 +11,9 @@ exports.createMaterialDelivery = async (req, res, next) => {
     const delivery = await materialDeliveryService.createMaterialDelivery(tenantId, userId, projectId, req.body);
     res.status(201).json({ success: true, data: delivery });
   } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND' || error.message === 'PURCHASE_ORDER_NOT_FOUND') {
+      return res.status(404).json({ success: false, message: error.message.replace(/_/g, ' ') });
+    }
     next(error);
   }
 };

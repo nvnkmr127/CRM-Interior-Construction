@@ -5,9 +5,9 @@ const pool = require('../../db/pool');
 async function getOrCreatePortalUser(tenantId, phone) {
   const cleanPhone = (phone || '').replace(/\D/g, '').slice(-10);
 
-  // 1. Lookup existing client_portal_user
+  // 1. Lookup existing client_portal_user for this tenant
   let userResult = await pool.query(
-    'SELECT id, otp_hash, otp_expires_at, project_id, name, tenant_id FROM client_portal_users WHERE (tenant_id = $1 OR 1=1) AND (phone = $2 OR RIGHT(phone, 10) = $2) ORDER BY created_at DESC LIMIT 1',
+    'SELECT id, otp_hash, otp_expires_at, project_id, name, tenant_id FROM client_portal_users WHERE tenant_id = $1 AND (phone = $2 OR RIGHT(phone, 10) = $2) ORDER BY created_at DESC LIMIT 1',
     [tenantId, cleanPhone]
   );
 
@@ -15,65 +15,28 @@ async function getOrCreatePortalUser(tenantId, phone) {
     return userResult.rows[0];
   }
 
-  // 2. Find matching project for this client phone or name, falling back to latest project
+  // 2. Find matching project for this client phone in THIS tenant
   let projResult = await pool.query(
     `SELECT id, client_name, tenant_id FROM projects 
-     WHERE (phone = $1 OR client_phone = $1 OR client_name ILIKE '%Rajesh%' OR client_name ILIKE '%Sharma%')
+     WHERE tenant_id = $1 AND (client_phone = $2 OR RIGHT(COALESCE(client_phone, ''), 10) = $2)
      ORDER BY updated_at DESC LIMIT 1`,
-    [cleanPhone]
+    [tenantId, cleanPhone]
   );
 
-  if (projResult.rows.length === 0) {
-    projResult = await pool.query(
-      'SELECT id, client_name, tenant_id FROM projects WHERE tenant_id = $1 ORDER BY updated_at DESC LIMIT 1',
-      [tenantId]
-    );
-  }
-  if (projResult.rows.length === 0) {
-    projResult = await pool.query(
-      'SELECT id, client_name, tenant_id FROM projects ORDER BY created_at DESC LIMIT 1'
-    );
-  }
-
-  let targetProjectId;
-  let targetClientName = 'Rajesh Sharma';
-  let targetTenantId = tenantId;
-
   if (projResult.rows.length > 0) {
-    targetProjectId = projResult.rows[0].id;
-    targetClientName = projResult.rows[0].client_name || 'Rajesh Sharma';
-    targetTenantId = projResult.rows[0].tenant_id || tenantId;
-  } else {
-    // 3. If no projects exist at all, create a demo project
-    try {
-      const newProj = await pool.query(
-        `INSERT INTO projects (tenant_id, name, client_name, client_phone, project_type, contract_value, status, start_date, target_date)
-         VALUES ($1, $2, $3, $4, $5, $6, $7, NOW(), NOW() + INTERVAL '90 days')
-         RETURNING id, client_name, tenant_id`,
-        [tenantId, 'Rajesh Sharma — Luxury Villa', 'Rajesh Sharma', cleanPhone, 'Full Interior', 1500000, 'in_progress']
-      );
-      targetProjectId = newProj.rows[0].id;
-      targetClientName = newProj.rows[0].client_name;
-      targetTenantId = newProj.rows[0].tenant_id;
-    } catch (e) {
-      // Fallback
-    }
-  }
+    const targetProjectId = projResult.rows[0].id;
+    const targetClientName = projResult.rows[0].client_name || 'Client';
 
-  // 4. Create the client_portal_users record
-  if (targetProjectId) {
-    await pool.query(
+    const insertResult = await pool.query(
       `INSERT INTO client_portal_users (tenant_id, project_id, name, phone)
-       VALUES ($1, $2, $3, $4) ON CONFLICT DO NOTHING`,
-      [targetTenantId, targetProjectId, targetClientName, cleanPhone]
+       VALUES ($1, $2, $3, $4)
+       ON CONFLICT (tenant_id, project_id, phone) DO UPDATE SET updated_at = NOW()
+       RETURNING id, otp_hash, otp_expires_at, project_id, name, tenant_id`,
+      [tenantId, targetProjectId, targetClientName, cleanPhone]
     );
 
-    userResult = await pool.query(
-      'SELECT id, otp_hash, otp_expires_at, project_id, name, tenant_id FROM client_portal_users WHERE phone = $1 OR RIGHT(phone, 10) = $1 ORDER BY created_at DESC LIMIT 1',
-      [cleanPhone]
-    );
-    if (userResult.rows.length > 0) {
-      return userResult.rows[0];
+    if (insertResult.rows.length > 0) {
+      return insertResult.rows[0];
     }
   }
 

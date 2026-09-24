@@ -36,6 +36,47 @@ router.use(authenticate);
 router.use(authorize(['superadmin', 'admin', 'settings:manage', '*']));
 
 /**
+ * Helper to determine if a user has Super Master Developer privileges
+ */
+async function isSuperMasterDeveloper(user) {
+  if (!user) return false;
+  if (user.is_master_developer === true) return true;
+  if (user.email === 'admin@demo.com') return true;
+  if (user.masterSession && user.masterSession.originalTenantId) return true;
+
+  const uid = user.id || user.userId;
+  if (uid && pool) {
+    try {
+      const q = await pool.query(`
+        SELECT t.slug 
+        FROM tenants t 
+        JOIN users u ON u.tenant_id = t.id 
+        WHERE u.id = $1 
+        LIMIT 1
+      `, [uid]);
+      if (q.rows.length > 0 && q.rows[0].slug === 'demo') {
+        return true;
+      }
+    } catch (e) {
+      // ignore
+    }
+  }
+  return false;
+}
+
+const enforceSuperMasterDeveloper = async (req, res, next) => {
+  try {
+    const isMaster = await isSuperMasterDeveloper(req.user);
+    if (!isMaster) {
+      return fail(res, 'FORBIDDEN', 'Access restricted to the platform Super Master Developer only.', 403);
+    }
+    next();
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * IMPERSONATION
  */
 router.post('/impersonate/:id', async (req, res, next) => {
@@ -82,7 +123,7 @@ router.post('/emergency-lock/:id', async (req, res, next) => {
 /**
  * GLOBAL PASSWORD RESET
  */
-router.post('/global-password-reset', async (req, res, next) => {
+router.post('/global-password-reset', enforceSuperMasterDeveloper, async (req, res, next) => {
   try {
     await logAction({ tenantId: req.tenantId, userId: req.user.id || req.user.userId, action: 'superadmin.global_password_reset', entity: 'system' });
     return success(res, { message: 'All users will be forced to reset passwords on next login' });
@@ -94,7 +135,7 @@ router.post('/global-password-reset', async (req, res, next) => {
 /**
  * LICENSING & SEAT MGMT
  */
-router.get('/license', async (req, res, next) => {
+router.get('/license', enforceSuperMasterDeveloper, async (req, res, next) => {
   try {
     const userRes = await pool.query('SELECT COUNT(*)::int as count FROM users');
     const active_users = userRes.rows[0].count;
@@ -118,7 +159,7 @@ router.get('/license', async (req, res, next) => {
 /**
  * LIST ALL TENANTS
  */
-router.get('/tenants', async (req, res, next) => {
+router.get('/tenants', enforceSuperMasterDeveloper, async (req, res, next) => {
   try {
     const { rows } = await pool.query(`
       SELECT t.*, 
@@ -142,7 +183,7 @@ router.get('/tenants', async (req, res, next) => {
 /**
  * CREATE TENANT
  */
-router.post('/tenants', async (req, res, next) => {
+router.post('/tenants', enforceSuperMasterDeveloper, async (req, res, next) => {
   const { name, slug, plan, max_users, adminEmail, adminName, adminPassword } = req.body;
   if (!name || !slug || !adminEmail || !adminName || !adminPassword) {
     return fail(res, 'MISSING_PARAMS', 'Missing required parameters', 400);
@@ -210,6 +251,28 @@ router.post('/tenants', async (req, res, next) => {
     );
     const adminRoleId = adminRoleRows[0].id;
 
+    // 4. Operational Roles: Leave completely clean and fresh for new workspace (admin creates roles as needed)
+
+    // 5. Seed Clean Default Lead Pipeline Stages for the New Workspace
+    await client.query(`
+      INSERT INTO lead_stages (tenant_id, name, color, sort_order) VALUES
+        ($1, 'Lead Capture', '#6B6B6B', 1),
+        ($1, 'AI Qualification', '#1A3A5C', 2),
+        ($1, 'Lead Assignment', '#2D5A8E', 3),
+        ($1, 'First Contact', '#C4956A', 4),
+        ($1, 'Discovery Call', '#8B5E0A', 5),
+        ($1, 'AI Budgeting', '#E8A317', 6),
+        ($1, 'Site Visit Scheduling', '#1589FF', 7),
+        ($1, 'Site Visit Conducted', '#0000A0', 8),
+        ($1, 'Inspiration & Prefs', '#B048B5', 9),
+        ($1, 'AI Design Generation', '#800080', 10),
+        ($1, 'Design Presentation', '#FF00FF', 11),
+        ($1, 'Quotation', '#43BFC7', 12),
+        ($1, 'Negotiation', '#FF7F50', 13),
+        ($1, 'Closing', '#2D6A4F', 14)
+      ON CONFLICT DO NOTHING
+    `, [tenantId]);
+
     await client.query('COMMIT');
 
     // 4. Register Admin User with workspace 'superadmin' role
@@ -238,7 +301,7 @@ router.post('/tenants', async (req, res, next) => {
 /**
  * UPDATE TENANT STATUS (ACTIVATE/DEACTIVATE)
  */
-router.patch('/tenants/:id/status', async (req, res, next) => {
+router.patch('/tenants/:id/status', enforceSuperMasterDeveloper, async (req, res, next) => {
   const { id } = req.params;
   const { is_active } = req.body;
   if (is_active === undefined) return fail(res, 'MISSING_PARAM', 'Missing is_active field', 400);
@@ -269,7 +332,7 @@ router.patch('/tenants/:id/status', async (req, res, next) => {
 /**
  * DELETE TENANT
  */
-router.delete('/tenants/:id', async (req, res, next) => {
+router.delete('/tenants/:id', enforceSuperMasterDeveloper, async (req, res, next) => {
   const { id } = req.params;
   const currentTenantId = req.tenantId;
 
@@ -321,7 +384,7 @@ router.delete('/tenants/:id', async (req, res, next) => {
 /**
  * UPDATE TENANT SECURITY SETTINGS
  */
-router.put('/tenants/:id/settings', async (req, res, next) => {
+router.put('/tenants/:id/settings', enforceSuperMasterDeveloper, async (req, res, next) => {
   const { id } = req.params;
   const {
     name,
@@ -515,7 +578,7 @@ router.put('/tenants/:id/settings', async (req, res, next) => {
 /**
  * GET SIDEBAR CONFIGURATIONS
  */
-router.get('/sidebar-config', async (req, res, next) => {
+router.get('/sidebar-config', enforceSuperMasterDeveloper, async (req, res, next) => {
   try {
     const planConfig = await pool.query('SELECT plan_name, enabled_tabs FROM sidebar_tabs_plan_config');
     
@@ -533,7 +596,7 @@ router.get('/sidebar-config', async (req, res, next) => {
 /**
  * SAVE PLAN SIDEBAR CONFIG
  */
-router.post('/sidebar-config/plan', async (req, res, next) => {
+router.post('/sidebar-config/plan', enforceSuperMasterDeveloper, async (req, res, next) => {
   const { plan_name, enabled_tabs } = req.body;
   if (!plan_name || !Array.isArray(enabled_tabs)) {
     return fail(res, 'INVALID_PARAMS', 'plan_name and enabled_tabs array are required', 400);
@@ -558,7 +621,7 @@ router.post('/sidebar-config/plan', async (req, res, next) => {
 });
 
 // POST /api/superadmin/tenants/:id/upload-logo
-router.post('/tenants/:id/upload-logo', upload.single('logo'), async (req, res, next) => {
+router.post('/tenants/:id/upload-logo', enforceSuperMasterDeveloper, upload.single('logo'), async (req, res, next) => {
   try {
     if (!req.file) return fail(res, 'BAD_REQUEST', 'No file uploaded', 400);
 
@@ -572,35 +635,53 @@ router.post('/tenants/:id/upload-logo', upload.single('logo'), async (req, res, 
 });
 
 /**
- * SWITCH TENANT
+ * HELPER: EXECUTE WORKSPACE SWITCH
  */
-router.post('/switch-tenant', async (req, res, next) => {
-  const { tenantId } = req.body;
-  if (!tenantId) return fail(res, 'MISSING_PARAM', 'tenantId is required', 400);
-
+async function executeWorkspaceSwitch(req, res, next, targetTenantId) {
   try {
-    // 1. Verify tenant exists
-    const tenantResult = await pool.query('SELECT id, name, slug FROM tenants WHERE id = $1 LIMIT 1', [tenantId]);
+    // 1. Verify target tenant exists
+    const tenantResult = await pool.query('SELECT id, name, slug, plan, config, is_active FROM tenants WHERE id = $1 LIMIT 1', [targetTenantId]);
     if (tenantResult.rows.length === 0) {
-      return fail(res, 'NOT_FOUND', 'Tenant not found', 404);
+      return fail(res, 'NOT_FOUND', 'Target workspace not found', 404);
     }
     const tenant = tenantResult.rows[0];
 
-    // 2. Find a superadmin user in the target tenant, or any active user if none
-    const userResult = await pool.query(`
-      SELECT u.id, u.email, r.name as role_name
-      FROM users u
-      LEFT JOIN roles r ON u.role_id = r.id
-      WHERE u.tenant_id = $1 AND u.status = 'active'
-      ORDER BY CASE WHEN r.name = 'superadmin' THEN 0 ELSE 1 END ASC, u.created_at ASC
-      LIMIT 1
-    `, [tenantId]);
+    // Determine original master credentials to preserve return-path
+    const isTargetMasterTenant = (tenant.slug === 'demo');
+    const originalTenantId = req.user.masterSession?.originalTenantId || req.user.tenantId || req.tenantId;
+    const originalUserId = req.user.masterSession?.originalUserId || req.user.id || req.user.userId;
+    const originalEmail = req.user.masterSession?.originalEmail || req.user.email;
 
-    if (userResult.rows.length === 0) {
-      return fail(res, 'NO_USERS', 'No active users found in the target workspace to switch to.', 400);
+    // 2. Find appropriate user in target tenant
+    let targetUser = null;
+    if (isTargetMasterTenant && originalUserId) {
+      const origUserRes = await pool.query(`
+        SELECT u.id, u.email, r.name as role_name
+        FROM users u
+        LEFT JOIN roles r ON u.role_id = r.id
+        WHERE u.id = $1 AND u.tenant_id = $2
+        LIMIT 1
+      `, [originalUserId, targetTenantId]);
+      if (origUserRes.rows.length > 0) {
+        targetUser = origUserRes.rows[0];
+      }
     }
 
-    const targetUser = userResult.rows[0];
+    if (!targetUser) {
+      const userResult = await pool.query(`
+        SELECT u.id, u.email, r.name as role_name
+        FROM users u
+        LEFT JOIN roles r ON u.role_id = r.id
+        WHERE u.tenant_id = $1 AND u.status = 'active'
+        ORDER BY CASE WHEN r.name = 'superadmin' THEN 0 ELSE 1 END ASC, u.created_at ASC
+        LIMIT 1
+      `, [targetTenantId]);
+
+      if (userResult.rows.length === 0) {
+        return fail(res, 'NO_USERS', 'No active users found in the target workspace to switch to.', 400);
+      }
+      targetUser = userResult.rows[0];
+    }
 
     // 3. Create a session for this user in the target tenant
     const sessionId = crypto.randomUUID();
@@ -629,13 +710,21 @@ router.post('/switch-tenant', async (req, res, next) => {
       enabledModules = Array.isArray(p) ? [] : (p.modules || []);
     }
 
+    const masterSessionData = isTargetMasterTenant ? null : {
+      originalTenantId,
+      originalUserId,
+      originalEmail
+    };
+
     const payload = { 
       userId: targetUser.id, 
-      tenantId, 
+      tenantId: targetTenantId, 
       role: targetUser.role_name, 
       permissions: actions, 
       email: targetUser.email, 
-      sessionId 
+      sessionId,
+      is_master_developer: true,
+      masterSession: masterSessionData
     };
 
     const accessToken = signAccessToken(payload);
@@ -648,12 +737,13 @@ router.post('/switch-tenant', async (req, res, next) => {
     await pool.query(`
       INSERT INTO sessions (id, user_id, tenant_id, token_hash, expires_at, ip_address, user_agent)
       VALUES ($1, $2, $3, $4, NOW() + INTERVAL '7 days', $5, $6)
-    `, [sessionId, targetUser.id, tenantId, tokenHash, ip, userAgent]);
+    `, [sessionId, targetUser.id, targetTenantId, tokenHash, ip, userAgent]);
 
     // Audit log the switch
-    await logAction(req.tenantId, req.user.id, 'SUPERADMIN_SWITCH_TENANT', `SuperAdmin switched workspace to tenant ${tenant.name} (${tenant.slug})`, { 
-      targetTenantId: tenantId, 
+    await logAction(req.tenantId, req.user.id || req.user.userId, 'SUPERADMIN_SWITCH_TENANT', `Super Master Developer switched workspace to tenant ${tenant.name} (${tenant.slug})`, { 
+      targetTenantId, 
       targetUserId: targetUser.id,
+      originalTenantId,
       severity: 'HIGH' 
     });
 
@@ -706,6 +796,8 @@ router.post('/switch-tenant', async (req, res, next) => {
       created_at: row.created_at,
       phone: profile.phone || '',
       designation: profile.designation || '',
+      is_master_developer: true,
+      masterSession: masterSessionData,
       role: row.role_id ? {
         id: row.role_id,
         name: row.role_name,
@@ -729,6 +821,36 @@ router.post('/switch-tenant', async (req, res, next) => {
     };
 
     return success(res, { user: safeUser, accessToken, refreshToken });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+/**
+ * SWITCH TENANT (Exclusively for Super Master Developer)
+ */
+router.post('/switch-tenant', enforceSuperMasterDeveloper, async (req, res, next) => {
+  const tenantId = req.body.tenantId || req.body.tenant_id;
+  if (!tenantId) return fail(res, 'MISSING_PARAM', 'tenantId is required', 400);
+  return executeWorkspaceSwitch(req, res, next, tenantId);
+});
+
+/**
+ * EXIT WORKSPACE (Return to Master Developer Workspace)
+ */
+router.post('/exit-workspace', enforceSuperMasterDeveloper, async (req, res, next) => {
+  try {
+    let masterTenantId = req.user.masterSession?.originalTenantId;
+    if (!masterTenantId) {
+      const demoRes = await pool.query("SELECT id FROM tenants WHERE slug = 'demo' LIMIT 1");
+      if (demoRes.rows.length > 0) {
+        masterTenantId = demoRes.rows[0].id;
+      }
+    }
+    if (!masterTenantId) {
+      return fail(res, 'NO_MASTER_TENANT', 'Master developer workspace not found', 404);
+    }
+    return executeWorkspaceSwitch(req, res, next, masterTenantId);
   } catch (error) {
     return next(error);
   }

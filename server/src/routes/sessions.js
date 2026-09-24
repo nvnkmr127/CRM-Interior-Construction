@@ -57,7 +57,7 @@ router.delete('/:sessionId', authenticate, async (req, res, next) => {
     `, [sessionId]).catch(error => console.warn('Failed to update login history on revoke', error));
 
     // Then delete session
-    await pool.query(`DELETE FROM sessions WHERE id = $1`, [sessionId]);
+    await pool.query(`DELETE FROM sessions WHERE id = $1 AND tenant_id = $2`, [sessionId, tenantId]);
 
     return success(res, { message: 'Session revoked successfully' });
   } catch (error) {
@@ -95,7 +95,7 @@ router.delete('/force-logout/:sessionId', authorize('users:force_logout'), async
     `, [sessionId]).catch(error => console.warn('Failed to update login history on force logout', error));
 
     // Then delete session
-    await pool.query(`DELETE FROM sessions WHERE id = $1`, [sessionId]);
+    await pool.query(`DELETE FROM sessions WHERE id = $1 AND tenant_id = $2`, [sessionId, tenantId]);
 
     const { logAction } = require('../services/auditLog');
     await logAction({ tenantId, userId: req.user.userId, action: 'user.force_logout', entity: 'session', entityId: sessionId });

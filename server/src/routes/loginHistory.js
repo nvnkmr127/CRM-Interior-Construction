@@ -164,11 +164,11 @@ router.delete('/sessions/:sessionId', checkAdminAccess, async (req, res, next) =
       UPDATE login_history 
       SET logout_time = NOW(), 
           duration_seconds = EXTRACT(EPOCH FROM (NOW() - login_time))
-      WHERE session_id::text = $1::text
-    `, [sessionId]).catch(error => console.warn('Failed to update login history on revoke', error));
+      WHERE session_id::text = $1::text AND tenant_id = $2
+    `, [sessionId, tenantId]).catch(error => console.warn('Failed to update login history on revoke', error));
 
     // Then delete session
-    await pool.query(`DELETE FROM sessions WHERE id::text = $1::text`, [sessionId]);
+    await pool.query(`DELETE FROM sessions WHERE id::text = $1::text AND tenant_id = $2`, [sessionId, tenantId]);
 
     const { clearCache } = require('../utils/cache');
     await clearCache(`session:${sessionId}`).catch(error => console.warn('Failed to clear session cache', error));

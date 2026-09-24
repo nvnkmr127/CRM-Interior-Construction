@@ -157,6 +157,69 @@
   letter-spacing: 0.05em;
   border-bottom: 1px solid var(--color-border);
   margin-bottom: var(--space-1);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.workspaceCountBadge {
+  background: var(--color-surface-2);
+  color: var(--color-text-secondary);
+  font-size: 10px;
+  padding: 1px 6px;
+  border-radius: var(--radius-full);
+}
+
+.switcherSearchWrapper {
+  padding: var(--space-1) var(--space-2) var(--space-2);
+}
+
+.switcherSearchInput {
+  width: 100%;
+  padding: 6px 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid var(--color-border);
+  background: var(--color-surface-2);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  outline: none;
+  box-sizing: border-box;
+}
+
+.switcherSearchInput:focus {
+  border-color: var(--color-accent);
+}
+
+.exitToMasterBtn {
+  width: 100%;
+  padding: 8px var(--space-3);
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-warning);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: var(--space-2);
+  transition: var(--transition-fast);
+}
+
+.exitToMasterBtn:hover {
+  background: var(--color-warning);
+  color: #1a1a1a;
+}
+
+.switcherPlanBadge {
+  font-size: 10px;
+  text-transform: capitalize;
+  color: var(--color-text-muted);
+  margin-left: var(--space-2);
+  background: var(--color-surface-2);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
 }
 
 .switcherItem {

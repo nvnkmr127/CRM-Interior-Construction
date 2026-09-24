@@ -48,7 +48,7 @@ class LabourAttendanceRepository {
     const query = `
       SELECT a.*, v.vendor_name as linked_vendor_name
       FROM labour_attendance a
-      LEFT JOIN project_vendors v ON a.vendor_id = v.id
+      LEFT JOIN project_vendors v ON a.vendor_id = v.id AND v.tenant_id = a.tenant_id
       WHERE a.tenant_id = $1 AND a.project_id = $2
       ORDER BY a.check_in_time DESC
     `;

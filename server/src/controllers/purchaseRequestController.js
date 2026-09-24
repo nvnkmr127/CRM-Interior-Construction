@@ -11,6 +11,9 @@ exports.createPurchaseRequest = async (req, res, next) => {
     const pr = await purchaseRequestService.createPurchaseRequest(tenantId, userId, projectId, req.body);
     res.status(201).json({ success: true, data: pr });
   } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND') {
+      return res.status(404).json({ success: false, message: 'Project not found' });
+    }
     next(error);
   }
 };

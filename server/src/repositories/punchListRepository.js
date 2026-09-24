@@ -2,6 +2,9 @@ const pool = require('../db/pool');
 
 class PunchListRepository {
   async createPunchList(tenantId, projectId, data, userId) {
+    const projectCheck = await pool.query('SELECT id FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
+    if (projectCheck.rows.length === 0) throw new Error('Project not found');
+
     const { title, walkthrough_date } = data;
     const { rows } = await pool.query(
       `INSERT INTO punch_lists (tenant_id, project_id, title, walkthrough_date, created_by, status)
@@ -15,11 +18,11 @@ class PunchListRepository {
   async getPunchLists(tenantId, projectId) {
     const { rows } = await pool.query(
       `SELECT pl.*, u.name as creator_name,
-         (SELECT count(*)::int FROM punch_list_items pli WHERE pli.punch_list_id = pl.id) as total_items,
-         (SELECT count(*)::int FROM punch_list_items pli WHERE pli.punch_list_id = pl.id AND pli.status = 'resolved') as resolved_items,
-         (SELECT count(*)::int FROM punch_list_items pli WHERE pli.punch_list_id = pl.id AND pli.status = 'verified') as verified_items
+         (SELECT count(*)::int FROM punch_list_items pli WHERE pli.punch_list_id = pl.id AND pli.tenant_id = pl.tenant_id) as total_items,
+         (SELECT count(*)::int FROM punch_list_items pli WHERE pli.punch_list_id = pl.id AND pli.status = 'resolved' AND pli.tenant_id = pl.tenant_id) as resolved_items,
+         (SELECT count(*)::int FROM punch_list_items pli WHERE pli.punch_list_id = pl.id AND pli.status = 'verified' AND pli.tenant_id = pl.tenant_id) as verified_items
        FROM punch_lists pl
-       LEFT JOIN users u ON pl.created_by = u.id
+       LEFT JOIN users u ON pl.created_by = u.id AND u.tenant_id = pl.tenant_id
        WHERE pl.tenant_id = $1 AND pl.project_id = $2
        ORDER BY pl.walkthrough_date DESC, pl.created_at DESC`,
       [tenantId, projectId]
@@ -31,7 +34,7 @@ class PunchListRepository {
     const plRes = await pool.query(
       `SELECT pl.*, u.name as creator_name
        FROM punch_lists pl
-       LEFT JOIN users u ON pl.created_by = u.id
+       LEFT JOIN users u ON pl.created_by = u.id AND u.tenant_id = pl.tenant_id
        WHERE pl.tenant_id = $1 AND pl.id = $2`,
       [tenantId, punchListId]
     );
@@ -44,8 +47,8 @@ class PunchListRepository {
          u.name as assignee_name,
          qc.name as closed_by_qc_name
        FROM punch_list_items pli
-       LEFT JOIN users u ON pli.assignee_id = u.id
-       LEFT JOIN users qc ON pli.closed_by_qc = qc.id
+       LEFT JOIN users u ON pli.assignee_id = u.id AND u.tenant_id = pli.tenant_id
+       LEFT JOIN users qc ON pli.closed_by_qc = qc.id AND qc.tenant_id = pli.tenant_id
        WHERE pli.tenant_id = $1 AND pli.punch_list_id = $2
        ORDER BY pli.room_name ASC, pli.created_at ASC`,
       [tenantId, punchListId]
@@ -90,6 +93,9 @@ class PunchListRepository {
   }
 
   async createPunchListItem(tenantId, punchListId, itemData) {
+    const punchListCheck = await pool.query('SELECT id FROM punch_lists WHERE id = $1 AND tenant_id = $2', [punchListId, tenantId]);
+    if (punchListCheck.rows.length === 0) throw new Error('Punch list not found');
+
     const { room_name, trade, item_description, photo_key, assignee_id } = itemData;
     
     // Auto-transition punch list status to active if it was draft

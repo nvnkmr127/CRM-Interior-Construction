@@ -2,11 +2,11 @@ const logger = require('../../../utils/logger');
 const aiService = require('../../../services/aiService');
 const pool = require('../../../db/pool');
 /**
- * Invokes AI operations (error.g., generating summary, next steps, extracting insights)
+ * Invokes AI operations (e.g., generating summary, next steps, extracting insights)
  */
 async function handle(config, context) {
   const { actionType, prompt, outputField } = config; // config from DB
-  const { record, _tenantId } = context;
+  const { record, tenantId } = context;
 
   logger.info(`[Automation - AI] Invoking AI Action '${actionType}' for record ${record.id}`);
 
@@ -16,14 +16,14 @@ async function handle(config, context) {
       if (outputField && summary) {
         const safeOutputField = outputField.replace(/[^a-zA-Z0-9_]/g, '');
         // Assume record is a lead for now
-        await pool.query(`UPDATE leads SET ${safeOutputField} = $1 WHERE id = $2`, [summary, record.id]);
+        await pool.query(`UPDATE leads SET ${safeOutputField} = $1 WHERE id = $2 AND tenant_id = $3`, [summary, record.id, tenantId]);
       }
     } else if (actionType === 'custom_prompt') {
        // Could be used for custom evaluation
        const result = await aiService.generateCustom(prompt, record);
        if (outputField && result) {
          const safeOutputField = outputField.replace(/[^a-zA-Z0-9_]/g, '');
-         await pool.query(`UPDATE leads SET ${safeOutputField} = $1 WHERE id = $2`, [result, record.id]);
+         await pool.query(`UPDATE leads SET ${safeOutputField} = $1 WHERE id = $2 AND tenant_id = $3`, [result, record.id, tenantId]);
        }
     }
   } catch (error) {

@@ -65,13 +65,13 @@ router.get('/', checkAuditAccess, async (req, res, next) => {
     const whereClause = queryConditions.length > 0 ? `WHERE ${queryConditions.join(' AND ')}` : '';
     const countQuery = `
       SELECT COUNT(*) FROM audit_logs al
-      LEFT JOIN users u ON al.user_id = u.id
+      LEFT JOIN users u ON al.user_id = u.id AND u.tenant_id = al.tenant_id
       ${whereClause}
     `;
     const dataQuery = `
       SELECT al.*, u.name as user_name, u.email as user_email
       FROM audit_logs al
-      LEFT JOIN users u ON al.user_id = u.id
+      LEFT JOIN users u ON al.user_id = u.id AND u.tenant_id = al.tenant_id
       ${whereClause}
       ORDER BY al.created_at DESC
       LIMIT $${queryParams.length + 1} OFFSET $${queryParams.length + 2}
@@ -148,7 +148,7 @@ router.get('/export', _authorize('settings:export_csv'), async (req, res, next) 
     const dataQuery = `
       SELECT al.*, u.name as user_name, u.email as user_email
       FROM audit_logs al
-      LEFT JOIN users u ON al.user_id = u.id
+      LEFT JOIN users u ON al.user_id = u.id AND u.tenant_id = al.tenant_id
       ${whereClause}
       ORDER BY al.created_at DESC
       LIMIT 10000 -- Hard limit for export

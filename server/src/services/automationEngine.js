@@ -68,10 +68,11 @@ async function _scheduleJob(leadId, triggerEvent, actionTaken, delayMs, payload 
   const res = await pool.query(`
     INSERT INTO automation_events (tenant_id, lead_id, workflow, action_type, status)
     VALUES ((SELECT tenant_id FROM leads WHERE id = $1), $1, $2, $3, 'pending')
-    RETURNING id
+    RETURNING id, tenant_id
   `, [leadId, triggerEvent, actionTaken]);
   
   const eventId = res.rows[0].id;
+  const eventTenantId = res.rows[0].tenant_id;
 
   // Schedule memory task
   setTimeout(async () => {
@@ -82,26 +83,26 @@ async function _scheduleJob(leadId, triggerEvent, actionTaken, delayMs, payload 
       // If action is creating a task, do it here
       if (payload.createTask) {
         await pool.query(`
-          INSERT INTO lead_tasks (lead_id, title, due_date, assigned_to)
-          VALUES ($1, $2, $3, $4)
-        `, [leadId, payload.createTask.title, payload.createTask.dueDate, payload.createTask.assignedTo]);
+          INSERT INTO tasks (tenant_id, lead_id, title, due_date, assignee_id)
+          VALUES ($1, $2, $3, $4, $5)
+        `, [eventTenantId, leadId, payload.createTask.title, payload.createTask.dueDate, payload.createTask.assignedTo]);
       }
       
       // If action is alerting manager
       if (payload.managerAlert) {
          await pool.query(`
            INSERT INTO lead_timeline (tenant_id, lead_id, event_type, summary)
-           VALUES ((SELECT tenant_id FROM leads WHERE id = $1), $1, 'automation.alert', $2)
-         `, [leadId, `Manager Alert: ${payload.managerAlert}`]);
+           VALUES ($1, $2, 'automation.alert', $3)
+         `, [eventTenantId, leadId, `Manager Alert: ${payload.managerAlert}`]);
       }
 
       const duration = Date.now() - startTime;
-      await pool.query(`UPDATE automation_events SET status = 'success', duration_ms = $1 WHERE id = $2`, [duration, eventId]);
+      await pool.query(`UPDATE automation_events SET status = 'success', duration_ms = $1 WHERE id = $2 AND tenant_id = $3`, [duration, eventId, eventTenantId]);
 
     } catch (error) {
       logger.error('Job failed', error);
       const duration = Date.now() - startTime;
-      await pool.query(`UPDATE automation_events SET status = 'failed', duration_ms = $1, error_message = $2 WHERE id = $3`, [duration, error.message, eventId]);
+      await pool.query(`UPDATE automation_events SET status = 'failed', duration_ms = $1, error_message = $2 WHERE id = $3 AND tenant_id = $4`, [duration, error.message, eventId, eventTenantId]);
     }
   }, delayMs);
 }
@@ -110,12 +111,14 @@ async function _scheduleJob(leadId, triggerEvent, actionTaken, delayMs, payload 
  * Assignment Algorithm
  */
 async function assignRep(lead) {
+  if (!lead || !lead.tenant_id) return null;
+
   // Priority 1: Match Zone/Locality
   const zoneMatch = await pool.query(`
     SELECT id, active_leads_count FROM users 
-    WHERE role = 'sales_rep' AND zone ILIKE $1
+    WHERE tenant_id = $1 AND role = 'sales_rep' AND zone ILIKE $2
     ORDER BY active_leads_count ASC LIMIT 1
-  `, [`%${lead.locality}%`]);
+  `, [lead.tenant_id, `%${lead.locality}%`]);
 
   if (zoneMatch.rows.length > 0 && zoneMatch.rows[0].active_leads_count < 40) {
     return zoneMatch.rows[0].id;
@@ -124,9 +127,9 @@ async function assignRep(lead) {
   // Priority 2: Fewest leads
   const capacityMatch = await pool.query(`
     SELECT id FROM users 
-    WHERE role = 'sales_rep' AND active_leads_count < 40
+    WHERE tenant_id = $1 AND role = 'sales_rep' AND active_leads_count < 40
     ORDER BY active_leads_count ASC LIMIT 1
-  `);
+  `, [lead.tenant_id]);
 
   if (capacityMatch.rows.length > 0) {
     return capacityMatch.rows[0].id;
@@ -141,18 +144,20 @@ async function assignRep(lead) {
  */
 async function triggerAutomation(event, lead, payload = {}) {
   try {
-    // 1. Core synchronous business logic (error.g., Lead Scoring) that shouldn't be fully decoupled yet
+    if (!lead || !lead.id || !lead.tenant_id) return;
+
+    // 1. Core synchronous business logic (e.g., Lead Scoring) that shouldn't be fully decoupled yet
     if (event === 'lead_created') {
       const scoreResult = calculateLeadScore(lead);
       await pool.query(`
-        UPDATE leads SET score = $1, score_tier = $2 WHERE id = $3
-      `, [scoreResult.score, scoreResult.tier, lead.id]);
+        UPDATE leads SET score = $1, score_tier = $2 WHERE id = $3 AND tenant_id = $4
+      `, [scoreResult.score, scoreResult.tier, lead.id, lead.tenant_id]);
       lead.score = scoreResult.score;
       lead.score_tier = scoreResult.tier;
     }
 
     if (event === 'first_contact_logged' && !lead.first_contacted_at) {
-      await pool.query(`UPDATE leads SET first_contacted_at = CURRENT_TIMESTAMP WHERE id = $1`, [lead.id]);
+      await pool.query(`UPDATE leads SET first_contacted_at = CURRENT_TIMESTAMP WHERE id = $1 AND tenant_id = $2`, [lead.id, lead.tenant_id]);
     }
 
     // 2. Delegate everything else to the dynamic Rule Evaluator

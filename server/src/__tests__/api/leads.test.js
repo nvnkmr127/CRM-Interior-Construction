@@ -73,4 +73,11 @@ describe('Leads API', () => {
       expect(true).toBe(true)
     })
   })
+
+  afterAll(async () => {
+    const { cleanupLead } = require('../helpers/cleanup');
+    if (leadId) {
+      await cleanupLead(leadId);
+    }
+  });
 })

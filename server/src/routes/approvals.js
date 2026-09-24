@@ -95,10 +95,18 @@ router.get('/:module/:id/history', async (req, res, next) => {
   const tenantId = req.tenantId || (req.user && (req.user.tenantId || req.user.tenant_id));
 
   try {
+    const table = getTableForModule(module);
+    if (table) {
+      const parentCheck = await pool.query(`SELECT id FROM ${table} WHERE id = $1 AND tenant_id = $2`, [id, tenantId]);
+      if (parentCheck.rows.length === 0) {
+        return res.status(404).json({ success: false, message: 'Record not found' });
+      }
+    }
+
     const query = `
       SELECT a.*, u.name as actor_name, u.email as actor_email
       FROM approval_logs a
-      LEFT JOIN users u ON a.actor_id = u.id
+      LEFT JOIN users u ON a.actor_id = u.id AND u.tenant_id = a.tenant_id
       WHERE a.entity_type = $1 AND a.entity_id = $2 AND a.tenant_id = $3
       ORDER BY a.created_at DESC
     `;

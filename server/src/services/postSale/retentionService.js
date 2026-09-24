@@ -10,6 +10,11 @@ async function generateRetentionSchedules(tenantId, projectId, handoverDateStr, 
     throw new Error('Invalid handover date');
   }
 
+  const projCheck = await client.query('SELECT 1 FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
+  if (projCheck.rows.length === 0) {
+    throw new Error('Project not found');
+  }
+
   // Stages and offset days
   const retentionStages = [
     { stage: '30_day', days: 30 },
@@ -115,8 +120,8 @@ async function getRetentionDashboard(tenantId) {
             p.name as project_name,
             u.name as pm_name
      FROM customer_retention_schedules crs
-     JOIN projects p ON crs.project_id = p.id
-     LEFT JOIN users u ON p.pm_id = u.id
+     JOIN projects p ON crs.project_id = p.id AND p.tenant_id = crs.tenant_id
+     LEFT JOIN users u ON p.pm_id = u.id AND u.tenant_id = p.tenant_id
      WHERE crs.tenant_id = $1 AND p.deleted_at IS NULL
      ORDER BY crs.scheduled_date ASC`,
     [tenantId]

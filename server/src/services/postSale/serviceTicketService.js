@@ -48,14 +48,23 @@ async function createTicket({
   try {
     await client.query('BEGIN');
 
+    // Verify project belongs to tenant
+    const projCheck = await client.query(
+      'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+      [projectId, tenantId]
+    );
+    if (projCheck.rows.length === 0) {
+      throw new Error('PROJECT_NOT_FOUND');
+    }
+
     const ticketNumber = await generateTicketNumber(client, tenantId);
 
     let isRepeatComplaint = false;
     if (affectedItem && category) {
       const repeatCheck = await client.query(`
         SELECT COUNT(*) as count FROM service_tickets 
-        WHERE project_id = $1 AND category = $2 AND LOWER(affected_item) = LOWER($3)
-      `, [projectId, category, affectedItem]);
+        WHERE project_id = $1 AND category = $2 AND LOWER(affected_item) = LOWER($3) AND tenant_id = $4
+      `, [projectId, category, affectedItem, tenantId]);
       if (parseInt(repeatCheck.rows[0].count, 10) > 0) {
         isRepeatComplaint = true;
       }
@@ -87,16 +96,18 @@ async function createTicket({
         tenant_id, project_id, client_portal_user_id, ticket_number,
         title, description, category, priority, status,
         warranty_eligibility, assigned_engineer_id, 
+        sla_hours, due_date,
         first_response_sla_hours, resolution_sla_hours,
         first_response_due_date, resolution_due_date,
         affected_item, is_repeat_complaint
       )
-      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10, $11, $12, $13, $14, $15, $16)
+      VALUES ($1, $2, $3, $4, $5, $6, $7, $8, 'open', $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
       RETURNING *
     `;
     const ticketValues = [
       tenantId, projectId, clientPortalUserId, ticketNumber,
       title, description, category, priority, warrantyEligibility, assignedEngineerId,
+      firstResponseSlaHours, firstResponseDueDate,
       firstResponseSlaHours, resolutionSlaHours, firstResponseDueDate, resolutionDueDate,
       affectedItem, isRepeatComplaint
     ];
@@ -174,10 +185,12 @@ async function updateTicket(ticketId, tenantId, updateData, userId = null) {
 
     updateData.first_response_sla_hours = firstResponseSlaHours;
     updateData.resolution_sla_hours = resolutionSlaHours;
+    updateData.sla_hours = firstResponseSlaHours;
     
     const createdAt = new Date(oldValue.created_at);
     updateData.first_response_due_date = new Date(createdAt.getTime() + firstResponseSlaHours * 60 * 60 * 1000).toISOString();
     updateData.resolution_due_date = new Date(createdAt.getTime() + resolutionSlaHours * 60 * 60 * 1000).toISOString();
+    updateData.due_date = updateData.first_response_due_date;
   }
 
   if (updateData.status && updateData.status !== 'open' && oldValue.status === 'open' && !oldValue.first_responded_at) {
@@ -631,8 +644,8 @@ async function sendPreVisitReminders() {
     logger.info(`[Reminder] Mock SMS sent to project client for service visit ${visit.id}`);
 
     await pool.query(
-      `UPDATE service_visits SET reminder_sent = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1`,
-      [visit.id]
+      `UPDATE service_visits SET reminder_sent = true, updated_at = CURRENT_TIMESTAMP WHERE id = $1 AND tenant_id = $2`,
+      [visit.id, visit.tenant_id]
     );
   }
   return rows.length;
@@ -821,8 +834,8 @@ async function escalateTicket({
       `SELECT t.ticket_number, t.project_id, p.pm_id
        FROM service_tickets t
        JOIN projects p ON t.project_id = p.id
-       WHERE t.id = $1`,
-      [ticketId]
+       WHERE t.id = $1 AND t.tenant_id = $2 AND p.tenant_id = $2`,
+      [ticketId, tenantId]
     );
     const ticketInfo = ticketRes.rows[0];
 

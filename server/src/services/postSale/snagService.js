@@ -6,15 +6,20 @@ const { notifyUser } = require('../notificationService');
 
 async function createSnag({ tenantId, projectId, raisedBy, raisedByClient, title, description, photoKeys, category, rootCauseCategory, vendorId }) {
   let targetTenantId = tenantId;
+  let pmId = null;
+
   if (projectId) {
-    try {
-      const projRes = await pool.query('SELECT tenant_id FROM projects WHERE id = $1', [projectId]);
-      if (projRes.rows.length > 0 && projRes.rows[0].tenant_id) {
-        targetTenantId = projRes.rows[0].tenant_id;
-      }
-    } catch (e) {
-      console.warn('Could not resolve project tenantId', e.message);
+    const projQuery = targetTenantId 
+      ? 'SELECT tenant_id, pm_id FROM projects WHERE id = $1 AND tenant_id = $2'
+      : 'SELECT tenant_id, pm_id FROM projects WHERE id = $1';
+    const projParams = targetTenantId ? [projectId, targetTenantId] : [projectId];
+    const projRes = await pool.query(projQuery, projParams);
+    
+    if (projRes.rows.length === 0) {
+      throw new Error('Project not found');
     }
+    targetTenantId = projRes.rows[0].tenant_id;
+    pmId = projRes.rows[0].pm_id;
   }
 
   const result = await pool.query(
@@ -33,11 +38,10 @@ async function createSnag({ tenantId, projectId, raisedBy, raisedByClient, title
       title
     });
 
-    const projRes = await pool.query('SELECT pm_id FROM projects WHERE id=$1', [projectId]);
-    if (projRes.rows.length > 0 && projRes.rows[0].pm_id) {
+    if (pmId) {
       notifyUser({
         tenantId: targetTenantId,
-        userId: projRes.rows[0].pm_id,
+        userId: pmId,
         type: 'snag.raised_by_client',
         message: `Client raised snag: '${title}'`,
         referenceUrl: `/projects/${projectId}/snags`,
@@ -52,7 +56,7 @@ async function assignSnag({ tenantId, snagId, assigneeId, userId }) {
   const result = await pool.query(
     `UPDATE snags
      SET status = 'assigned', assignee_id = $3
-     WHERE (tenant_id = $1 OR tenant_id IS NULL) AND id = $2
+     WHERE tenant_id = $1 AND id = $2
      RETURNING *`,
     [tenantId, snagId, assigneeId]
   );
@@ -88,7 +92,7 @@ async function updateSnagStatus({
   vendorId
 }) {
   const snagResult = await pool.query(
-    `SELECT * FROM snags WHERE (tenant_id = $1 OR tenant_id IS NULL) AND id = $2`,
+    `SELECT * FROM snags WHERE tenant_id = $1 AND id = $2`,
     [tenantId, snagId]
   );
   const snag = snagResult.rows[0];
@@ -165,7 +169,7 @@ async function updateSnagStatus({
     return snag;
   }
 
-  updateQuery += ` ${setClauses.join(', ')} WHERE (tenant_id = $1 OR tenant_id IS NULL) AND id = $2 RETURNING *`;
+  updateQuery += ` ${setClauses.join(', ')} WHERE tenant_id = $1 AND id = $2 RETURNING *`;
   
   const result = await pool.query(updateQuery, params);
   const updatedSnag = result.rows[0];
@@ -217,14 +221,20 @@ async function updateSnagStatus({
   return updatedSnag;
 }
 
-async function clientVerifySnag({ tenantId, snagId, clientPortalUserId }) {
-  const result = await pool.query(
-    `UPDATE snags
-     SET status = 'client_verified', client_verified_at = NOW()
-     WHERE (tenant_id = $1 OR tenant_id IS NULL) AND id = $2
-     RETURNING *`,
-    [tenantId, snagId]
-  );
+async function clientVerifySnag({ tenantId, snagId, clientPortalUserId, projectId = null }) {
+  let query = `
+    UPDATE snags
+    SET status = 'client_verified', client_verified_at = NOW()
+    WHERE tenant_id = $1 AND id = $2
+  `;
+  const params = [tenantId, snagId];
+  if (projectId) {
+    query += ` AND project_id = $3`;
+    params.push(projectId);
+  }
+  query += ` RETURNING *`;
+
+  const result = await pool.query(query, params);
   
   const snag = result.rows[0];
   if (!snag) throw new Error('Snag not found');
@@ -251,26 +261,24 @@ async function clientVerifySnag({ tenantId, snagId, clientPortalUserId }) {
 }
 
 async function getSnags({ tenantId, projectId, status, assigneeId, category, page = 1, limit = 50 }) {
+  if (!tenantId) return [];
   const offset = (page - 1) * limit;
-  const params = [];
+  const params = [tenantId];
   let query = `
     SELECT s.*, 
            u.name as assignee_name, 
            creator.name as raised_by_name,
            pv.vendor_name
     FROM snags s
-    LEFT JOIN users u ON s.assignee_id = u.id
-    LEFT JOIN users creator ON s.raised_by = creator.id
-    LEFT JOIN project_vendors pv ON s.vendor_id = pv.id
-    WHERE 1=1
+    LEFT JOIN users u ON s.assignee_id = u.id AND u.tenant_id = s.tenant_id
+    LEFT JOIN users creator ON s.raised_by = creator.id AND creator.tenant_id = s.tenant_id
+    LEFT JOIN project_vendors pv ON s.vendor_id = pv.id AND pv.tenant_id = s.tenant_id
+    WHERE s.tenant_id = $1
   `;
-  
+
   if (projectId) {
     params.push(projectId);
     query += ` AND s.project_id = $${params.length}`;
-  } else if (tenantId) {
-    params.push(tenantId);
-    query += ` AND (s.tenant_id = $${params.length} OR s.tenant_id IS NULL)`;
   }
 
   if (status) {
@@ -296,7 +304,7 @@ async function getSnags({ tenantId, projectId, status, assigneeId, category, pag
 
 async function deleteSnag({ tenantId, snagId, userId }) {
   const result = await pool.query(
-    `DELETE FROM snags WHERE (tenant_id = $1 OR tenant_id IS NULL) AND id = $2 RETURNING *`,
+    `DELETE FROM snags WHERE tenant_id = $1 AND id = $2 RETURNING *`,
     [tenantId, snagId]
   );
   const snag = result.rows[0];

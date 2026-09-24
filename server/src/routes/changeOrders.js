@@ -69,6 +69,10 @@ router.post('/', authorize('projects:update'), validate(changeOrderSchema), asyn
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId;
+
+    const projectCheck = await pool.query('SELECT id FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
+    if (projectCheck.rows.length === 0) return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+
     const data  = req.body;
 
     const { rows } = await pool.query(

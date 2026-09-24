@@ -159,12 +159,12 @@ class WarehouseService {
 
       if (updatedQty <= 0) {
         // We update to 0 so we retain the row/bin mapping or we can delete it. Setting to 0 is cleaner.
-        const updateQuery = 'UPDATE inventory_items SET quantity = 0, updated_at = NOW() WHERE id = $1 RETURNING *';
-        const res = await client.query(updateQuery, [itemId]);
+        const updateQuery = 'UPDATE inventory_items SET quantity = 0, updated_at = NOW() WHERE id = $1 AND tenant_id = $2 RETURNING *';
+        const res = await client.query(updateQuery, [itemId, tenantId]);
         updatedItem = res.rows[0];
       } else {
-        const updateQuery = 'UPDATE inventory_items SET quantity = $1, updated_at = NOW() WHERE id = $2 RETURNING *';
-        const res = await client.query(updateQuery, [updatedQty, itemId]);
+        const updateQuery = 'UPDATE inventory_items SET quantity = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING *';
+        const res = await client.query(updateQuery, [updatedQty, itemId, tenantId]);
         updatedItem = res.rows[0];
       }
 
@@ -285,8 +285,8 @@ class WarehouseService {
       // 2. Decrement active stock
       const updatedQty = Number(item.quantity) - Number(quantity);
       await client.query(
-        'UPDATE inventory_items SET quantity = $1, updated_at = NOW() WHERE id = $2',
-        [updatedQty, itemId]
+        'UPDATE inventory_items SET quantity = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3',
+        [updatedQty, itemId, tenantId]
       );
 
       // 3. Increment quarantined stock
@@ -366,11 +366,11 @@ class WarehouseService {
       // 2. Decrement quarantined stock
       const updatedQty = Number(item.quantity) - Number(quantity);
       if (updatedQty <= 0) {
-        await client.query('DELETE FROM quarantined_items WHERE id = $1', [quarantinedItemId]);
+        await client.query('DELETE FROM quarantined_items WHERE id = $1 AND tenant_id = $2', [quarantinedItemId, tenantId]);
       } else {
         await client.query(
-          'UPDATE quarantined_items SET quantity = $1, updated_at = NOW() WHERE id = $2',
-          [updatedQty, quarantinedItemId]
+          'UPDATE quarantined_items SET quantity = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3',
+          [updatedQty, quarantinedItemId, tenantId]
         );
       }
 

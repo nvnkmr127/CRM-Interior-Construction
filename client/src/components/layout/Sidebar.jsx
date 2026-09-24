@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../store/authContext'
-import { PLAN_DEFAULTS, MODULE_TAB_MAPPING } from '../../constants/permissions'
+import { PLAN_DEFAULTS, MODULE_TAB_MAPPING, isTabPermitted } from '../../constants/permissions'
 import { NAV_ITEMS } from '../../constants/navigation'
 import api from '../../api/axios'
+import { isSuperMasterDeveloper } from '../../utils/isSuperMasterDeveloper'
 import styles from './Sidebar.module.css'
 
 function NavItem({ item, collapsed, onClose }) {
@@ -91,6 +92,13 @@ const getInitials = (name) => {
 export default function Sidebar({ collapsed, mobileOpen, onClose }) {
   const { user } = useAuth()
   const [dynamicPlanTabs, setDynamicPlanTabs] = useState(user?.sidebarConfig?.planTabs || null)
+  const [logoFailed, setLogoFailed] = useState(false)
+
+  const tenantLogo = user?.tenant?.logoUrl || user?.tenant?.logo_url || user?.tenant?.logo
+
+  useEffect(() => {
+    setLogoFailed(false)
+  }, [tenantLogo])
 
   useEffect(() => {
     let isMounted = true
@@ -112,17 +120,18 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
     }
 
     window.addEventListener('app:sidebar-config-updated', handleConfigUpdated)
+    window.addEventListener('app:tenant-updated', handleConfigUpdated)
     window.addEventListener('app:auth-change', handleConfigUpdated)
 
     return () => {
       isMounted = false
       window.removeEventListener('app:sidebar-config-updated', handleConfigUpdated)
+      window.removeEventListener('app:tenant-updated', handleConfigUpdated)
       window.removeEventListener('app:auth-change', handleConfigUpdated)
     }
   }, [user?.tenant?.id, user?.tenant?.plan])
   
-  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
-    (user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role === 'admin' || user?.role?.name?.toLowerCase() === 'admin');
+  const isPlatformDeveloperAdmin = isSuperMasterDeveloper(user);
 
   const isAdmin = isPlatformDeveloperAdmin;
 
@@ -150,10 +159,18 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileOpen : ''}`}>
       {/* Logo area */}
       <div className={styles.logo}>
-        {user?.tenant?.logoUrl ? (
-          <img src={user.tenant.logoUrl} alt="Logo" className={styles.logoImage} />
+        {tenantLogo && !logoFailed ? (
+          <img 
+            src={tenantLogo} 
+            alt={user?.tenant?.name || 'Logo'} 
+            className={styles.logoImage} 
+            onError={() => setLogoFailed(true)}
+          />
         ) : (
-          <div className={styles.logoMark}>
+          <div 
+            className={styles.logoMark}
+            style={user?.tenant?.accentColour || user?.tenant?.accent_colour ? { background: user?.tenant?.accentColour || user?.tenant?.accent_colour } : {}}
+          >
             {user?.tenant?.name ? user.tenant.name.charAt(0).toUpperCase() : 'C'}
           </div>
         )}
@@ -163,8 +180,14 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
       {/* Nav groups */}
       <nav className={styles.nav}>
         {NAV_ITEMS.map(group => {
+          // Developer-only groups (Developer Tools) are strictly for the platform developer
+          if ((group.developerOnly || group.group === 'DEVELOPER TOOLS') && !isAdmin) {
+            return null;
+          }
+
           if (group.adminOnly && !isAdmin && !isWorkspaceAdmin) {
             const hasAnyGroupItemGranted = group.items.some(item => {
+              if (item.id === 'absences') return true;
               const modules = user?.role?.enabled_modules || [];
               const perms = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
               return modules.includes(item.id) || perms.includes(item.id) || perms.includes(`${item.id}:view`);
@@ -177,80 +200,10 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
             // 1. Developer / Admin Bypass: Superadmin / Developer sees all tabs immediately
             if (isAdmin) return true;
 
-            // 2. Workspace administrator has access to all tabs in this workspace
-            if (isWorkspaceAdmin) return true;
+            // Developer-only tabs are strictly restricted to the platform developer
+            if (item.developerOnly) return false;
 
-            const perms = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
-            const modules = user?.role?.enabled_modules || [];
-
-            // 3. Admin-only tabs are allowed if explicitly granted in role permissions/modules
-            if (item.adminOnly) {
-              const isExplicitlyGranted = modules.includes(item.id) || perms.includes(item.id) || perms.includes(`${item.id}:view`);
-              if (!isExplicitlyGranted) return false;
-            }
-
-            const hasWildcard = perms.includes('*') || perms.includes('*:*');
-            if (hasWildcard) return true;
-
-            // 4. Module & Action Permission check
-            let isPermitted = false;
-            const itemMods = Array.isArray(item.module) ? item.module : (item.module ? [item.module] : []);
-
-            if (item.id) {
-              const hasExplicitTabInModules = modules.includes(item.id);
-              const hasExplicitTabInPerms = perms.includes(item.id) || perms.includes(`${item.id}:view`) || perms.some(p => p.startsWith(`${item.id}:`));
-              
-              if (hasExplicitTabInModules || hasExplicitTabInPerms) {
-                isPermitted = true;
-              } else {
-                return false;
-              }
-            } else if (item.permission) {
-              if (perms.includes(item.permission)) {
-                isPermitted = true;
-              }
-            } else if (itemMods.length > 0) {
-              if (itemMods.some(m => modules.includes(m) || perms.includes(`${m}:view`))) {
-                isPermitted = true;
-              }
-            } else {
-              isPermitted = true;
-            }
-
-            if (!isPermitted) return false;
-
-            // 5. Subscription Plan filtering fallback for non-admin client accounts
-            const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
-            const planTabs = (dynamicPlanTabs && Array.isArray(dynamicPlanTabs) && dynamicPlanTabs.length > 0)
-              ? dynamicPlanTabs
-              : ((user?.sidebarConfig?.planTabs && Array.isArray(user.sidebarConfig.planTabs) && user.sidebarConfig.planTabs.length > 0)
-                ? user.sidebarConfig.planTabs
-                : (PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter));
-
-            if (planTabs && Array.isArray(planTabs)) {
-              if (item.id && !planTabs.includes(item.id)) {
-                const isExplicitRoleTab = modules.includes(item.id) || perms.includes(item.id) || perms.some(p => p.startsWith(`${item.id}:`));
-                if (!isExplicitRoleTab) {
-                  if (item.subItems && Array.isArray(item.subItems)) {
-                    const hasSubInPlan = item.subItems.some(sub => planTabs.includes(sub.id));
-                    if (!hasSubInPlan) return false;
-                  } else {
-                    return false;
-                  }
-                }
-              }
-            }
-
-            // 6. Granular Page / Tab Permissions check
-            const pagePerms = user?.role?.page_permissions || {};
-            for (const mod of itemMods) {
-              if (pagePerms[mod] && Array.isArray(pagePerms[mod]) && pagePerms[mod].length > 0) {
-                const allowed = pagePerms[mod].includes(item.id) || pagePerms[mod].includes(item.label);
-                if (!allowed) return false;
-              }
-            }
-
-            return true;
+            return isTabPermitted(item, user, dynamicPlanTabs);
           };
 
           const visibleItems = group.items.map(item => {

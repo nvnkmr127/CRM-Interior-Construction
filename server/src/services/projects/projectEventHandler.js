@@ -62,8 +62,8 @@ eventBus.on('project.handover_signed', async ({ tenantId, projectId }) => {
       `UPDATE projects 
        SET property_handover_date = CURRENT_DATE, 
            updated_at = CURRENT_TIMESTAMP 
-       WHERE id = $1 AND property_handover_date IS NULL`,
-      [projectId]
+       WHERE id = $1 AND tenant_id = $2 AND property_handover_date IS NULL`,
+      [projectId, tenantId]
     );
 
     // 2. Generate customer retention schedules

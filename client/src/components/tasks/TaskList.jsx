@@ -19,7 +19,7 @@ export default function TaskList() {
           <div className={styles.right}>
             <Badge variant="neutral" size="sm">{t.status}</Badge>
             <span style={{fontSize: '12px', color: 'var(--color-text-secondary)'}}>{t.dueDate}</span>
-            <div className={styles.avatar}>{t.assignee.charAt(0)}</div>
+            <div className={styles.avatar}>{((typeof t.assignee === 'string' ? t.assignee : t.assignee?.name) || '?').charAt(0).toUpperCase()}</div>
           </div>
         </div>
       ))}

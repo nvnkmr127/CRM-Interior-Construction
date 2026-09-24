@@ -19,6 +19,14 @@ async function createWarranty({
   handoverItemId = null,
   userId = null
 }) {
+  const projCheck = await pool.query(
+    'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+    [projectId, tenantId]
+  );
+  if (projCheck.rows.length === 0) {
+    throw new Error('PROJECT_NOT_FOUND');
+  }
+
   const query = `
     INSERT INTO warranties (
       tenant_id, project_id, product_name, serial_number, brand, 

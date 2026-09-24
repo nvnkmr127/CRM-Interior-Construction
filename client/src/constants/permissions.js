@@ -1,4 +1,5 @@
 import { NAV_ITEMS } from './navigation'
+import { isSuperMasterDeveloper } from '../utils/isSuperMasterDeveloper'
 
 export const PERMISSION_MODULES = [
   { id: 'leads', label: 'Leads' },
@@ -209,7 +210,7 @@ export const PLAN_DEFAULTS = {
     'coordination', 'handover-dashboard', 'retention-dashboard',
     'resource-capacity', 'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity',
     'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
-    'team-management', 'team-members', 'roles-permissions', 'organization'
+    'team-management', 'team-members', 'roles-permissions', 'organization', 'email-templates', 'logs'
   ],
   growth: [
     'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
@@ -217,7 +218,7 @@ export const PLAN_DEFAULTS = {
     'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
     'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity',
     'finance-overview', 'financial-approvals', 'team-management', 'team-members',
-    'roles-permissions', 'organization'
+    'roles-permissions', 'organization', 'email-templates', 'logs'
   ],
   enterprise: [
     'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
@@ -228,8 +229,7 @@ export const PLAN_DEFAULTS = {
     'resource-capacity', 'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
     'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
     'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
-    'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
-    'email-templates', 'logs'
+    'login-history', 'audit-trail', 'email-templates', 'logs'
   ]
 };
 
@@ -310,4 +310,178 @@ export const ACTION_DEPENDENCIES = {
   'bulk_update': ['view', 'edit'],
   'bulk_delete': ['view', 'delete']
 };
+
+export const isTabPermitted = (item, user, planTabs = null) => {
+  if (!user || !item) return false;
+
+  const isPlatformDeveloperAdmin = isSuperMasterDeveloper(user);
+
+  const isAdmin = isPlatformDeveloperAdmin;
+
+  const roleName = (typeof user?.role === 'string' ? user.role : user?.role?.name || user?.role_name || '').toLowerCase().trim();
+  const perms = Array.isArray(user?.role?.permissions) 
+    ? user.role.permissions 
+    : (Array.isArray(user?.permissions) ? user.permissions : []);
+
+  const isWorkspaceAdmin = 
+    isAdmin ||
+    roleName === 'superadmin' || 
+    roleName === 'admin' || 
+    roleName === 'owner' ||
+    roleName === 'super admin' ||
+    (typeof user?.role === 'string' && user?.role?.toLowerCase() === 'admin') ||
+    perms.includes('*') ||
+    perms.includes('*:*') ||
+    perms.includes('all');
+
+  // 1. Developer / Admin Bypass: Superadmin / Developer sees all tabs immediately
+  if (isAdmin) return true;
+
+  // Developer-only tabs are never shown to client workspaces
+  const DEVELOPER_TABS = ['superadmin', 'api-keys', 'api-integration', 'webhooks'];
+  if (item.developerOnly || DEVELOPER_TABS.includes(item.id)) {
+    return false;
+  }
+
+  // 2. Universal Team Member Portal Bypass: Leave Management must be present in every team member portal by default
+  if (item.id === 'absences') return true;
+
+  // 3. Subscription Plan filtering for all client accounts (including workspace admins)
+  const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
+  const effectivePlanTabs = (planTabs && Array.isArray(planTabs) && planTabs.length > 0)
+    ? planTabs
+    : ((user?.sidebarConfig?.planTabs && Array.isArray(user.sidebarConfig.planTabs) && user.sidebarConfig.planTabs.length > 0)
+      ? user.sidebarConfig.planTabs
+      : (PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter));
+
+  if (effectivePlanTabs && Array.isArray(effectivePlanTabs)) {
+    if (item.id && !effectivePlanTabs.includes(item.id)) {
+      if (item.subItems && Array.isArray(item.subItems)) {
+        const hasSubInPlan = item.subItems.some(sub => effectivePlanTabs.includes(sub.id));
+        if (!hasSubInPlan) return false;
+      } else {
+        return false;
+      }
+    }
+  }
+
+  // 4. Workspace administrator has access to all permitted tabs within this workspace's plan
+  if (isWorkspaceAdmin) return true;
+
+  const modules = user?.role?.enabled_modules || [];
+
+  // 5. Admin-only tabs are allowed if explicitly granted in role permissions/modules
+  if (item.adminOnly) {
+    const isExplicitlyGranted = modules.includes(item.id) || perms.includes(item.id) || perms.includes(`${item.id}:view`);
+    if (!isExplicitlyGranted) return false;
+  }
+
+  const hasWildcard = perms.includes('*') || perms.includes('*:*');
+  if (hasWildcard) return true;
+
+  // 6. Module & Action Permission check
+  let isPermitted = false;
+  const itemMods = Array.isArray(item.module) ? item.module : (item.module ? [item.module] : []);
+
+  if (item.id) {
+    const hasExplicitTabInModules = modules.includes(item.id);
+    const hasExplicitTabInPerms = perms.includes(item.id) || perms.includes(`${item.id}:view`) || perms.some(p => p.startsWith(`${item.id}:`));
+    
+    // For dashboard, check if dashboards module is enabled or has dashboards permission
+    const isDashboardAllowed = item.id === 'dashboard' && (
+      modules.includes('dashboards') || 
+      modules.includes('dashboard') ||
+      perms.includes('dashboards') ||
+      perms.includes('dashboard') ||
+      perms.some(p => p.startsWith('dashboards:'))
+    );
+
+    if (hasExplicitTabInModules || hasExplicitTabInPerms || isDashboardAllowed) {
+      isPermitted = true;
+    } else {
+      return false;
+    }
+  } else if (item.permission) {
+    if (perms.includes(item.permission)) {
+      isPermitted = true;
+    }
+  } else if (itemMods.length > 0) {
+    if (itemMods.some(m => modules.includes(m) || perms.includes(`${m}:view`))) {
+      isPermitted = true;
+    }
+  } else {
+    isPermitted = true;
+  }
+
+  if (!isPermitted) return false;
+
+  // 7. Granular Page / Tab Permissions check
+  const pagePerms = user?.role?.page_permissions || {};
+  for (const mod of itemMods) {
+    if (pagePerms[mod] && Array.isArray(pagePerms[mod]) && pagePerms[mod].length > 0) {
+      const allowed = pagePerms[mod].includes(item.id) || pagePerms[mod].includes(item.label);
+      if (!allowed) return false;
+    }
+  }
+
+  return true;
+};
+
+export const getDefaultRouteForUser = (user, planTabs = null) => {
+  if (!user) return '/login';
+
+  const isPlatformDeveloperAdmin = isSuperMasterDeveloper(user);
+
+  const roleName = (typeof user?.role === 'string' ? user.role : user?.role?.name || user?.role_name || '').toLowerCase().trim();
+  const perms = Array.isArray(user?.role?.permissions) 
+    ? user.role.permissions 
+    : (Array.isArray(user?.permissions) ? user.permissions : []);
+
+  const isWorkspaceAdmin = 
+    isPlatformDeveloperAdmin ||
+    roleName === 'superadmin' || 
+    roleName === 'admin' || 
+    roleName === 'owner' ||
+    roleName === 'super admin' ||
+    perms.includes('*') ||
+    perms.includes('*:*') ||
+    perms.includes('all');
+
+  if (isPlatformDeveloperAdmin || isWorkspaceAdmin) {
+    return '/dashboard/sales';
+  }
+
+  const modules = user?.role?.enabled_modules || [];
+
+  // Iterate NAV_ITEMS in sidebar order to find the first permitted tab
+  for (const group of NAV_ITEMS) {
+    if (group.adminOnly && !isPlatformDeveloperAdmin && !isWorkspaceAdmin) {
+      const hasAnyGroupItemGranted = (group.items || []).some(item => {
+        if (item.id === 'absences') return true;
+        return modules.includes(item.id) || perms.includes(item.id) || perms.includes(`${item.id}:view`);
+      });
+      if (!hasAnyGroupItemGranted) continue;
+    }
+
+    if (group.financeOnly) {
+      const hasFinance = isWorkspaceAdmin || perms.some(p => p.startsWith('finance:')) || modules.includes('finance');
+      if (!hasFinance) continue;
+    }
+
+    for (const item of (group.items || [])) {
+      if (item.subItems && Array.isArray(item.subItems) && item.subItems.length > 0) {
+        for (const sub of item.subItems) {
+          if (isTabPermitted(sub, user, planTabs) && sub.to) {
+            return sub.to;
+          }
+        }
+      } else if (isTabPermitted(item, user, planTabs) && item.to) {
+        return item.to;
+      }
+    }
+  }
+
+  return '/forbidden';
+};
+
 

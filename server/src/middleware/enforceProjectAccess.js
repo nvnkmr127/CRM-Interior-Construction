@@ -12,21 +12,37 @@ async function enforceProjectAccess(req, res, next, id) {
       return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'enforceProjectAccess: req.user is undefined' });
     }
     
-    // Admin / Superadmin / Owner override
+    const tenantId = req.tenantId || (req.user && req.user.tenantId);
+    if (!tenantId) {
+      return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'Tenant context missing' });
+    }
+
+    // Verify the project exists in this tenant
+    const { rows: projRows } = await pool.query(
+      'SELECT 1 FROM projects WHERE id = $1 AND tenant_id = $2',
+      [id, tenantId]
+    );
+
+    if (projRows.length === 0) {
+      // Allow if this ID is a task or leave from resource_allocations (for Resource Capacity page)
+      try {
+        const { rows: raRows } = await pool.query(
+          'SELECT entity_type FROM resource_allocations WHERE entity_id = $1 AND tenant_id = $2 LIMIT 1',
+          [id, tenantId]
+        );
+        if (raRows.length > 0 && raRows[0].entity_type !== 'project') {
+          return next();
+        }
+      } catch (error) {
+        // Ignore invalid UUID error
+      }
+      return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Project not found in this workspace' });
+    }
+
+    // Admin / Superadmin / Owner override for projects belonging to THIS workspace
     const userRole = typeof req.user.role === 'string' ? req.user.role.toLowerCase().replace(/[\s_-]+/g, '') : (req.user.role?.name ? req.user.role.name.toLowerCase() : '');
     if (userRole === 'superadmin' || userRole === 'admin' || userRole === 'owner' || userRole === 'administrator' || userRole.includes('admin')) {
       return next();
-    }
-
-    // Allow if this ID is a task or leave from resource_allocations (for Resource Capacity page)
-    // We catch potential UUID syntax errors if 'id' is not a valid UUID format
-    try {
-      const { rows: raRows } = await pool.query('SELECT entity_type FROM resource_allocations WHERE entity_id = $1 LIMIT 1', [id]);
-      if (raRows.length > 0 && raRows[0].entity_type !== 'project') {
-        return next();
-      }
-    } catch (error) {
-      // Ignore invalid UUID error, proceed to normal project check
     }
 
     // Temporarily apply dataScope to a mock req to get the SQL filter

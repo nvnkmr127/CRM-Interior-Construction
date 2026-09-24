@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth, getMockTeamCredentials } from '../../store/authContext';
+import { useAuth } from '../../store/authContext';
+import { getDefaultRouteForUser } from '../../constants/permissions';
 import { useToast } from '../../store/toastContext';
 import { useForm } from '../../hooks/useForm';
 import { validators, run } from '../../utils/validators';
@@ -38,24 +39,8 @@ export default function Login() {
 
   useEffect(() => {
     if (!loading && isAuthenticated && user) {
-      const isAdmin = 
-        user?.role === 'superadmin' || 
-        user?.role?.name?.toLowerCase() === 'superadmin' || 
-        user?.role?.name?.toLowerCase() === 'super admin' || 
-        (user?.role?.permissions && user.role.permissions.includes('*'));
-      const modules = user?.role?.enabled_modules || [];
-      
-      if (isAdmin || modules.includes('dashboards')) {
-        navigate('/dashboard', { replace: true });
-      } else if (modules.includes('projects')) {
-        navigate('/projects', { replace: true });
-      } else if (modules.includes('leads')) {
-        navigate('/leads', { replace: true });
-      } else if (modules.includes('tasks')) {
-        navigate('/tasks', { replace: true });
-      } else {
-        navigate('/dashboard', { replace: true });
-      }
+      const defaultRoute = getDefaultRouteForUser(user);
+      navigate(defaultRoute, { replace: true });
     }
   }, [isAuthenticated, loading, navigate, user]);
 
@@ -125,59 +110,6 @@ export default function Login() {
     }
   };
 
-  const handleQuickLogin = async (email, password = 'Demo@123', tenantSlug = 'demo') => {
-    setApiError('');
-    setErrorType('');
-    setIsSubmitting(true);
-    handleChange('tenantSlug', tenantSlug);
-    handleChange('email', email);
-    handleChange('password', password);
-
-    try {
-      let result = await login(email, password, tenantSlug);
-      if (!result.success && (password === 'Demo@123' || password === 'Admin@123')) {
-        const altPw = password === 'Demo@123' ? 'Admin@123' : 'Demo@123';
-        result = await login(email, altPw, tenantSlug);
-        if (result.success) {
-          handleChange('password', altPw);
-        }
-      }
-
-      setIsSubmitting(false);
-
-      if (result.success) {
-        if (result.payload?.mfaRequired) {
-          setMfaData(result.payload);
-          setShowMfa(true);
-        } else if (result.payload?.passwordExpired) {
-          setForceResetUserId(result.payload.userId);
-          setShowForceReset(true);
-        } else {
-          toast.success('Welcome back!');
-        }
-      } else {
-        if (result.message?.toLowerCase().includes('deactivated')) {
-          setErrorType('inactive');
-          setApiError(result.message || 'This workspace has been deactivated. Please contact support.');
-        } else if (result.message?.toLowerCase().includes('inactive')) {
-          setErrorType('inactive');
-          setApiError('Your account is inactive. Contact your workspace admin.');
-        } else if (result.message?.toLowerCase().includes('locked')) {
-          setErrorType('inactive');
-          setApiError('Account temporarily locked due to failed attempts. Please try again in 15 minutes.');
-        } else {
-          setErrorType('shake');
-          setApiError(result.message || 'Email or password is incorrect. Try again.');
-          setShakeKey(k => k + 1);
-        }
-      }
-    } catch (err) {
-      setIsSubmitting(false);
-      setErrorType('shake');
-      setApiError(err.message || 'Login failed. Please try again.');
-      setShakeKey(k => k + 1);
-    }
-  };
 
   if (loading) return null;
 
@@ -293,60 +225,6 @@ export default function Login() {
             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </Button>
-
-            {import.meta.env.DEV && (() => {
-              const mockTeam = getMockTeamCredentials();
-              const hasCustomTeam = mockTeam && mockTeam.email && !['admin@demo.com', 'priya@demo.com', 'rahul@demo.com', 'ananya@demo.com', 'arjun@demo.com', 'vikram@demo.com'].includes(mockTeam.email.toLowerCase());
-              return (
-                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '8px', marginTop: '16px', width: '100%' }}>
-                  <div style={{ gridColumn: '1 / -1', fontSize: '11px', fontWeight: 'bold', color: 'var(--color-text-light)', textTransform: 'uppercase', letterSpacing: '1px', textAlign: 'center', marginBottom: '4px' }}>
-                    Auto Login (Dev Mode)
-                  </div>
-                  {hasCustomTeam && (
-                    <Button 
-                      type="button" 
-                      variant="primary"
-                      size="sm"
-                      disabled={isSubmitting}
-                      onClick={() => handleQuickLogin(mockTeam.email, mockTeam.password || 'password', 'demo')}
-                      style={{ gridColumn: '1 / -1', fontSize: '12px', padding: '8px', fontWeight: '600', background: 'var(--color-accent)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px' }}
-                    >
-                      <span>⚙</span> Configured Dev Login ({mockTeam.name || mockTeam.email})
-                    </Button>
-                  )}
-                  {[
-                    { label: 'Admin', email: 'admin@demo.com', password: 'Admin@123' },
-                    { label: 'Project Mgr', email: 'priya@demo.com', password: 'Demo@123' },
-                    { label: 'Designer', email: 'rahul@demo.com', password: 'Demo@123' },
-                    { label: 'Sales', email: 'ananya@demo.com', password: 'Demo@123' },
-                    { label: 'QC Engineer', email: 'arjun@demo.com', password: 'Demo@123' },
-                    { label: 'Site Eng.', email: 'vikram@demo.com', password: 'Demo@123' }
-                  ].map((u) => (
-                    <Button 
-                      key={u.label}
-                      type="button" 
-                      variant="secondary"
-                      size="sm"
-                      disabled={isSubmitting}
-                      onClick={() => handleQuickLogin(u.email, u.password, 'demo')}
-                      style={{ background: 'var(--color-bg-subtle)', color: 'var(--color-text)', fontSize: '12px', padding: '6px' }}
-                    >
-                      {u.label}
-                    </Button>
-                  ))}
-                  <Button
-                    type="button"
-                    variant="secondary"
-                    size="sm"
-                    disabled={isSubmitting}
-                    onClick={() => navigate('/portal/login')}
-                    style={{ gridColumn: '1 / -1', background: 'rgba(232, 147, 90, 0.12)', color: 'var(--color-accent)', border: '1px dashed var(--color-accent)', fontSize: '12px', padding: '6px', fontWeight: '600' }}
-                  >
-                    📱 Switch to Client Portal Login (/portal/login)
-                  </Button>
-                </div>
-              );
-            })()}
           </form>
 
           <div className={styles.footer} style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>

@@ -62,9 +62,9 @@ router.post('/:docId/approve', async (req, res, next) => {
     const metadataUpdate = await pool.query(
       `UPDATE documents 
        SET metadata = jsonb_set(COALESCE(metadata, '{}'), '{client_approval}', $1) 
-       WHERE id = $2 
+       WHERE id = $2 AND project_id = $3 AND tenant_id = $4
        RETURNING *`,
-      [JSON.stringify({ approved_by_client: clientPortalUserId, approved_at: new Date() }), docId]
+      [JSON.stringify({ approved_by_client: clientPortalUserId, approved_at: new Date() }), docId, projectId, tenantId]
     );
 
     res.json({ success: true, data: metadataUpdate.rows[0] });
@@ -101,9 +101,9 @@ router.post('/:docId/revision', async (req, res, next) => {
     const metadataUpdate = await pool.query(
       `UPDATE documents 
        SET metadata = jsonb_set(COALESCE(metadata, '{}'), '{client_revision_request}', $1) 
-       WHERE id = $2 
+       WHERE id = $2 AND project_id = $3 AND tenant_id = $4
        RETURNING *`,
-      [JSON.stringify({ requested_by_client: clientPortalUserId, requested_at: new Date() }), docId]
+      [JSON.stringify({ requested_by_client: clientPortalUserId, requested_at: new Date() }), docId, projectId, tenantId]
     );
 
     res.json({ success: true, data: metadataUpdate.rows[0] });

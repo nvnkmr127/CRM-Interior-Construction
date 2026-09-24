@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { Outlet } from 'react-router-dom'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
+import MasterDeveloperBanner from './MasterDeveloperBanner'
 import GlobalSearch from './GlobalSearch'
 import Breadcrumbs from './Breadcrumbs'
 import { useAuth } from '../../store/authContext'
@@ -46,6 +47,7 @@ export default function Shell() {
       {mobileOpen && <div className={styles.backdrop} onClick={() => setMobileOpen(false)} />}
       <Sidebar collapsed={collapsed} mobileOpen={mobileOpen} onClose={() => setMobileOpen(false)} />
       <div className={styles.main}>
+        <MasterDeveloperBanner />
         <Topbar
           onMenuClick={() => setMobileOpen(true)}
           onToggleSidebar={() => setCollapsed(c => !c)}

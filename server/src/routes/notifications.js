@@ -16,7 +16,7 @@ router.get('/', async (req, res) => {
   try {
     const { rows } = await pool.query(`
       SELECT n.*, u.avatar_url as actor_avatar
-      FROM notifications n LEFT JOIN users u ON u.id=n.actor_id
+      FROM notifications n LEFT JOIN users u ON u.id=n.actor_id AND u.tenant_id = n.tenant_id
       WHERE n.tenant_id=$1 AND n.user_id=$2 AND n.is_archived = $4
       ORDER BY n.created_at DESC LIMIT $3
     `, [tenantId, userId, limit, isArchived]);

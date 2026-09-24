@@ -3,6 +3,7 @@ import { useAuth } from '../../store/authContext'
 import { usePageTitle } from '../../hooks/usePageTitle'
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs'
 import { PLAN_DEFAULTS } from '../../constants/permissions'
+import { isSuperMasterDeveloper } from '../../utils/isSuperMasterDeveloper'
 // Sub-page imports (all lazy-loaded):
 import { lazy, Suspense } from 'react'
 import styles from './ConfigPage.module.css'
@@ -78,8 +79,7 @@ export default function ConfigPage() {
   usePageTitle(currentTitle)
   useBreadcrumbs([{ label: currentTitle }])
 
-  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
-    (user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role === 'admin' || user?.role?.name?.toLowerCase() === 'admin');
+  const isPlatformDeveloperAdmin = isSuperMasterDeveloper(user);
 
   const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
   const planTabs = user?.sidebarConfig?.planTabs || PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;

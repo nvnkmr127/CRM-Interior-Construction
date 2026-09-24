@@ -13,6 +13,9 @@ router.get('/', authorize('projects:read'), async (req, res) => {
     const { projectId } = req.params;
     const { tenantId } = req;
 
+    const projCheck = await pool.query('SELECT 1 FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
+    if (projCheck.rows.length === 0) return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+
     // 1. Fetch all unique room names across measurements, activities, and tasks
     const roomsUnionQuery = `
       SELECT DISTINCT room_name FROM (
@@ -50,7 +53,7 @@ router.get('/', authorize('projects:read'), async (req, res) => {
     const tasksQuery = `
       SELECT t.id, t.title, t.status, t.due_date, t.priority, t.room_name, u.name as assignee_name
       FROM tasks t
-      LEFT JOIN users u ON t.assignee_id = u.id
+      LEFT JOIN users u ON t.assignee_id = u.id AND u.tenant_id = t.tenant_id
       WHERE t.project_id = $1 AND t.tenant_id = $2 AND t.deleted_at IS NULL AND t.room_name IS NOT NULL
       ORDER BY t.created_at ASC
     `;
@@ -72,7 +75,7 @@ router.get('/', authorize('projects:read'), async (req, res) => {
     const activitiesQuery = `
       SELECT a.id, a.activity_name, a.trade, a.status, a.due_date, a.room_name, u.name as assignee_name
       FROM project_work_activities a
-      LEFT JOIN users u ON a.assignee_id = u.id
+      LEFT JOIN users u ON a.assignee_id = u.id AND u.tenant_id = a.tenant_id
       WHERE a.project_id = $1 AND a.tenant_id = $2
       ORDER BY a.created_at ASC
     `;

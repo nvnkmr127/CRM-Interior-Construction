@@ -27,6 +27,14 @@ async function createAmc({
   try {
     await client.query('BEGIN');
 
+    const projCheck = await client.query(
+      'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+      [projectId, tenantId]
+    );
+    if (projCheck.rows.length === 0) {
+      throw new Error('PROJECT_NOT_FOUND');
+    }
+
     const amcQuery = `
       INSERT INTO amcs (
         tenant_id, project_id, contract_number, contract_value, 
@@ -203,7 +211,7 @@ async function getAmcsByProject(projectId, tenantId) {
       a.*,
       COALESCE(
         (SELECT json_agg(v ORDER BY v.scheduled_date ASC) 
-         FROM amc_visits v WHERE v.amc_id = a.id), 
+         FROM amc_visits v WHERE v.amc_id = a.id AND v.tenant_id = a.tenant_id), 
         '[]'::json
       ) AS visits
     FROM amcs a
@@ -360,7 +368,7 @@ async function checkAndNotifyExpiredOrExpiringAMCs() {
   const query = `
     SELECT a.*, p.pm_id, p.created_by, p.name as project_name
     FROM amcs a
-    JOIN projects p ON a.project_id = p.id
+    JOIN projects p ON a.project_id = p.id AND p.tenant_id = a.tenant_id
     WHERE a.status = 'active'
       AND a.renewal_alert_sent = FALSE
       AND (a.end_date - CURRENT_DATE) <= a.auto_renewal_alert_days
@@ -374,7 +382,7 @@ async function checkAndNotifyExpiredOrExpiringAMCs() {
       // Fallback: Notify first active superadmin in this tenant
       const adminRes = await pool.query(
         `SELECT u.id FROM users u 
-         JOIN roles r ON u.role_id = r.id 
+         JOIN roles r ON u.role_id = r.id AND (r.tenant_id = u.tenant_id OR r.tenant_id IS NULL) 
          WHERE u.tenant_id = $1 AND r.name = 'superadmin' AND u.status = 'active' 
          LIMIT 1`,
         [amc.tenant_id]
@@ -396,8 +404,8 @@ async function checkAndNotifyExpiredOrExpiringAMCs() {
 
       // Mark alert as sent
       await pool.query(
-        'UPDATE amcs SET renewal_alert_sent = TRUE WHERE id = $1',
-        [amc.id]
+        'UPDATE amcs SET renewal_alert_sent = TRUE WHERE id = $1 AND tenant_id = $2',
+        [amc.id, amc.tenant_id]
       );
 
       logger.info(`[AMCScheduler] renewal alert sent for AMC #${amc.contract_number} to user ${recipientUserId}`);

@@ -70,6 +70,14 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
 // POST /api/projects/:projectId/documents/upload-url
 router.post('/upload-url', authorize('projects:manage'), validate(uploadUrlSchema), async (req, res, next) => {
   try {
+    const { rows: projCheck } = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [req.params.projectId, req.tenantId]
+    );
+    if (projCheck.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+
     const data = req.body;
     const result = await getUploadUrl({
       tenantId: req.tenantId,
@@ -89,6 +97,14 @@ router.post('/upload-url', authorize('projects:manage'), validate(uploadUrlSchem
 // POST /api/projects/:projectId/documents/register
 router.post('/register', authorize('projects:manage'), validate(registerSchema), async (req, res, next) => {
   try {
+    const { rows: projCheck } = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [req.params.projectId, req.tenantId]
+    );
+    if (projCheck.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+
     const data = req.body;
 
     // V2 Security: Validate File Magic Number against claimed MimeType

@@ -75,9 +75,9 @@ router.get('/activity', cacheResponse(60), async (req, res) => {
              l.name as lead_name,
              p.name as project_name
       FROM audit_logs al
-      LEFT JOIN users u ON u.id = al.user_id
-      LEFT JOIN leads l ON (al.entity = 'lead' AND al.entity_id = l.id)
-      LEFT JOIN projects p ON (al.entity = 'project' AND al.entity_id = p.id)
+      LEFT JOIN users u ON u.id = al.user_id AND u.tenant_id = al.tenant_id
+      LEFT JOIN leads l ON (al.entity = 'lead' AND al.entity_id = l.id AND l.tenant_id = al.tenant_id)
+      LEFT JOIN projects p ON (al.entity = 'project' AND al.entity_id = p.id AND p.tenant_id = al.tenant_id)
       WHERE al.tenant_id=$1 AND (
         al.action ILIKE 'lead.%' OR 
         al.action ILIKE 'task.%' OR 
@@ -152,8 +152,8 @@ router.get('/my-tasks', async (req, res) => {
              p.name as project_name, p.id as project_id,
              l.name as lead_name, l.id as lead_id
       FROM tasks t
-      LEFT JOIN projects p ON p.id=t.project_id
-      LEFT JOIN leads l ON l.id=t.lead_id
+      LEFT JOIN projects p ON p.id=t.project_id AND p.tenant_id=t.tenant_id
+      LEFT JOIN leads l ON l.id=t.lead_id AND l.tenant_id=t.tenant_id
       WHERE t.tenant_id=$1 AND t.assignee_id=$2
       AND t.status!='done' AND t.deleted_at IS NULL
       ORDER BY t.due_date ASC NULLS LAST LIMIT $3
@@ -174,8 +174,8 @@ router.get('/payments-due', async (req, res) => {
     const { rows } = await readPool.query(`
       SELECT pm.*, p.name as project_name, m.name as title
       FROM payment_milestones pm
-      JOIN projects p ON p.id=pm.project_id
-      LEFT JOIN milestones m ON m.id=pm.milestone_id
+      JOIN projects p ON p.id=pm.project_id AND p.tenant_id=pm.tenant_id
+      LEFT JOIN milestones m ON m.id=pm.milestone_id AND m.tenant_id=pm.tenant_id
       WHERE pm.tenant_id=$1 AND pm.status!='paid'
       ORDER BY pm.due_date ASC NULLS LAST LIMIT $2
     `, [tenantId, limit]);

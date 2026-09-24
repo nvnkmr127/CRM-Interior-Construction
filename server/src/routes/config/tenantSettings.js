@@ -71,6 +71,13 @@ router.patch('/', authorize('config:manage'), async (req, res, next) => {
     // Extract companyName if present
     const { companyName, ...configFields } = req.body;
 
+    if (configFields.logoUrl !== undefined && configFields.logo_url === undefined) {
+      configFields.logo_url = configFields.logoUrl;
+    }
+    if (configFields.accentColour !== undefined && configFields.accent_colour === undefined) {
+      configFields.accent_colour = configFields.accentColour;
+    }
+
     // Get current config
     const result = await pool.query('SELECT name, config FROM tenants WHERE id = $1', [tenantId]);
     if (result.rows.length === 0) {
@@ -118,7 +125,19 @@ router.post('/upload-logo', upload.single('logo'), async (req, res, next) => {
     const baseUrl = process.env.API_URL || `${req.protocol}://${req.get('host')}`;
     const logoUrl = `${baseUrl}/uploads/logos/${req.file.filename}`;
 
-    return success(res, { logoUrl });
+    try {
+      const tenantRes = await pool.query('SELECT config FROM tenants WHERE id = $1', [tenantId]);
+      if (tenantRes.rows.length > 0) {
+        const currentConfigStr = tenantRes.rows[0].config;
+        const currentConfig = typeof currentConfigStr === 'string' ? JSON.parse(currentConfigStr || '{}') : (currentConfigStr || {});
+        currentConfig.logo_url = logoUrl;
+        await pool.query('UPDATE tenants SET config = $1, updated_at = NOW() WHERE id = $2', [JSON.stringify(currentConfig), tenantId]);
+      }
+    } catch (dbErr) {
+      console.warn('Failed to auto-update tenant config with uploaded logo:', dbErr);
+    }
+
+    return success(res, { logoUrl, logo_url: logoUrl });
   } catch (error) {
     next(error);
   }

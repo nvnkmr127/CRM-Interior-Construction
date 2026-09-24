@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import api from '../../api/axios'
+import { getLeaves, createLeave, deleteLeave } from '../../api/leaveApi'
 import { useToast } from '../../store/toastContext'
 import { useConfirm } from '../../store/confirmContext'
 import { Button, Input, Select, Badge, Modal, Textarea, PermissionButton } from '../../components/ui'
@@ -38,7 +39,8 @@ import {
   FiUploadCloud,
   FiInfo,
   FiSearch,
-  FiZap
+  FiZap,
+  FiTrash2
 } from 'react-icons/fi'
 
 const NAVIGATION_GROUPS = [
@@ -70,7 +72,7 @@ const NAVIGATION_GROUPS = [
   {
     category: 'HR & WORKFORCE',
     items: [
-      { id: 'documents', label: 'Documents', icon: <FiFileText /> },
+      { id: 'documents', label: 'Documents', icon: <FiFileText />, countKey: 'documents' },
       { id: 'attendance', label: 'Attendance & Leave', icon: <FiCalendar /> },
     ]
   }
@@ -113,12 +115,15 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
   const [auditLogs, setAuditLogs] = useState([])
   const [timelineEvents, setTimelineEvents] = useState([])
   const [departments, setDepartments] = useState([])
+  const [tenantSettings, setTenantSettings] = useState(null)
 
   // Search & Filters inside tabs
   const [timelineFilter, setTimelineFilter] = useState('all')
   const [projectFilter, setProjectFilter] = useState('all')
   const [taskFilter, setTaskFilter] = useState('all')
   const [auditSearch, setAuditSearch] = useState('')
+  const [auditCategory, setAuditCategory] = useState('all')
+  const [selectedAuditLog, setSelectedAuditLog] = useState(null)
 
   // Edit mode for profile
   const [isEditing, setIsEditing] = useState(false)
@@ -134,6 +139,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
     status: '',
     department_id: '',
     weekly_capacity: 40,
+    annual_leave_quota: '',
     password: ''
   })
 
@@ -141,19 +147,46 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
   const [isUploadDocOpen, setIsUploadDocOpen] = useState(false)
   const [newDocForm, setNewDocForm] = useState({ title: '', category: 'Identification', file: null })
 
+  // Leave Request Modal state
+  const [isLeaveModalOpen, setIsLeaveModalOpen] = useState(false)
+  const [leaveForm, setLeaveForm] = useState({
+    leave_type: 'Annual Paid Leave',
+    start_date: '',
+    end_date: '',
+    duration: 1,
+    reason: ''
+  })
+
+  const [leavesList, setLeavesList] = useState([])
+  const [leavesLoading, setLeavesLoading] = useState(false)
+
+  const fetchUserLeaves = async () => {
+    if (!id) return
+    try {
+      setLeavesLoading(true)
+      const leaves = await getLeaves({ userId: id })
+      setLeavesList(Array.isArray(leaves) ? leaves : [])
+    } catch (err) {
+      console.error('Failed to fetch user leaves:', err)
+    } finally {
+      setLeavesLoading(false)
+    }
+  }
+
   useEffect(() => {
     fetchUserData()
     fetchMetadata()
     if (id) {
       fetchProjects()
       fetchTasks()
+      fetchSessions()
+      fetchLoginHistory()
+      fetchUserLeaves()
     }
   }, [id])
 
   useEffect(() => {
     if (!user) return
-    if (activeSection === 'devices' && sessions.length === 0) fetchSessions()
-    if (activeSection === 'login-history' && loginHistory.length === 0) fetchLoginHistory()
     if (activeSection === 'audit-logs' && auditLogs.length === 0) fetchAuditLogs()
     if (activeSection === 'timeline' && timelineEvents.length === 0) fetchTimelineEvents()
   }, [activeSection, user])
@@ -165,12 +198,17 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
       const userData = res.data.data
       setUser(userData)
       setEditForm(JSON.parse(JSON.stringify(userData)))
+      const rawProfile = typeof userData.profile_data === 'string'
+        ? JSON.parse(userData.profile_data || '{}')
+        : (userData.profile_data || {})
+
       setAccountForm({
         email: userData.email || '',
         role_id: userData.role_id || userData.role || '',
         status: userData.status || 'active',
         department_id: userData.department_id || '',
         weekly_capacity: userData.weekly_capacity !== undefined && userData.weekly_capacity !== null ? userData.weekly_capacity : 40,
+        annual_leave_quota: rawProfile.annualLeaveQuota !== undefined && rawProfile.annualLeaveQuota !== null ? rawProfile.annualLeaveQuota : '',
         password: ''
       })
     } catch (err) {
@@ -184,12 +222,14 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
 
   const fetchMetadata = async () => {
     try {
-      const [rolesRes, deptRes] = await Promise.allSettled([
+      const [rolesRes, deptRes, tenantRes] = await Promise.allSettled([
         api.get('/roles'),
-        api.get('/org/departments')
+        api.get('/org/departments'),
+        api.get('/config/tenant-settings')
       ])
       if (rolesRes.status === 'fulfilled') setRoles(rolesRes.value.data.data || [])
       if (deptRes.status === 'fulfilled') setDepartments(deptRes.value.data.data || [])
+      if (tenantRes.status === 'fulfilled') setTenantSettings(tenantRes.value.data?.data || {})
     } catch (err) {
       console.error(err)
     }
@@ -262,6 +302,134 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
     }
   }
 
+  const handleUploadDocument = async () => {
+    if (!newDocForm.title || !newDocForm.title.trim()) {
+      toast.error('Please enter a document title')
+      return
+    }
+
+    try {
+      const currentProfileData = user?.profile_data || {}
+      const currentDocs = Array.isArray(currentProfileData.documents) ? currentProfileData.documents : []
+      
+      const newDoc = {
+        id: 'doc_' + Date.now(),
+        title: newDocForm.title.trim(),
+        type: newDocForm.category || 'Identification',
+        status: 'verified',
+        updated: new Date().toISOString(),
+        file_name: newDocForm.file ? newDocForm.file.name : `${newDocForm.title.trim().toLowerCase().replace(/\s+/g, '_')}.pdf`
+      }
+
+      const updatedDocs = [newDoc, ...currentDocs]
+      const updatedProfileData = { ...currentProfileData, documents: updatedDocs }
+
+      const payload = {
+        name: user.name,
+        profile_data: updatedProfileData
+      }
+
+      const res = await api.patch(`/users/${id}`, payload)
+      const updatedUser = res.data.data || { ...user, profile_data: updatedProfileData }
+      setUser(updatedUser)
+      setEditForm(JSON.parse(JSON.stringify(updatedUser)))
+      setIsUploadDocOpen(false)
+      setNewDocForm({ title: '', category: 'Identification', file: null })
+      toast.success('Document uploaded and saved successfully')
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to save document')
+    }
+  }
+
+  const handleDeleteDocument = async (docId, docTitle) => {
+    if (!await confirm(`Are you sure you want to remove "${docTitle}"?`)) return
+    try {
+      const currentProfileData = user?.profile_data || {}
+      const currentDocs = Array.isArray(currentProfileData.documents) ? currentProfileData.documents : []
+      const updatedDocs = currentDocs.filter(d => d.id !== docId)
+      const updatedProfileData = { ...currentProfileData, documents: updatedDocs }
+
+      const payload = {
+        name: user.name,
+        profile_data: updatedProfileData
+      }
+
+      const res = await api.patch(`/users/${id}`, payload)
+      const updatedUser = res.data.data || { ...user, profile_data: updatedProfileData }
+      setUser(updatedUser)
+      setEditForm(JSON.parse(JSON.stringify(updatedUser)))
+      toast.success('Document removed successfully')
+    } catch (err) {
+      console.error(err)
+      toast.error('Failed to remove document')
+    }
+  }
+
+  const handleRecordLeave = async () => {
+    if (!leaveForm.start_date) {
+      toast.error('Please select a leave date')
+      return
+    }
+
+    try {
+      const sDate = leaveForm.start_date
+      const eDate = leaveForm.end_date || leaveForm.start_date
+
+      await createLeave({
+        userId: id,
+        startDate: sDate,
+        endDate: eDate,
+        leaveType: leaveForm.leave_type || 'Annual Paid Leave',
+        reason: leaveForm.reason?.trim() || 'Recorded by Admin',
+        status: 'approved'
+      })
+
+      toast.success('Leave record saved and approved successfully')
+      setIsLeaveModalOpen(false)
+      setLeaveForm({
+        leave_type: 'Annual Paid Leave',
+        start_date: '',
+        end_date: '',
+        duration: 1,
+        reason: ''
+      })
+      fetchUserLeaves()
+    } catch (err) {
+      console.error(err)
+      toast.error(err?.response?.data?.message || 'Failed to record leave')
+    }
+  }
+
+  const handleDeleteLeave = async (leaveId) => {
+    if (!await confirm('Are you sure you want to remove this leave record?')) return
+    try {
+      if (typeof leaveId === 'string' && leaveId.startsWith('leave_')) {
+        // Legacy fallback for old records in profile_data.leaves
+        const currentProfileData = user?.profile_data || {}
+        const currentLeaves = Array.isArray(currentProfileData.leaves) ? currentProfileData.leaves : []
+        const updatedLeaves = currentLeaves.filter(l => l.id !== leaveId)
+        const updatedProfileData = { ...currentProfileData, leaves: updatedLeaves }
+        const payload = {
+          name: user.name,
+          profile_data: updatedProfileData
+        }
+        const res = await api.patch(`/users/${id}`, payload)
+        const updatedUser = res.data.data || { ...user, profile_data: updatedProfileData }
+        setUser(updatedUser)
+        setEditForm(JSON.parse(JSON.stringify(updatedUser)))
+      } else {
+        // Relational database delete via deleteLeave
+        await deleteLeave(leaveId, { cancellationReason: 'Removed by Admin from Profile' })
+      }
+      toast.success('Leave record removed successfully')
+      fetchUserLeaves()
+    } catch (err) {
+      console.error(err)
+      toast.error(err?.response?.data?.message || 'Failed to delete leave record')
+    }
+  }
+
   const handleSaveProfile = async () => {
     setSavingProfile(true)
     try {
@@ -291,6 +459,14 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
       const selectedRoleObj = roles.find(r => r.id === accountForm.role_id) || DEFAULT_ROLE_OPTIONS.find(d => d.value === accountForm.role_id)
       const roleName = selectedRoleObj ? (selectedRoleObj.name || selectedRoleObj.label) : ''
 
+      const currentProfileData = (typeof user?.profile_data === 'string' ? JSON.parse(user.profile_data || '{}') : user?.profile_data) || {}
+      const updatedProfileData = {
+        ...currentProfileData,
+        annualLeaveQuota: accountForm.annual_leave_quota !== '' && accountForm.annual_leave_quota !== undefined && accountForm.annual_leave_quota !== null
+          ? Number(accountForm.annual_leave_quota)
+          : undefined
+      }
+
       const patchData = {
         email: accountForm.email,
         role_id: accountForm.role_id,
@@ -298,7 +474,8 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
         role: accountForm.role_id,
         status: accountForm.status,
         department_id: accountForm.department_id || null,
-        weekly_capacity: accountForm.weekly_capacity ? Number(accountForm.weekly_capacity) : 40
+        weekly_capacity: accountForm.weekly_capacity ? Number(accountForm.weekly_capacity) : 40,
+        profile_data: updatedProfileData
       }
 
       if (accountForm.password && accountForm.password.trim() !== '') {
@@ -357,8 +534,8 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
     ]
   }, [departments])
 
-  const profile = user?.profile_data || {}
-  const formProfile = editForm?.profile_data || {}
+  const profile = (typeof user?.profile_data === 'string' ? JSON.parse(user.profile_data || '{}') : user?.profile_data) || {}
+  const formProfile = (typeof editForm?.profile_data === 'string' ? JSON.parse(editForm.profile_data || '{}') : editForm?.profile_data) || {}
 
   // Active counts for left nav tabs
   const activeSessionsCount = sessions.filter(s => new Date(s.expires_at) > new Date()).length
@@ -459,6 +636,22 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
                 max="168"
                 value={editForm.weekly_capacity !== undefined ? editForm.weekly_capacity : 40}
                 onChange={e => setEditForm({ ...editForm, weekly_capacity: e.target.value })}
+              />
+              <Input
+                label="Annual Leave Quota (Days / Year)"
+                type="number"
+                min="0"
+                max="365"
+                placeholder={`Company Default (${tenantSettings?.leave_policy?.default_annual_quota || 18} Days)`}
+                value={formProfile.annualLeaveQuota !== undefined && formProfile.annualLeaveQuota !== null ? formProfile.annualLeaveQuota : ''}
+                onChange={e => setEditForm({
+                  ...editForm,
+                  profile_data: {
+                    ...formProfile,
+                    annualLeaveQuota: e.target.value === '' ? '' : Number(e.target.value)
+                  }
+                })}
+                helperText={`Leave blank to inherit company policy (${tenantSettings?.leave_policy?.default_annual_quota || 18} days/yr).`}
               />
               <Input
                 label="Work Location / Branch"
@@ -634,6 +827,16 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
               <div className={styles.infoFieldRow}>
                 <span className={styles.infoFieldLabel}>Reporting Manager</span>
                 <span className={styles.infoFieldValue}>{profile.reportingManager || <span className={styles.emptyValue}>Direct to Leadership</span>}</span>
+              </div>
+              <div className={styles.infoFieldRow}>
+                <span className={styles.infoFieldLabel}>Annual Leave Quota</span>
+                <span className={styles.infoFieldValue}>
+                  {profile.annualLeaveQuota !== undefined && profile.annualLeaveQuota !== '' && profile.annualLeaveQuota !== null ? (
+                    <span><strong>{profile.annualLeaveQuota} Days</strong> / year <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>(Individual Quota)</span></span>
+                  ) : (
+                    <span><strong>{tenantSettings?.leave_policy?.default_annual_quota || 18} Days</strong> / year <span style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>(Company Default)</span></span>
+                  )}
+                </span>
               </div>
             </div>
           </div>
@@ -1167,30 +1370,40 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
         ) : (
           <div className={styles.deviceGrid}>
             {sessions.map(s => {
-              const isActive = new Date(s.expires_at) > new Date()
+              const isActive = !s.expires_at || new Date(s.expires_at) > new Date()
+              const ua = s.user_agent || ''
+              const isMobile = ua.toLowerCase().includes('mobile') || ua.toLowerCase().includes('android') || ua.toLowerCase().includes('iphone')
+              const isTablet = ua.toLowerCase().includes('ipad') || ua.toLowerCase().includes('tablet')
+              
+              let browserName = 'Web Browser'
+              if (ua.includes('Edg') || ua.includes('Edge')) browserName = 'Microsoft Edge'
+              else if (ua.includes('Chrome')) browserName = 'Google Chrome'
+              else if (ua.includes('Firefox')) browserName = 'Mozilla Firefox'
+              else if (ua.includes('Safari') && !ua.includes('Chrome')) browserName = 'Apple Safari'
+
               return (
                 <div key={s.id} className={styles.deviceCard}>
                   <div className={styles.deviceHeader}>
                     <div className={styles.deviceInfoGroup}>
                       <div className={styles.deviceIconBox}>
-                        <FiMonitor />
+                        {isMobile ? <FiSmartphone /> : isTablet ? <FiSmartphone /> : <FiMonitor />}
                       </div>
                       <div>
-                        <div className={styles.deviceName}>Active Browser Session</div>
+                        <div className={styles.deviceName}>{browserName}</div>
                         <div className={styles.deviceSubText}>IP: <code>{s.ip_address || '127.0.0.1'}</code></div>
                       </div>
                     </div>
                     <Badge variant={isActive ? 'success' : 'neutral'}>
-                      {isActive ? 'Active' : 'Expired'}
+                      {isActive ? 'Active Session' : 'Expired'}
                     </Badge>
                   </div>
 
                   <div className={styles.deviceMetaList}>
-                    <div style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
-                      <strong>User Agent:</strong> {s.user_agent || 'Mozilla Standard Client'}
+                    <div>
+                      <strong>Created At:</strong> {s.created_at && !isNaN(new Date(s.created_at).getTime()) ? format(new Date(s.created_at), 'PP p') : '-'}
                     </div>
                     <div>
-                      <strong>Last Active:</strong> {s.last_active_at ? format(new Date(s.last_active_at), 'PP p') : '-'}
+                      <strong>Last Active:</strong> {s.last_active_at && !isNaN(new Date(s.last_active_at).getTime()) ? format(new Date(s.last_active_at), 'PP p') : 'Just now'}
                     </div>
                   </div>
 
@@ -1215,27 +1428,538 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
     )
   }
 
+  // ── AUDIT LOG HELPER CONSTANTS & FUNCTIONS (NON-TECHNICAL) ──
+  const ACTION_MAP = {
+    'user.login': { label: 'System Login', category: 'Security & Access', categoryKey: 'security', variant: 'success', icon: <FiShield /> },
+    'user.logout': { label: 'System Logout', category: 'Security & Access', categoryKey: 'security', variant: 'neutral', icon: <FiClock /> },
+    'user.profile_updated': { label: 'Updated Profile Details', category: 'Profile & Account', categoryKey: 'account', variant: 'accent', icon: <FiUser /> },
+    'user.update': { label: 'Account Information Updated', category: 'Profile & Account', categoryKey: 'account', variant: 'accent', icon: <FiUser /> },
+    'user.status_changed': { label: 'Account Status Changed', category: 'Profile & Account', categoryKey: 'account', variant: 'warning', icon: <FiSliders /> },
+    'user.role_changed': { label: 'Role & Permissions Updated', category: 'Security & Access', categoryKey: 'security', variant: 'warning', icon: <FiShield /> },
+    'user.password_changed': { label: 'Password Reset', category: 'Security & Access', categoryKey: 'security', variant: 'warning', icon: <FiShield /> },
+    'user.created': { label: 'Employee Account Created', category: 'Profile & Account', categoryKey: 'account', variant: 'success', icon: <FiUser /> },
+    'project.created': { label: 'Created New Project', category: 'Projects', categoryKey: 'projects', variant: 'success', icon: <FiFolder /> },
+    'project.updated': { label: 'Updated Project Details', category: 'Projects', categoryKey: 'projects', variant: 'accent', icon: <FiFolder /> },
+    'project.status_changed': { label: 'Changed Project Status', category: 'Projects', categoryKey: 'projects', variant: 'warning', icon: <FiFolder /> },
+    'project.phase_completed': { label: 'Completed Project Phase', category: 'Projects', categoryKey: 'projects', variant: 'success', icon: <FiCheckCircle /> },
+    'project.archived': { label: 'Archived Project', category: 'Projects', categoryKey: 'projects', variant: 'danger', icon: <FiFolder /> },
+    'project.reopened': { label: 'Reopened Project', category: 'Projects', categoryKey: 'projects', variant: 'info', icon: <FiFolder /> },
+    'project.paused': { label: 'Paused Project', category: 'Projects', categoryKey: 'projects', variant: 'warning', icon: <FiFolder /> },
+    'task.created': { label: 'Created New Task', category: 'Tasks', categoryKey: 'tasks', variant: 'success', icon: <FiCheckSquare /> },
+    'task.bulk_created': { label: 'Created Multiple Tasks', category: 'Tasks', categoryKey: 'tasks', variant: 'success', icon: <FiCheckSquare /> },
+    'task.status_changed': { label: 'Updated Task Status', category: 'Tasks', categoryKey: 'tasks', variant: 'accent', icon: <FiCheckSquare /> },
+    'task.assigned': { label: 'Assigned Task to Member', category: 'Tasks', categoryKey: 'tasks', variant: 'info', icon: <FiCheckSquare /> },
+    'task.completed': { label: 'Marked Task as Done', category: 'Tasks', categoryKey: 'tasks', variant: 'success', icon: <FiCheckCircle /> },
+    'task.updated': { label: 'Updated Task Details', category: 'Tasks', categoryKey: 'tasks', variant: 'accent', icon: <FiCheckSquare /> },
+    'lead.created': { label: 'Added New Client Inquiry', category: 'Sales & Clients', categoryKey: 'sales', variant: 'success', icon: <FiZap /> },
+    'lead.updated': { label: 'Updated Client Details', category: 'Sales & Clients', categoryKey: 'sales', variant: 'accent', icon: <FiZap /> },
+    'lead.stage_updated': { label: 'Moved Sales Pipeline Stage', category: 'Sales & Clients', categoryKey: 'sales', variant: 'accent', icon: <FiZap /> },
+    'lead.status_changed': { label: 'Changed Inquiry Status', category: 'Sales & Clients', categoryKey: 'sales', variant: 'warning', icon: <FiZap /> },
+    'lead.deleted': { label: 'Removed Client Inquiry', category: 'Sales & Clients', categoryKey: 'sales', variant: 'danger', icon: <FiZap /> },
+    'payment.milestone_approved': { label: 'Approved Payment Milestone', category: 'Finance', categoryKey: 'finance', variant: 'success', icon: <FiAward /> },
+    'payment.recorded': { label: 'Recorded Client Payment', category: 'Finance', categoryKey: 'finance', variant: 'success', icon: <FiAward /> },
+    'invoice.generated': { label: 'Generated Project Invoice', category: 'Finance', categoryKey: 'finance', variant: 'info', icon: <FiFileText /> },
+    'document.uploaded': { label: 'Uploaded Document', category: 'Documents', categoryKey: 'account', variant: 'info', icon: <FiUploadCloud /> }
+  }
+
+  const ENTITY_MAP = {
+    user: 'Employee Account',
+    project: 'Project Workspace',
+    task: 'Task Item',
+    lead: 'Client Inquiry',
+    payment: 'Payment Record',
+    payment_milestone: 'Payment Milestone',
+    invoice: 'Client Invoice',
+    document: 'Uploaded Document',
+    role: 'Permissions & Access',
+    tenant: 'Company Workspace'
+  }
+
+  const FIELD_LABELS = {
+    name: 'Full Name',
+    email: 'Email Address',
+    role: 'Role / Access Level',
+    role_id: 'Role / Access Level',
+    role_name: 'Role Name',
+    status: 'Account Status',
+    status_reason: 'Status Reason',
+    department_id: 'Department',
+    weekly_capacity: 'Weekly Capacity (Hours)',
+    stage: 'Sales Pipeline Stage',
+    title: 'Title',
+    priority: 'Priority Level',
+    assigned_to: 'Assigned Team Member',
+    amount: 'Payment Amount',
+    due_date: 'Due Date',
+    description: 'Description',
+    avatar_url: 'Profile Picture',
+    phone: 'Phone Number',
+    phone_number: 'Phone Number',
+    designation: 'Designation / Job Title'
+  }
+
+  const parseSafe = (val) => {
+    if (!val) return null
+    if (typeof val === 'object') return val
+    try {
+      return JSON.parse(val)
+    } catch {
+      return null
+    }
+  }
+
+  const formatFieldValue = (val) => {
+    if (val === null || val === undefined || val === '') return 'None'
+    if (typeof val === 'boolean') return val ? 'Yes' : 'No'
+    if (typeof val === 'object') {
+      if (val.name) return String(val.name)
+      if (val.title) return String(val.title)
+      if (val.label) return String(val.label)
+      return JSON.stringify(val)
+    }
+    return String(val)
+  }
+
+  const getAuditActionInfo = (rawAction = '') => {
+    if (ACTION_MAP[rawAction]) return ACTION_MAP[rawAction]
+    const parts = rawAction.split('.')
+    const modulePart = parts[0] || 'System'
+    const actionPart = parts.slice(1).join(' ') || modulePart
+    const label = actionPart.replace(/[_-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+    const category = ENTITY_MAP[modulePart] || (modulePart.charAt(0).toUpperCase() + modulePart.slice(1))
+    let categoryKey = 'account'
+    if (modulePart.includes('proj')) categoryKey = 'projects'
+    else if (modulePart.includes('task')) categoryKey = 'tasks'
+    else if (modulePart.includes('lead')) categoryKey = 'sales'
+    else if (modulePart.includes('pay') || modulePart.includes('inv')) categoryKey = 'finance'
+    else if (modulePart.includes('auth') || modulePart.includes('login') || modulePart.includes('pass') || modulePart.includes('role')) categoryKey = 'security'
+
+    return {
+      label,
+      category,
+      categoryKey,
+      variant: 'accent',
+      icon: <FiActivity />
+    }
+  }
+
+  const getAuditSummary = (log) => {
+    const action = log.action || ''
+    if (action === 'user.login') return 'Signed in to the portal successfully'
+    if (action === 'user.logout') return 'Signed out of session'
+    
+    const oldVal = parseSafe(log.old_value)
+    const newVal = parseSafe(log.new_value)
+
+    if (oldVal && newVal && typeof oldVal === 'object' && typeof newVal === 'object') {
+      const changedKeys = Object.keys(newVal).filter(k => 
+        oldVal[k] !== undefined && 
+        JSON.stringify(oldVal[k]) !== JSON.stringify(newVal[k]) &&
+        !['updated_at', 'id', 'user_id', 'tenant_id', 'created_at', 'password_hash'].includes(k)
+      )
+
+      if (changedKeys.length === 1) {
+        const field = FIELD_LABELS[changedKeys[0]] || changedKeys[0].replace(/_/g, ' ')
+        const fromStr = formatFieldValue(oldVal[changedKeys[0]])
+        const toStr = formatFieldValue(newVal[changedKeys[0]])
+        return `Changed ${field} from "${fromStr}" to "${toStr}"`
+      }
+      if (changedKeys.length > 1) {
+        const fieldNames = changedKeys.slice(0, 3).map(k => FIELD_LABELS[k] || k.replace(/_/g, ' ')).join(', ')
+        const remaining = changedKeys.length - 3
+        return `Updated ${changedKeys.length} settings (${fieldNames}${remaining > 0 ? ` +${remaining} more` : ''})`
+      }
+    }
+
+    if (newVal && typeof newVal === 'object') {
+      const titleOrName = newVal.name || newVal.title || newVal.stage || newVal.status
+      if (titleOrName) return `Updated record: "${titleOrName}"`
+    }
+
+    return 'Activity recorded in workspace'
+  }
+
+  const getDeviceDisplay = (log) => {
+    if (log.browser) {
+      const dev = log.device ? ` · ${log.device}` : ''
+      return `${log.browser}${dev}`
+    }
+    const ua = log.user_agent || ''
+    if (ua.includes('Edg') || ua.includes('Edge')) return 'Microsoft Edge'
+    if (ua.includes('Chrome')) return 'Google Chrome'
+    if (ua.includes('Firefox')) return 'Mozilla Firefox'
+    if (ua.includes('Safari')) return 'Apple Safari'
+    return 'Desktop Browser'
+  }
+
+  const getActorDisplay = (log) => {
+    if (log.user_id === id) return 'This Employee (Self)'
+    if (log.actor_name) return log.actor_name
+    return 'System Administrator'
+  }
+
+  const getEntityDisplay = (log) => {
+    const entityType = ENTITY_MAP[log.entity] || (log.entity ? log.entity.charAt(0).toUpperCase() + log.entity.slice(1) : 'General')
+    const newVal = parseSafe(log.new_value)
+    const oldVal = parseSafe(log.old_value)
+    const recordName = newVal?.name || newVal?.title || newVal?.project_name || oldVal?.name || oldVal?.title
+    return {
+      type: entityType,
+      name: recordName || null
+    }
+  }
+
+  // ── AUDIT LOG NARRATIVE FORMATTER (CLEAR PLAIN ENGLISH: WHAT HAPPENED & WHEN) ──
+  const describeAuditEvent = (log, employeeName) => {
+    const action = (log.action || '').toLowerCase()
+    const actor = log.user_id === id 
+      ? (employeeName || 'This team member') 
+      : (log.actor_name || 'Administrator')
+
+    const oldVal = parseSafe(log.old_value) || {}
+    const newVal = parseSafe(log.new_value) || {}
+    const device = getDeviceDisplay(log)
+
+    const timePrimary = log.created_at && !isNaN(new Date(log.created_at).getTime())
+      ? format(new Date(log.created_at), 'PPP · p')
+      : 'Recently'
+    const timeRelative = log.created_at && !isNaN(new Date(log.created_at).getTime())
+      ? formatDistanceToNow(new Date(log.created_at), { addSuffix: true })
+      : ''
+
+    let whatHappened = ''
+    let narrative = ''
+    let categoryLabel = 'Activity'
+    let categoryKey = 'account'
+    let icon = <FiActivity />
+    let iconBg = 'rgba(59, 130, 246, 0.1)'
+    let iconColor = 'var(--color-accent)'
+    let badgeVariant = 'accent'
+
+    // 1. Logins & Logouts
+    if (action.includes('login')) {
+      whatHappened = `${actor} logged into the system`
+      narrative = `Signed in securely from ${device}.`
+      categoryLabel = 'Login'
+      categoryKey = 'security'
+      icon = <FiShield />
+      iconBg = 'rgba(34, 197, 94, 0.1)'
+      iconColor = 'var(--color-success)'
+      badgeVariant = 'success'
+    } else if (action.includes('logout')) {
+      whatHappened = `${actor} logged out of the system`
+      narrative = `Closed session from ${device}.`
+      categoryLabel = 'Logout'
+      categoryKey = 'security'
+      icon = <FiClock />
+      iconBg = 'rgba(100, 116, 139, 0.1)'
+      iconColor = 'var(--color-text-muted)'
+      badgeVariant = 'neutral'
+    }
+    // 2. Account Status
+    else if (action.includes('status')) {
+      const oldStatus = oldVal.status || oldVal.old_status || 'Previous'
+      const newStatus = newVal.status || newVal.new_status || 'Updated'
+      whatHappened = `Account status changed to ${newStatus}`
+      narrative = `${actor} updated the account status from "${oldStatus}" to "${newStatus}".`
+      categoryLabel = 'Account Status'
+      categoryKey = 'account'
+      icon = <FiSliders />
+      iconBg = 'rgba(234, 179, 8, 0.1)'
+      iconColor = 'var(--color-warning)'
+      badgeVariant = 'warning'
+    }
+    // 3. Role / Permissions
+    else if (action.includes('role') || action.includes('permission')) {
+      const roleName = newVal.role || newVal.role_name || 'Updated Role'
+      whatHappened = `Job role updated to ${roleName}`
+      narrative = `${actor} updated permissions and assigned the role "${roleName}".`
+      categoryLabel = 'Role & Permissions'
+      categoryKey = 'security'
+      icon = <FiShield />
+      iconBg = 'rgba(234, 179, 8, 0.1)'
+      iconColor = 'var(--color-warning)'
+      badgeVariant = 'warning'
+    }
+    // 4. Password
+    else if (action.includes('password')) {
+      whatHappened = `Account password was reset`
+      narrative = `${actor} updated the account login password.`
+      categoryLabel = 'Password Reset'
+      categoryKey = 'security'
+      icon = <FiShield />
+      iconBg = 'rgba(239, 68, 68, 0.1)'
+      iconColor = 'var(--color-danger)'
+      badgeVariant = 'danger'
+    }
+    // 5. Profile Updates
+    else if (action.includes('profile') || action.includes('user.update') || action.includes('user_updated')) {
+      whatHappened = `${actor} updated profile details`
+      if (newVal.weekly_capacity !== undefined && oldVal.weekly_capacity !== undefined && newVal.weekly_capacity !== oldVal.weekly_capacity) {
+        narrative = `Working capacity changed from ${oldVal.weekly_capacity} hrs to ${newVal.weekly_capacity} hrs per week.`
+      } else {
+        narrative = `Profile information and contact settings were updated.`
+      }
+      categoryLabel = 'Profile Update'
+      categoryKey = 'account'
+      icon = <FiUser />
+      iconBg = 'rgba(59, 130, 246, 0.1)'
+      iconColor = 'var(--color-accent)'
+      badgeVariant = 'accent'
+    }
+    // 6. Projects
+    else if (action.startsWith('project.')) {
+      const projectName = newVal.name || newVal.title || oldVal.name || 'Interior Project'
+      categoryLabel = 'Project'
+      categoryKey = 'projects'
+      icon = <FiFolder />
+      iconBg = 'rgba(59, 130, 246, 0.1)'
+      iconColor = 'var(--color-accent)'
+
+      if (action.includes('created')) {
+        whatHappened = `${actor} created project "${projectName}"`
+        narrative = `Started a new project workspace.`
+        badgeVariant = 'success'
+      } else if (action.includes('status') || action.includes('stage')) {
+        const stage = newVal.status || newVal.stage || 'Updated Stage'
+        whatHappened = `Project "${projectName}" moved to ${stage}`
+        narrative = `${actor} updated the project progress stage.`
+        badgeVariant = 'accent'
+      } else if (action.includes('archived')) {
+        whatHappened = `Project "${projectName}" was archived`
+        narrative = `${actor} archived this project.`
+        badgeVariant = 'danger'
+      } else if (action.includes('phase')) {
+        whatHappened = `Completed milestone in "${projectName}"`
+        narrative = `${actor} marked a project phase as completed.`
+        badgeVariant = 'success'
+      } else {
+        whatHappened = `${actor} updated project "${projectName}"`
+        narrative = `Project milestones and details were updated.`
+        badgeVariant = 'accent'
+      }
+    }
+    // 7. Tasks
+    else if (action.startsWith('task.')) {
+      const taskTitle = newVal.title || newVal.name || oldVal.title || 'Task'
+      categoryLabel = 'Task'
+      categoryKey = 'tasks'
+      icon = <FiCheckSquare />
+      iconBg = 'rgba(168, 85, 247, 0.1)'
+      iconColor = '#a855f7'
+
+      if (action.includes('created')) {
+        whatHappened = `${actor} created task "${taskTitle}"`
+        narrative = `A new assignment was added to the task queue.`
+        badgeVariant = 'success'
+      } else if (action.includes('status') || action.includes('completed')) {
+        const st = newVal.status || 'Completed'
+        whatHappened = `Task "${taskTitle}" marked as ${st}`
+        narrative = `${actor} updated the task status.`
+        badgeVariant = st.toLowerCase().includes('done') || st.toLowerCase().includes('complete') ? 'success' : 'accent'
+      } else if (action.includes('assigned')) {
+        whatHappened = `Task "${taskTitle}" was assigned`
+        narrative = `${actor} assigned this task.`
+        badgeVariant = 'info'
+      } else {
+        whatHappened = `${actor} updated task "${taskTitle}"`
+        narrative = `Task details and instructions were updated.`
+        badgeVariant = 'accent'
+      }
+    }
+    // 8. Sales & Client Inquiries
+    else if (action.startsWith('lead.')) {
+      const leadName = newVal.name || newVal.client_name || oldVal.name || 'Client Lead'
+      categoryLabel = 'Client Lead'
+      categoryKey = 'sales'
+      icon = <FiZap />
+      iconBg = 'rgba(234, 179, 8, 0.1)'
+      iconColor = 'var(--color-warning)'
+
+      if (action.includes('created')) {
+        whatHappened = `${actor} added client inquiry for "${leadName}"`
+        narrative = `New client lead entered into the sales pipeline.`
+        badgeVariant = 'success'
+      } else if (action.includes('stage')) {
+        const stage = newVal.stage || 'Next Stage'
+        whatHappened = `Moved client "${leadName}" to stage "${stage}"`
+        narrative = `${actor} advanced the client inquiry stage.`
+        badgeVariant = 'accent'
+      } else {
+        whatHappened = `${actor} updated client inquiry for "${leadName}"`
+        narrative = `Inquiry details and requirements were updated.`
+        badgeVariant = 'accent'
+      }
+    }
+    // 9. Finance & Payments
+    else if (action.includes('payment') || action.includes('invoice') || action.includes('milestone')) {
+      categoryLabel = 'Finance'
+      categoryKey = 'finance'
+      icon = <FiAward />
+      iconBg = 'rgba(34, 197, 94, 0.1)'
+      iconColor = 'var(--color-success)'
+
+      if (action.includes('approved')) {
+        whatHappened = `${actor} approved payment milestone`
+        narrative = `Client payment milestone was verified and approved.`
+        badgeVariant = 'success'
+      } else if (action.includes('invoice')) {
+        whatHappened = `${actor} generated client invoice`
+        narrative = `Project invoice was created.`
+        badgeVariant = 'info'
+      } else {
+        whatHappened = `${actor} recorded payment`
+        narrative = `Payment transaction recorded in project account.`
+        badgeVariant = 'success'
+      }
+    }
+    // 10. Documents
+    else if (action.includes('document') || action.includes('upload')) {
+      const docTitle = newVal.title || 'Document'
+      whatHappened = `${actor} uploaded document "${docTitle}"`
+      narrative = `File was uploaded and saved to employee records.`
+      categoryLabel = 'Document'
+      categoryKey = 'account'
+      icon = <FiUploadCloud />
+      iconBg = 'rgba(59, 130, 246, 0.1)'
+      iconColor = 'var(--color-accent)'
+      badgeVariant = 'info'
+    }
+    // 11. Legacy or Raw Workspace Actions (Safeguard against any technical terms like api.post, api.patch, etc.)
+    else if (action.startsWith('api.') || action.includes('route') || log.entity === 'api_route') {
+      const path = (newVal.path || '').toLowerCase()
+      if (path.includes('/users') || path.includes('/profile') || path.includes('/team')) {
+        whatHappened = `${actor} updated employee profile details`
+        narrative = `Updated personal profile and workplace preferences.`
+        categoryLabel = 'Profile Update'
+        categoryKey = 'account'
+        icon = <FiUser />
+        iconBg = 'rgba(59, 130, 246, 0.1)'
+        iconColor = 'var(--color-accent)'
+        badgeVariant = 'accent'
+      } else if (path.includes('/projects')) {
+        whatHappened = `${actor} updated project records`
+        narrative = `Saved changes to project details and milestones.`
+        categoryLabel = 'Project'
+        categoryKey = 'projects'
+        icon = <FiFolder />
+        iconBg = 'rgba(59, 130, 246, 0.1)'
+        iconColor = 'var(--color-accent)'
+        badgeVariant = 'accent'
+      } else if (path.includes('/tasks')) {
+        whatHappened = `${actor} updated task item`
+        narrative = `Updated task progress and assignment details.`
+        categoryLabel = 'Task'
+        categoryKey = 'tasks'
+        icon = <FiCheckSquare />
+        iconBg = 'rgba(168, 85, 247, 0.1)'
+        iconColor = '#a855f7'
+        badgeVariant = 'accent'
+      } else if (path.includes('/leads')) {
+        whatHappened = `${actor} updated client inquiry`
+        narrative = `Modified client contact and opportunity information.`
+        categoryLabel = 'Client Lead'
+        categoryKey = 'sales'
+        icon = <FiZap />
+        iconBg = 'rgba(234, 179, 8, 0.1)'
+        iconColor = 'var(--color-warning)'
+        badgeVariant = 'accent'
+      } else {
+        whatHappened = `${actor} updated workspace records`
+        narrative = `Changes saved successfully to workspace records.`
+        categoryLabel = 'Workspace'
+        categoryKey = 'account'
+        icon = <FiActivity />
+        iconBg = 'rgba(59, 130, 246, 0.1)'
+        iconColor = 'var(--color-accent)'
+        badgeVariant = 'neutral'
+      }
+    }
+    // Fallback: strictly non-technical plain English
+    else {
+      let cleanAction = action
+        .replace(/^(user\.|employee\.|project\.|task\.|lead\.|org\.|record\.)/, '')
+        .replace(/^(api\.)/i, '')
+        .replace(/[_-]/g, ' ')
+        .trim()
+
+      if (cleanAction.toLowerCase() === 'post') cleanAction = 'created new record'
+      else if (cleanAction.toLowerCase() === 'patch' || cleanAction.toLowerCase() === 'put') cleanAction = 'updated details'
+      else if (cleanAction.toLowerCase() === 'delete') cleanAction = 'removed record'
+      else if (!cleanAction) cleanAction = 'updated records'
+      else cleanAction = cleanAction.replace(/\b\w/g, c => c.toUpperCase())
+
+      whatHappened = `${actor}: ${cleanAction}`
+      narrative = `Activity completed in the team workspace.`
+      categoryLabel = 'Activity'
+      categoryKey = 'account'
+      icon = <FiActivity />
+      iconBg = 'rgba(59, 130, 246, 0.1)'
+      iconColor = 'var(--color-accent)'
+      badgeVariant = 'neutral'
+    }
+
+    return {
+      whatHappened,
+      narrative,
+      categoryLabel,
+      categoryKey,
+      timePrimary,
+      timeRelative,
+      device,
+      icon,
+      iconBg,
+      iconColor,
+      badgeVariant
+    }
+  }
+
   const renderAuditLogsSection = () => {
+    const totalActivities = auditLogs.length
+    const securityActivities = auditLogs.filter(l => l.action?.startsWith('user.login') || l.action?.startsWith('user.logout') || l.action?.includes('password') || l.action?.includes('role')).length
+    const workActivities = auditLogs.filter(l => l.action?.startsWith('project.') || l.action?.startsWith('task.') || l.action?.startsWith('lead.')).length
+    const lastActivityText = auditLogs[0]?.created_at && !isNaN(new Date(auditLogs[0].created_at).getTime())
+      ? formatDistanceToNow(new Date(auditLogs[0].created_at), { addSuffix: true })
+      : 'None'
+
     const filteredLogs = auditLogs.filter(l => {
+      const event = describeAuditEvent(l, user?.name)
+      if (auditCategory !== 'all' && event.categoryKey !== auditCategory) {
+        return false
+      }
       if (!auditSearch) return true
       const q = auditSearch.toLowerCase()
       return (
-        l.action?.toLowerCase().includes(q) ||
-        l.entity?.toLowerCase().includes(q) ||
-        l.ip_address?.toLowerCase().includes(q)
+        event.whatHappened.toLowerCase().includes(q) ||
+        event.narrative.toLowerCase().includes(q) ||
+        event.categoryLabel.toLowerCase().includes(q) ||
+        event.device.toLowerCase().includes(q)
       )
     })
 
+    const categories = [
+      { id: 'all', label: 'All Activities', count: totalActivities },
+      { id: 'security', label: 'Security & Logins', count: securityActivities },
+      { id: 'projects', label: 'Projects', count: auditLogs.filter(l => l.action?.startsWith('project.')).length },
+      { id: 'tasks', label: 'Tasks', count: auditLogs.filter(l => l.action?.startsWith('task.')).length },
+      { id: 'sales', label: 'Sales & Clients', count: auditLogs.filter(l => l.action?.startsWith('lead.')).length },
+      { id: 'account', label: 'Profile & Account', count: auditLogs.filter(l => l.action?.startsWith('user.') && !l.action?.includes('login') && !l.action?.includes('logout')).length }
+    ]
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
+        
+        {/* Section Header */}
         <div className={styles.sectionHeader}>
           <div className={styles.sectionTitleGroup}>
-            <h3 className={styles.sectionTitle}>Audit Trail Logs</h3>
-            <p className={styles.sectionDesc}>Immutable records of administrative and entity actions performed by or on this employee.</p>
+            <h3 className={styles.sectionTitle}>Employee Activity & Audit History</h3>
+            <p className={styles.sectionDesc}>
+              Plain-language timeline showing what happened and exactly when it happened for this team member.
+            </p>
           </div>
-          <div style={{ width: '260px' }}>
+          <div style={{ width: '280px' }}>
             <Input
-              placeholder="Search audit actions..."
+              placeholder="Search by activity, action, or date..."
               value={auditSearch}
               onChange={e => setAuditSearch(e.target.value)}
               leftIcon={<FiSearch />}
@@ -1243,45 +1967,129 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
           </div>
         </div>
 
+        {/* Top Overview Cards */}
+        <div className={styles.auditKpiGrid}>
+          <div className={styles.auditKpiCard}>
+            <div className={styles.auditKpiIconBox} style={{ background: 'rgba(59, 130, 246, 0.1)', color: 'var(--color-accent)' }}>
+              <FiActivity />
+            </div>
+            <div>
+              <div className={styles.auditKpiValue}>{totalActivities}</div>
+              <div className={styles.auditKpiLabel}>Total Activities Logged</div>
+            </div>
+          </div>
+
+          <div className={styles.auditKpiCard}>
+            <div className={styles.auditKpiIconBox} style={{ background: 'rgba(34, 197, 94, 0.1)', color: 'var(--color-success)' }}>
+              <FiShield />
+            </div>
+            <div>
+              <div className={styles.auditKpiValue}>{securityActivities}</div>
+              <div className={styles.auditKpiLabel}>Logins & Security Events</div>
+            </div>
+          </div>
+
+          <div className={styles.auditKpiCard}>
+            <div className={styles.auditKpiIconBox} style={{ background: 'rgba(168, 85, 247, 0.1)', color: '#a855f7' }}>
+              <FiFolder />
+            </div>
+            <div>
+              <div className={styles.auditKpiValue}>{workActivities}</div>
+              <div className={styles.auditKpiLabel}>Project & Task Updates</div>
+            </div>
+          </div>
+
+          <div className={styles.auditKpiCard}>
+            <div className={styles.auditKpiIconBox} style={{ background: 'rgba(234, 179, 8, 0.1)', color: 'var(--color-warning)' }}>
+              <FiClock />
+            </div>
+            <div>
+              <div className={styles.auditKpiValue} style={{ fontSize: 'var(--text-base)' }}>{lastActivityText}</div>
+              <div className={styles.auditKpiLabel}>Most Recent Activity</div>
+            </div>
+          </div>
+        </div>
+
+        {/* Category Filter Pills */}
+        <div className={styles.auditFilterBar}>
+          <div className={styles.auditCategoryPills}>
+            {categories.map(cat => (
+              <button
+                key={cat.id}
+                type="button"
+                className={`${styles.auditPill} ${auditCategory === cat.id ? styles.auditPillActive : ''}`}
+                onClick={() => setAuditCategory(cat.id)}
+              >
+                <span>{cat.label}</span>
+                <span style={{ opacity: 0.8, fontSize: '11px' }}>({cat.count})</span>
+              </button>
+            ))}
+          </div>
+
+          <Button
+            variant="secondary"
+            size="sm"
+            onClick={fetchAuditLogs}
+            icon={<FiClock />}
+          >
+            Refresh History
+          </Button>
+        </div>
+
+        {/* Narrative Activity Feed: What Happened & When It Happened */}
         {filteredLogs.length === 0 ? (
           <div className={styles.emptyStateBox}>
-            <FiFileText className={styles.emptyStateIcon} />
-            <h4 className={styles.emptyStateTitle}>No Audit Logs Found</h4>
-            <p className={styles.emptyStateDesc}>System security and audit events for this employee will appear here.</p>
+            <FiClock className={styles.emptyStateIcon} />
+            <h4 className={styles.emptyStateTitle}>No Activities Found</h4>
+            <p className={styles.emptyStateDesc}>
+              {auditSearch || auditCategory !== 'all' 
+                ? 'No events match your current search or category filter.' 
+                : 'No activities have been recorded for this team member yet.'}
+            </p>
           </div>
         ) : (
-          <div className={styles.tableContainer}>
-            <table className={styles.crmTable}>
-              <thead>
-                <tr>
-                  <th>Action</th>
-                  <th>Target Entity</th>
-                  <th>Changes Summary</th>
-                  <th>Device / IP</th>
-                  <th>Timestamp</th>
-                </tr>
-              </thead>
-              <tbody>
-                {filteredLogs.map(l => (
-                  <tr key={l.id}>
-                    <td>
-                      <Badge variant="accent">{l.action}</Badge>
-                    </td>
-                    <td>
-                      <span style={{ fontWeight: 500 }}>{l.entity}</span>
-                      {l.entity_id && <span style={{ fontSize: '11px', color: 'var(--color-text-muted)', marginLeft: '4px' }}>({l.entity_id.substring(0, 8)}...)</span>}
-                    </td>
-                    <td style={{ maxWidth: '280px', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap', fontSize: '12px' }}>
-                      {l.old_value || l.new_value ? 'Record modified (view details)' : '-'}
-                    </td>
-                    <td>
-                      <code>{l.ip_address || '-'}</code>
-                    </td>
-                    <td>{l.created_at && !isNaN(new Date(l.created_at).getTime()) ? format(new Date(l.created_at), 'PP p') : '-'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+          <div className={styles.auditFeedList}>
+            {filteredLogs.map(l => {
+              const event = describeAuditEvent(l, user?.name)
+              const hasDiff = l.old_value && l.new_value
+
+              return (
+                <div key={l.id} className={styles.auditFeedCard}>
+                  {/* Left: What happened */}
+                  <div className={styles.auditFeedLeft}>
+                    <div className={styles.auditFeedIconBox} style={{ background: event.iconBg, color: event.iconColor }}>
+                      {event.icon}
+                    </div>
+                    <div className={styles.auditFeedMain}>
+                      <div className={styles.auditFeedTitle}>{event.whatHappened}</div>
+                      <div className={styles.auditFeedDescription}>{event.narrative}</div>
+                      <div className={styles.auditFeedMeta}>
+                        <Badge variant={event.badgeVariant}>{event.categoryLabel}</Badge>
+                        <span>•</span>
+                        <span>{event.device}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: When it happened */}
+                  <div className={styles.auditFeedRight}>
+                    <div className={styles.auditFeedTimePrimary}>{event.timePrimary}</div>
+                    <div className={styles.auditFeedTimeRelative}>{event.timeRelative}</div>
+                    {hasDiff && (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setSelectedAuditLog(l)}
+                        icon={<FiEye />}
+                        style={{ marginTop: '4px', fontSize: '12px' }}
+                      >
+                        View Changes
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              )
+            })}
           </div>
         )}
       </div>
@@ -1335,13 +2143,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
   }
 
   const renderDocumentsSection = () => {
-    const sampleDocs = [
-      { id: '1', title: 'National Identity / Passport', type: 'Identification', status: 'verified', updated: '2026-01-15' },
-      { id: '2', title: 'Signed Employment Contract', type: 'Agreement', status: 'verified', updated: '2026-01-15' },
-      { id: '3', title: 'Degree & Professional Certifications', type: 'Academic', status: 'verified', updated: '2026-01-20' },
-      { id: '4', title: 'Non-Disclosure Agreement (NDA)', type: 'Legal', status: 'verified', updated: '2026-01-15' },
-      { id: '5', title: 'Tax Exemption Form W-4 / PAN', type: 'Taxation', status: 'pending', updated: '2026-02-01' }
-    ]
+    const userDocs = Array.isArray(profile.documents) ? profile.documents : []
 
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
@@ -1351,7 +2153,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
             <p className={styles.sectionDesc}>Verification documents, identification proofs, and signed employment agreements.</p>
           </div>
           <Button
-            variant="secondary"
+            variant="primary"
             onClick={() => setIsUploadDocOpen(true)}
             icon={<FiUploadCloud />}
           >
@@ -1359,42 +2161,170 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
           </Button>
         </div>
 
-        <div className={styles.docGrid}>
-          {sampleDocs.map(doc => (
-            <div key={doc.id} className={styles.docCard}>
-              <div className={styles.docCardTop}>
-                <div className={styles.docIconBox}>
-                  <FiFileText />
+        {userDocs.length === 0 ? (
+          <div className={styles.emptyStateBox}>
+            <FiFileText className={styles.emptyStateIcon} />
+            <h4 className={styles.emptyStateTitle}>No Documents Uploaded</h4>
+            <p className={styles.emptyStateDesc}>
+              No verification or employment documents have been uploaded for this team member yet.
+            </p>
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={() => setIsUploadDocOpen(true)}
+              icon={<FiUploadCloud />}
+              style={{ marginTop: 'var(--space-2)' }}
+            >
+              Upload First Document
+            </Button>
+          </div>
+        ) : (
+          <div className={styles.docGrid}>
+            {userDocs.map(doc => (
+              <div key={doc.id} className={styles.docCard}>
+                <div className={styles.docCardTop}>
+                  <div className={styles.docIconBox}>
+                    <FiFileText />
+                  </div>
+                  <div className={styles.docDetails}>
+                    <div className={styles.docTitle}>{doc.title}</div>
+                    <div className={styles.docMeta}>Category: {doc.type}</div>
+                    <div className={styles.docMeta}>
+                      Updated: {doc.updated && !isNaN(new Date(doc.updated).getTime()) ? format(new Date(doc.updated), 'PP') : 'Recently'}
+                    </div>
+                  </div>
                 </div>
-                <div className={styles.docDetails}>
-                  <div className={styles.docTitle}>{doc.title}</div>
-                  <div className={styles.docMeta}>Category: {doc.type}</div>
-                  <div className={styles.docMeta}>Updated: {format(new Date(doc.updated), 'PP')}</div>
+                <div className={styles.docActions}>
+                  <Badge variant={doc.status === 'verified' ? 'success' : 'warning'}>
+                    {doc.status === 'verified' ? 'Verified' : 'Pending Review'}
+                  </Badge>
+                  <div style={{ display: 'flex', gap: '4px' }}>
+                    <Button variant="ghost" size="sm" onClick={() => toast.success(`Viewing ${doc.title}`)}>
+                      <FiDownload /> View
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleDeleteDocument(doc.id, doc.title)}
+                      style={{ color: 'var(--color-danger)' }}
+                      title="Delete document"
+                    >
+                      <FiTrash2 />
+                    </Button>
+                  </div>
                 </div>
               </div>
-              <div className={styles.docActions}>
-                <Badge variant={doc.status === 'verified' ? 'success' : 'warning'}>
-                  {doc.status === 'verified' ? 'Verified' : 'Pending Review'}
-                </Badge>
-                <Button variant="ghost" size="sm" onClick={() => toast.success(`Viewing ${doc.title}`)}>
-                  <FiDownload /> View
-                </Button>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     )
   }
 
   const renderAttendanceSection = () => {
+    // Unify leaves: Real database user_leaves takes priority, merged with legacy profile leaves if any
+    const legacyLeaves = Array.isArray(profile.leaves) ? profile.leaves : []
+    const combinedLeaves = [
+      ...leavesList,
+      ...legacyLeaves.filter(leg => !leavesList.some(db => db.id === leg.id))
+    ]
+    
+    const now = new Date()
+
+    const getDays = (l) => {
+      if (l.start_date && l.end_date) {
+        const s = new Date(l.start_date)
+        const e = new Date(l.end_date)
+        const diffTime = Math.abs(e - s)
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1
+        return diffDays > 0 ? diffDays : 1
+      }
+      const parsed = parseInt(l.duration, 10)
+      return isNaN(parsed) ? 1 : parsed
+    }
+    
+    // Organization leave policy settings
+    const leavePolicy = tenantSettings?.leave_policy || {}
+    const defaultOrgQuota = leavePolicy.default_annual_quota !== undefined && leavePolicy.default_annual_quota !== ''
+      ? Number(leavePolicy.default_annual_quota)
+      : 18
+    const workWeek = leavePolicy.work_week || '5_days'
+    const fiscalYearStart = leavePolicy.fiscal_year_start || 'january'
+
+    // Annual Quota: Individual employee profile override takes priority, otherwise falls back to company policy default
+    const annualQuota = profile.annualLeaveQuota !== undefined && profile.annualLeaveQuota !== '' && profile.annualLeaveQuota !== null
+      ? Number(profile.annualLeaveQuota)
+      : defaultOrgQuota
+
+    // Determine current leave cycle period (Calendar Year vs Fiscal Year starting April)
+    const currentYear = now.getFullYear()
+    let cycleStart, cycleEnd
+    if (fiscalYearStart === 'april') {
+      const startYear = now.getMonth() >= 3 ? currentYear : currentYear - 1
+      cycleStart = new Date(startYear, 3, 1, 0, 0, 0) // April 1
+      cycleEnd = new Date(startYear + 1, 2, 31, 23, 59, 59) // March 31
+    } else {
+      // Default: Calendar Year (Jan 1 - Dec 31)
+      cycleStart = new Date(currentYear, 0, 1, 0, 0, 0)
+      cycleEnd = new Date(currentYear, 11, 31, 23, 59, 59)
+    }
+
+    // Only APPROVED leaves within current annual cycle count towards quota deduction
+    const approvedLeavesThisCycle = combinedLeaves.filter(l => {
+      if ((l.status || '').toLowerCase() !== 'approved') return false
+      const leaveDate = new Date(l.start_date || l.created_at)
+      if (isNaN(leaveDate.getTime())) return true
+      return leaveDate >= cycleStart && leaveDate <= cycleEnd
+    })
+
+    // Total days leaves taken in current cycle
+    const totalLeavesTaken = approvedLeavesThisCycle.reduce((sum, l) => sum + getDays(l), 0)
+    const availableBalance = Math.max(0, annualQuota - totalLeavesTaken)
+
+    // Current month working days based on workWeek configuration (5 days: Mon-Fri vs 6 days: Mon-Sat)
+    const currentMonthWorkingDays = (() => {
+      let count = 0
+      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1)
+      const curDay = new Date(startOfMonth)
+      while (curDay <= now) {
+        const dayOfWeek = curDay.getDay()
+        const isOffDay = workWeek === '6_days' ? (dayOfWeek === 0) : (dayOfWeek === 0 || dayOfWeek === 6)
+        if (!isOffDay) count++
+        curDay.setDate(curDay.getDate() + 1)
+      }
+      return Math.max(0, count)
+    })()
+
+    // Current month approved leaves
+    const currentMonthLeaves = combinedLeaves.filter(l => {
+      if ((l.status || '').toLowerCase() !== 'approved') return false
+      const dateToCheck = l.start_date || l.created_at
+      if (!dateToCheck) return false
+      const d = new Date(dateToCheck)
+      return d.getMonth() === now.getMonth() && d.getFullYear() === now.getFullYear()
+    }).reduce((sum, l) => sum + getDays(l), 0)
+
+    const presentThisMonth = Math.max(0, currentMonthWorkingDays - currentMonthLeaves)
+    const attendanceRate = currentMonthWorkingDays > 0 
+      ? Math.round((presentThisMonth / currentMonthWorkingDays) * 100) 
+      : 100
+
     return (
       <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-6)' }}>
         <div className={styles.sectionHeader}>
           <div className={styles.sectionTitleGroup}>
             <h3 className={styles.sectionTitle}>Attendance & Leave Records</h3>
-            <p className={styles.sectionDesc}>Summary of monthly present days, paid leave balance, and recent leave requests.</p>
+            <p className={styles.sectionDesc}>
+              Summary of monthly present days, annual leave balance ({fiscalYearStart === 'april' ? 'Fiscal Year: Apr–Mar' : 'Calendar Year: Jan–Dec'}, {workWeek === '6_days' ? '6-Day Work Week' : '5-Day Work Week'}), and synchronized leave requests.
+            </p>
           </div>
+          <Button
+            variant="primary"
+            onClick={() => setIsLeaveModalOpen(true)}
+            icon={<FiCalendar />}
+          >
+            Record Leave
+          </Button>
         </div>
 
         <div className={styles.statsStrip} style={{ borderTop: 'none', paddingTop: 0 }}>
@@ -1403,7 +2333,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
               <FiCheckCircle />
             </div>
             <div className={styles.statDetails}>
-              <span className={styles.statValue}>98.2%</span>
+              <span className={styles.statValue}>{attendanceRate}%</span>
               <span className={styles.statLabel}>Attendance Rate</span>
             </div>
           </div>
@@ -1413,7 +2343,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
               <FiCalendar />
             </div>
             <div className={styles.statDetails}>
-              <span className={styles.statValue}>22 Days</span>
+              <span className={styles.statValue}>{presentThisMonth} {presentThisMonth === 1 ? 'Day' : 'Days'}</span>
               <span className={styles.statLabel}>Present This Month</span>
             </div>
           </div>
@@ -1423,8 +2353,8 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
               <FiClock />
             </div>
             <div className={styles.statDetails}>
-              <span className={styles.statValue}>2 Days</span>
-              <span className={styles.statLabel}>Leaves Taken</span>
+              <span className={styles.statValue}>{totalLeavesTaken} {totalLeavesTaken === 1 ? 'Day' : 'Days'}</span>
+              <span className={styles.statLabel}>Approved Leaves Taken</span>
             </div>
           </div>
 
@@ -1433,7 +2363,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
               <FiAward />
             </div>
             <div className={styles.statDetails}>
-              <span className={styles.statValue}>14 Days</span>
+              <span className={styles.statValue}>{availableBalance} / {annualQuota} Days</span>
               <span className={styles.statLabel}>Available Balance</span>
             </div>
           </div>
@@ -1442,37 +2372,91 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
         <div className={styles.infoCard}>
           <div className={styles.infoCardHeader}>
             <span className={styles.infoCardIcon}><FiCalendar /></span>
-            <h4 className={styles.infoCardTitle}>Recent Leave Requests</h4>
+            <h4 className={styles.infoCardTitle}>Synchronized Leave Requests</h4>
           </div>
-          <div className={styles.tableContainer} style={{ border: 'none' }}>
-            <table className={styles.crmTable}>
-              <thead>
-                <tr>
-                  <th>Leave Type</th>
-                  <th>Duration</th>
-                  <th>Dates</th>
-                  <th>Reason</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr>
-                  <td><strong>Annual Paid Leave</strong></td>
-                  <td>2 Days</td>
-                  <td>Aug 14, 2026 - Aug 15, 2026</td>
-                  <td>Personal family event</td>
-                  <td><Badge variant="success">Approved</Badge></td>
-                </tr>
-                <tr>
-                  <td><strong>Casual Leave</strong></td>
-                  <td>1 Day</td>
-                  <td>Jul 02, 2026</td>
-                  <td>Medical appointment</td>
-                  <td><Badge variant="success">Approved</Badge></td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+
+          {combinedLeaves.length === 0 ? (
+            <div className={styles.emptyStateBox} style={{ border: 'none', padding: 'var(--space-8) var(--space-4)' }}>
+              <FiCalendar className={styles.emptyStateIcon} />
+              <h4 className={styles.emptyStateTitle}>No Leave Records Found</h4>
+              <p className={styles.emptyStateDesc}>
+                This team member has not taken or requested any leaves yet.
+              </p>
+              <Button
+                variant="secondary"
+                size="sm"
+                onClick={() => setIsLeaveModalOpen(true)}
+                icon={<FiCalendar />}
+                style={{ marginTop: 'var(--space-2)' }}
+              >
+                Record First Leave
+              </Button>
+            </div>
+          ) : (
+            <div className={styles.tableContainer} style={{ border: 'none' }}>
+              <table className={styles.crmTable}>
+                <thead>
+                  <tr>
+                    <th>Leave Type</th>
+                    <th>Duration</th>
+                    <th>Dates</th>
+                    <th>Reason</th>
+                    <th>Project Handover</th>
+                    <th>Status</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {combinedLeaves.map(leave => {
+                    const days = getDays(leave)
+                    const statusStr = (leave.status || 'Approved').toLowerCase()
+                    const badgeVariant = statusStr === 'approved' ? 'success' : (statusStr === 'planned' ? 'info' : 'danger')
+                    const datesDisplay = leave.start_date && leave.end_date
+                      ? `${format(new Date(leave.start_date), 'PP')} – ${format(new Date(leave.end_date), 'PP')}`
+                      : (leave.dates || leave.start_date || '—')
+
+                    return (
+                      <tr key={leave.id}>
+                        <td><strong>{leave.leave_type || leave.type || 'Annual Leave'}</strong></td>
+                        <td>{days} {days === 1 ? 'Day' : 'Days'}</td>
+                        <td>{datesDisplay}</td>
+                        <td style={{ maxWidth: '200px' }}>{leave.reason || '—'}</td>
+                        <td style={{ maxWidth: '220px', fontSize: '12px' }}>
+                          {leave.coverages && leave.coverages.length > 0 ? (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '3px' }}>
+                              {leave.coverages.map((cov, ci) => (
+                                <span key={ci} style={{ color: 'var(--color-text-secondary)' }}>
+                                  🤝 Covered by <strong>{cov.covering_user_name || 'Colleague'}</strong> on {cov.project_name}
+                                </span>
+                              ))}
+                            </div>
+                          ) : (
+                            <span style={{ color: 'var(--color-text-muted)' }}>None</span>
+                          )}
+                        </td>
+                        <td>
+                          <Badge variant={badgeVariant}>
+                            {leave.status || 'Approved'}
+                          </Badge>
+                        </td>
+                        <td>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => handleDeleteLeave(leave.id)}
+                            style={{ color: 'var(--color-danger)' }}
+                            title="Remove leave record"
+                          >
+                            <FiTrash2 />
+                          </Button>
+                        </td>
+                      </tr>
+                    )
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -1646,6 +2630,17 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
             onChange={e => setAccountForm({ ...accountForm, weekly_capacity: e.target.value })}
           />
 
+          <Input
+            label="Annual Leave Quota (Days / Year)"
+            type="number"
+            min="0"
+            max="365"
+            placeholder={`Company Default (${tenantSettings?.leave_policy?.default_annual_quota || 18} Days)`}
+            value={accountForm.annual_leave_quota}
+            onChange={e => setAccountForm({ ...accountForm, annual_leave_quota: e.target.value })}
+            helperText={`Individual employee entitlement. Leave empty to inherit company policy (${tenantSettings?.leave_policy?.default_annual_quota || 18} days/yr).`}
+          />
+
           <div style={{ position: 'relative' }}>
             <Input
               label="Reset User Password"
@@ -1691,7 +2686,8 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
         <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
           <Input
             label="Document Title"
-            placeholder="e.g. Identity Proof / Cert"
+            required
+            placeholder="e.g. Identity Proof / Passport / Contract"
             value={newDocForm.title}
             onChange={e => setNewDocForm({ ...newDocForm, title: e.target.value })}
           />
@@ -1700,25 +2696,244 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
             value={newDocForm.category}
             options={[
               { value: 'Identification', label: 'Identification (Passport/ID)' },
-              { value: 'Agreement', label: 'Agreement & Contract' },
-              { value: 'Academic', label: 'Academic & Certificate' },
-              { value: 'Taxation', label: 'Taxation & Financial' },
-              { value: 'Other', label: 'Other Attachment' }
+              { value: 'Agreement', label: 'Agreement & Employment Contract' },
+              { value: 'Academic', label: 'Academic & Professional Certificate' },
+              { value: 'Taxation', label: 'Taxation & Financial Document' },
+              { value: 'Other', label: 'Other Document / Attachment' }
             ]}
             onChange={val => setNewDocForm({ ...newDocForm, category: val })}
           />
-          <div style={{ border: '2px dashed var(--color-border)', borderRadius: 'var(--radius-lg)', padding: 'var(--space-6)', textAlign: 'center', background: 'var(--color-bg)' }}>
+          <label 
+            style={{ 
+              border: '2px dashed var(--color-border)', 
+              borderRadius: 'var(--radius-lg)', 
+              padding: 'var(--space-6)', 
+              textAlign: 'center', 
+              background: 'var(--color-bg)',
+              cursor: 'pointer',
+              display: 'block'
+            }}
+          >
+            <input
+              type="file"
+              style={{ display: 'none' }}
+              onChange={e => {
+                if (e.target.files && e.target.files[0]) {
+                  const f = e.target.files[0]
+                  setNewDocForm(prev => ({
+                    ...prev,
+                    file: f,
+                    title: prev.title || f.name.replace(/\.[^/.]+$/, '')
+                  }))
+                }
+              }}
+            />
             <FiUploadCloud style={{ fontSize: '32px', color: 'var(--color-accent)', marginBottom: '8px' }} />
-            <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)' }}>Choose a file to upload</div>
-            <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>PDF, PNG, JPG up to 10MB</div>
-          </div>
+            <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+              {newDocForm.file ? newDocForm.file.name : 'Click to select a file from your computer'}
+            </div>
+            <div style={{ fontSize: '11px', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+              {newDocForm.file ? `${(newDocForm.file.size / 1024).toFixed(1)} KB` : 'PDF, PNG, JPG up to 10MB'}
+            </div>
+          </label>
           <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px' }}>
             <Button variant="secondary" onClick={() => setIsUploadDocOpen(false)}>Cancel</Button>
-            <Button variant="primary" onClick={() => {
-              toast.success('Document uploaded successfully')
-              setIsUploadDocOpen(false)
-            }}>
+            <Button variant="primary" onClick={handleUploadDocument}>
               Upload Document
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    )
+  }
+
+  const renderLeaveRequestModal = () => {
+    if (!isLeaveModalOpen) return null
+    return (
+      <Modal
+        isOpen={isLeaveModalOpen}
+        title="Record Leave for Employee"
+        onClose={() => setIsLeaveModalOpen(false)}
+        size="md"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}>
+          <Select
+            label="Leave Type"
+            value={leaveForm.leave_type}
+            options={[
+              { value: 'Annual Paid Leave', label: 'Annual Paid Leave' },
+              { value: 'Casual Leave', label: 'Casual Leave' },
+              { value: 'Sick Leave', label: 'Sick / Medical Leave' },
+              { value: 'Unpaid Leave', label: 'Unpaid Leave / Loss of Pay' },
+              { value: 'Compensatory Off', label: 'Compensatory Off' }
+            ]}
+            onChange={val => setLeaveForm({ ...leaveForm, leave_type: val })}
+          />
+
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 'var(--space-3)' }}>
+            <Input
+              label="Start Date"
+              type="date"
+              required
+              value={leaveForm.start_date}
+              onChange={e => setLeaveForm({ ...leaveForm, start_date: e.target.value })}
+            />
+            <Input
+              label="End Date (Optional)"
+              type="date"
+              value={leaveForm.end_date}
+              onChange={e => setLeaveForm({ ...leaveForm, end_date: e.target.value })}
+            />
+          </div>
+
+          <Input
+            label="Duration (Number of Days)"
+            type="number"
+            min="0.5"
+            step="0.5"
+            value={leaveForm.duration}
+            onChange={e => setLeaveForm({ ...leaveForm, duration: e.target.value })}
+          />
+
+          <Input
+            label="Reason / Notes"
+            placeholder="e.g. Vacation, personal appointment, medical rest"
+            value={leaveForm.reason}
+            onChange={e => setLeaveForm({ ...leaveForm, reason: e.target.value })}
+          />
+
+          <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--color-border)' }}>
+            <Button variant="secondary" onClick={() => setIsLeaveModalOpen(false)}>Cancel</Button>
+            <Button variant="primary" onClick={handleRecordLeave}>
+              Save Leave Record
+            </Button>
+          </div>
+        </div>
+      </Modal>
+    )
+  }
+
+  const renderAuditDetailModal = () => {
+    if (!selectedAuditLog) return null
+    const info = getAuditActionInfo(selectedAuditLog.action)
+    const oldVal = parseSafe(selectedAuditLog.old_value)
+    const newVal = parseSafe(selectedAuditLog.new_value)
+    const actor = getActorDisplay(selectedAuditLog)
+    const device = getDeviceDisplay(selectedAuditLog)
+
+    let diffRows = []
+    if (oldVal && newVal && typeof oldVal === 'object' && typeof newVal === 'object') {
+      const allKeys = Array.from(new Set([...Object.keys(oldVal), ...Object.keys(newVal)]))
+        .filter(k => !['updated_at', 'id', 'user_id', 'tenant_id', 'created_at', 'password_hash'].includes(k))
+      
+      diffRows = allKeys
+        .filter(k => JSON.stringify(oldVal[k]) !== JSON.stringify(newVal[k]))
+        .map(k => ({
+          field: FIELD_LABELS[k] || k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+          oldV: formatFieldValue(oldVal[k]),
+          newV: formatFieldValue(newVal[k])
+        }))
+    } else if (newVal && typeof newVal === 'object') {
+      const keys = Object.keys(newVal).filter(k => !['updated_at', 'id', 'user_id', 'tenant_id', 'created_at', 'password_hash'].includes(k))
+      diffRows = keys.map(k => ({
+        field: FIELD_LABELS[k] || k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
+        oldV: 'None',
+        newV: formatFieldValue(newVal[k])
+      }))
+    }
+
+    return (
+      <Modal
+        isOpen={Boolean(selectedAuditLog)}
+        title="Activity Log Details"
+        onClose={() => setSelectedAuditLog(null)}
+        size="lg"
+      >
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+          {/* Header Info Banner */}
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: 'var(--space-3) var(--space-4)', background: 'var(--color-surface-2)', borderRadius: 'var(--radius-lg)' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <div className={styles.auditActionIcon} style={{ width: '36px', height: '36px', fontSize: '18px' }}>
+                {info.icon}
+              </div>
+              <div>
+                <div style={{ fontWeight: 600, fontSize: 'var(--text-base)', color: 'var(--color-text)' }}>
+                  {info.label}
+                </div>
+                <div style={{ fontSize: '12px', color: 'var(--color-text-secondary)' }}>
+                  {selectedAuditLog.created_at && !isNaN(new Date(selectedAuditLog.created_at).getTime()) ? format(new Date(selectedAuditLog.created_at), 'PPP p') : '-'}
+                </div>
+              </div>
+            </div>
+            <Badge variant={info.variant}>{info.category}</Badge>
+          </div>
+
+          {/* Key Context Grid */}
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(170px, 1fr))', gap: 'var(--space-3)' }}>
+            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Initiated By</div>
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', marginTop: '4px' }}>{actor}</div>
+            </div>
+            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Device / Browser</div>
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', marginTop: '4px' }}>{device}</div>
+            </div>
+            <div style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', padding: 'var(--space-3)' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', textTransform: 'uppercase', fontWeight: 600 }}>Access Channel</div>
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', marginTop: '4px' }}>
+                Secure Web Connection
+              </div>
+            </div>
+          </div>
+
+          {/* Activity Description */}
+          <div>
+            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-2)' }}>
+              Activity Description
+            </div>
+            <div style={{ padding: 'var(--space-3)', background: 'var(--color-bg)', border: '1px solid var(--color-border)', borderRadius: 'var(--radius-md)', fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+              {getAuditSummary(selectedAuditLog)}
+            </div>
+          </div>
+
+          {/* Differences / Updates Table */}
+          {diffRows.length > 0 ? (
+            <div>
+              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)', marginBottom: 'var(--space-1)' }}>
+                Field Changes & Updates
+              </div>
+              <table className={styles.diffTable}>
+                <thead>
+                  <tr>
+                    <th>Setting / Field</th>
+                    <th>Previous Value</th>
+                    <th>Updated Value</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {diffRows.map((row, idx) => (
+                    <tr key={idx}>
+                      <td className={styles.diffField}>{row.field}</td>
+                      <td><span className={styles.diffOld}>{row.oldV}</span></td>
+                      <td><span className={styles.diffNew}>{row.newV}</span></td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : selectedAuditLog.action?.startsWith('user.login') ? (
+            <div style={{ padding: 'var(--space-4)', background: 'rgba(34, 197, 94, 0.06)', border: '1px solid rgba(34, 197, 94, 0.2)', borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <FiShield style={{ color: 'var(--color-success)', fontSize: '20px', flexShrink: 0 }} />
+              <div style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+                Authentication verified. The employee signed into their account from <strong>{device}</strong>.
+              </div>
+            </div>
+          ) : null}
+
+          {/* Modal Footer */}
+          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: 'var(--space-3)', borderTop: '1px solid var(--color-border)' }}>
+            <Button variant="secondary" onClick={() => setSelectedAuditLog(null)}>
+              Close
             </Button>
           </div>
         </div>
@@ -1893,6 +3108,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
                 if (item.countKey === 'projects') count = projects.length
                 if (item.countKey === 'tasks') count = tasks.length
                 if (item.countKey === 'devices') count = activeSessionsCount
+                if (item.countKey === 'documents') count = Array.isArray(profile.documents) ? profile.documents.length : 0
 
                 return (
                   <button
@@ -1924,6 +3140,8 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
       {/* Modals */}
       {renderAccountSettingsModal()}
       {renderUploadDocModal()}
+      {renderLeaveRequestModal()}
+      {renderAuditDetailModal()}
 
     </div>
   )

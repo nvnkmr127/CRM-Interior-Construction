@@ -35,8 +35,8 @@ class TaskDependencyRepository {
         t_req.title as depends_on_task_title,
         t_req.status as depends_on_task_status
       FROM task_dependencies td
-      JOIN tasks t_dep ON td.task_id = t_dep.id
-      JOIN tasks t_req ON td.depends_on_task_id = t_req.id
+      JOIN tasks t_dep ON td.task_id = t_dep.id AND t_dep.tenant_id = td.tenant_id
+      JOIN tasks t_req ON td.depends_on_task_id = t_req.id AND t_req.tenant_id = td.tenant_id
       WHERE td.tenant_id = $1 AND td.project_id = $2
         AND t_dep.deleted_at IS NULL AND t_req.deleted_at IS NULL
     `;
@@ -55,7 +55,7 @@ class TaskDependencyRepository {
         t_req.title as depends_on_task_title,
         t_req.status as depends_on_task_status
       FROM task_dependencies td
-      JOIN tasks t_req ON td.depends_on_task_id = t_req.id
+      JOIN tasks t_req ON td.depends_on_task_id = t_req.id AND t_req.tenant_id = td.tenant_id
       WHERE td.tenant_id = $1 AND td.task_id = $2 AND t_req.deleted_at IS NULL
     `;
     const { rows } = await pool.query(query, [tenantId, taskId]);

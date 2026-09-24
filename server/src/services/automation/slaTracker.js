@@ -3,7 +3,7 @@ const pool = require('../../db/pool');
 const { triggerAutomation } = require('../automationEngine');
 async function checkSlaBreaches() {
   try {
-    const tenantsRes = await pool.query('SELECT id FROM tenants WHERE deleted_at IS NULL');
+    const tenantsRes = await pool.query('SELECT id FROM tenants WHERE is_active = true');
     for (const t of tenantsRes.rows) {
       await checkTenantSlaBreaches(t.id);
       await checkTenantOverdueFollowups(t.id);
@@ -75,7 +75,7 @@ async function checkTenantSlaBreaches(tenantId) {
            s.name AS stage_name, s.max_days_in_stage,
            COALESCE(EXTRACT(DAY FROM CURRENT_TIMESTAMP - COALESCE(l.stage_updated_at, l.updated_at)), 0) AS days_in_stage
     FROM leads l
-    JOIN lead_stages s ON l.stage_id = s.id
+    JOIN lead_stages s ON l.stage_id = s.id AND s.tenant_id = l.tenant_id
     WHERE l.tenant_id = $1 AND l.status != 'converted' AND l.deleted_at IS NULL
   `;
   

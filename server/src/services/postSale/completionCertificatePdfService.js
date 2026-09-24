@@ -18,7 +18,7 @@ async function generateCompletionCertificate(tenantId, checklistId) {
     `SELECT p.*, t.name as tenant_name, u.name as pm_name, u.email as pm_email
      FROM projects p
      JOIN tenants t ON p.tenant_id = t.id
-     LEFT JOIN users u ON p.pm_id = u.id
+     LEFT JOIN users u ON p.pm_id = u.id AND u.tenant_id = p.tenant_id
      WHERE p.id = $1 AND p.tenant_id = $2`,
     [checklist.project_id, tenantId]
   );

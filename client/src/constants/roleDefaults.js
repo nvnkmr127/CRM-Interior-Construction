@@ -190,7 +190,7 @@ export const ROLE_DEFAULTS = {
     page_permissions: {
       projects: [
         'Overview', 'Site Details', 'Design Brief', 'Design Assets', 'Material Palettes', 
-        'Room Progress', 'Tasks', 'Documents', 'Drawing Register'
+        'Room Progress', 'Tasks', 'Documents', 'Drawing Register', 'absences', 'Leave Management'
       ]
     },
     security_policies: {
@@ -415,7 +415,7 @@ export const ROLE_DEFAULTS = {
       projects: [
         'Overview', 'Site Details', 'Coordination', 'Room Progress', 'Tasks', 
         'Daily Site Reports', 'Documents', 'MEP Checklist', 'Execution QC', 
-        'Snags', 'Punch List'
+        'Snags', 'Punch List', 'absences', 'Leave Management'
       ]
     },
     security_policies: {
@@ -440,7 +440,7 @@ export const ROLE_DEFAULTS = {
     page_permissions: {
       projects: [
         'Overview', 'Site Details', 'Room Progress', 'Tasks', 'Daily Site Reports', 
-        'Documents', 'MEP Checklist', 'Execution QC', 'Snags', 'Punch List'
+        'Documents', 'MEP Checklist', 'Execution QC', 'Snags', 'Punch List', 'absences', 'Leave Management'
       ]
     },
     security_policies: {
@@ -465,7 +465,7 @@ export const ROLE_DEFAULTS = {
     page_permissions: {
       projects: [
         'Overview', 'Site Details', 'Handovers', 'Documents', 'Payments', 
-        'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Project Closure'
+        'Handover', 'Warranties', 'AMCs', 'Handover Readiness', 'Project Closure', 'absences', 'Leave Management'
       ]
     },
     security_policies: {
@@ -490,7 +490,7 @@ export const ROLE_DEFAULTS = {
     page_permissions: {
       projects: [
         'Overview', 'Site Details', 'Documents', 'Warranties', 'AMCs', 
-        'Service Tickets', 'Customer Retention'
+        'Service Tickets', 'Customer Retention', 'absences', 'Leave Management'
       ]
     },
     security_policies: {

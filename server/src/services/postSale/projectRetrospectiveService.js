@@ -36,7 +36,7 @@ async function getRetrospective(projectId, tenantId) {
     const ratingsRes = await pool.query(
       `SELECT prv.*, pv.vendor_name, pv.scope_of_work 
        FROM project_retrospective_vendors prv
-       JOIN project_vendors pv ON prv.project_vendor_id = pv.id
+       JOIN project_vendors pv ON prv.project_vendor_id = pv.id AND pv.tenant_id = prv.tenant_id
        WHERE prv.retrospective_id = $1 AND prv.tenant_id = $2`,
       [retrospective.id, tenantId]
     );
@@ -118,6 +118,12 @@ async function saveRetrospective(projectId, tenantId, userId, data) {
         if (isNaN(ratingVal) || ratingVal < 1 || ratingVal > 5) {
           throw new Error('INVALID_RATING');
         }
+
+        const vCheck = await client.query(
+          'SELECT id FROM project_vendors WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
+          [project_vendor_id, projectId, tenantId]
+        );
+        if (vCheck.rows.length === 0) continue;
 
         const ratingQuery = `
           INSERT INTO project_retrospective_vendors (

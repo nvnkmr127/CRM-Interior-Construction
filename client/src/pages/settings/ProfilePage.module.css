@@ -182,6 +182,37 @@
   background: var(--color-surface-2);
 }
 
+.passwordWrapper {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 100%;
+}
+
+.passwordInput {
+  padding-right: 44px;
+}
+
+.togglePwdBtn {
+  position: absolute;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: var(--color-text-secondary);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  font-size: 18px;
+  transition: color 0.2s ease;
+  border-radius: var(--radius-sm);
+}
+
+.togglePwdBtn:hover {
+  color: var(--color-text);
+}
+
 .helperText { font-size: 12px; color: var(--color-text-muted); margin-top: 2px; }
 
 .strengthBarContainer { 

@@ -64,7 +64,9 @@ router.post('/', authorize('support:manage'), validate(createClaimSchema), async
 
     return success(res, claim, {}, 201);
   } catch (error) {
-    
+    if (error.message === 'PROJECT_NOT_FOUND' || error.message === 'WARRANTY_NOT_FOUND' || error.message === 'AMC_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', error.message.replace(/_/g, ' '), 404);
+    }
     next(error);
   }
 });

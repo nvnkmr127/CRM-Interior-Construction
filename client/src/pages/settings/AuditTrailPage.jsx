@@ -585,12 +585,12 @@ export default function AuditTrailPage() {
       {/* Main Content Area */}
       <div className={styles.content}>
         {loading && logs.length === 0 ? (
-          <div className="flex-1 bg-white rounded-2xl border border-gray-250 flex items-center justify-center p-20">
+          <div className="flex-1 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] flex items-center justify-center p-20 min-h-[300px]">
             <Spinner size="lg" />
-            <span className="ml-3 text-sm text-gray-500 font-semibold">Loading audit trail...</span>
+            <span className="ml-3 text-sm text-[var(--color-text-secondary)] font-semibold">Loading audit trail...</span>
           </div>
         ) : logs.length === 0 ? (
-          <div className="flex-1 bg-white rounded-2xl border border-gray-250 flex items-center justify-center">
+          <div className="flex-1 bg-[var(--color-surface)] rounded-2xl border border-[var(--color-border)] flex items-center justify-center min-h-[300px] p-8">
             <EmptyState
               title="No Logs Found"
               description="No audit logs matched your current search parameters."

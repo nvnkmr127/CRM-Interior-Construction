@@ -27,6 +27,7 @@ router.patch('/items/:itemId', authorize('handover:authorize'), validate(updateI
   try {
     const data  = req.body;
     const item = await updateItem({
+      tenantId: req.tenantId,
       checklistId: data.checklistId,
       itemId: req.params.itemId,
       isChecked: data.is_checked,

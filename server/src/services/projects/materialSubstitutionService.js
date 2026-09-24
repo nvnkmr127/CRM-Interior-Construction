@@ -9,6 +9,14 @@ class MaterialSubstitutionService {
     try {
       await client.query('BEGIN');
 
+      const projCheck = await client.query(
+        'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+        [projectId, tenantId]
+      );
+      if (projCheck.rows.length === 0) {
+        throw new Error('PROJECT_NOT_FOUND');
+      }
+
       // 1. Fetch original BOQ item details to compute price difference and capture original spec audit trail
       const boqRes = await client.query(
         'SELECT item_name, brand, material_specifications, unit_price FROM quotation_items WHERE id = $1 AND tenant_id = $2',
@@ -68,8 +76,8 @@ class MaterialSubstitutionService {
              q.quotation_number,
              q.version as quotation_version
       FROM material_substitutions ms
-      JOIN quotation_items qi ON ms.boq_item_id = qi.id
-      JOIN quotations q ON qi.quotation_id = q.id
+      JOIN quotation_items qi ON ms.boq_item_id = qi.id AND qi.tenant_id = ms.tenant_id
+      JOIN quotations q ON qi.quotation_id = q.id AND q.tenant_id = ms.tenant_id
       WHERE ms.project_id = $1 AND ms.tenant_id = $2
       ORDER BY ms.created_at DESC
     `;
@@ -88,8 +96,8 @@ class MaterialSubstitutionService {
              q.quotation_number,
              q.version as quotation_version
       FROM material_substitutions ms
-      JOIN quotation_items qi ON ms.boq_item_id = qi.id
-      JOIN quotations q ON qi.quotation_id = q.id
+      JOIN quotation_items qi ON ms.boq_item_id = qi.id AND qi.tenant_id = ms.tenant_id
+      JOIN quotations q ON qi.quotation_id = q.id AND q.tenant_id = ms.tenant_id
       WHERE ms.id = $1 AND ms.project_id = $2 AND ms.tenant_id = $3
     `;
     const res = await pool.query(query, [subId, projectId, tenantId]);

@@ -19,7 +19,7 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
       query = `
         SELECT r.*, p.name as project_name 
         FROM receipts r
-        LEFT JOIN projects p ON p.id = r.project_id
+        LEFT JOIN projects p ON p.id = r.project_id AND p.tenant_id = r.tenant_id
         WHERE r.tenant_id = $1 AND r.project_id = $2
         ORDER BY r.created_at DESC
       `;
@@ -28,7 +28,7 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
       query = `
         SELECT r.*, p.name as project_name 
         FROM receipts r
-        LEFT JOIN projects p ON p.id = r.project_id
+        LEFT JOIN projects p ON p.id = r.project_id AND p.tenant_id = r.tenant_id
         WHERE r.tenant_id = $1
         ORDER BY r.created_at DESC
       `;

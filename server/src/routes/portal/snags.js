@@ -67,13 +67,14 @@ router.post('/', async (req, res, next) => {
 // POST /api/portal/snags/:id/verify
 router.post('/:id/verify', async (req, res, next) => {
   try {
-    const { tenantId, id: clientPortalUserId } = req.portalUser;
+    const { tenantId, id: clientPortalUserId, projectId } = req.portalUser;
     const { id: snagId } = req.params;
 
     const snag = await snagService.clientVerifySnag({
       tenantId,
       snagId,
-      clientPortalUserId
+      clientPortalUserId,
+      projectId
     });
 
     res.json({ success: true, data: snag });

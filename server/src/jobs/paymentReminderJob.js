@@ -11,21 +11,11 @@ class PaymentReminderJob {
                p.name as project_name, p.client_name, p.client_email, p.pm_id, p.crm_executive_id,
                (CURRENT_DATE - pm.due_date) as days_overdue
         FROM payment_milestones pm
-        JOIN projects p ON pm.project_id = p.id
+        JOIN projects p ON pm.project_id = p.id AND p.tenant_id = pm.tenant_id
         WHERE pm.status != 'paid' 
           AND pm.due_date IS NOT NULL 
           AND p.status = 'active'
       `;
-      
-      // If pool is exported as an object { pool }, adjust here. Based on delayEscalationJob, 
-      // pool config usually exports { pool } or directly pool.
-      // Wait, delayEscalationJob uses: const { pool } = require('../config/db');
-      // While taskEscalationJob uses: const pool = require('../../config/db');
-      // I'll require { pool } just to be safe if that's the pattern, or check it.
-      // Let's use the one from delayEscalationJob: const { pool } = require('../../config/db');
-      // I'll fix the import inline below.
-      
-      // We will fix the require when writing the file.
       
       const { rows } = await pool.query(query);
 
@@ -53,8 +43,8 @@ class PaymentReminderJob {
         if (newStage > (milestone.reminder_stage || 0)) {
           // Update stage
           await pool.query(
-            `UPDATE payment_milestones SET reminder_stage = $1, last_reminder_sent_at = NOW() WHERE id = $2`,
-            [newStage, milestone.id]
+            `UPDATE payment_milestones SET reminder_stage = $1, last_reminder_sent_at = NOW() WHERE id = $2 AND tenant_id = $3`,
+            [newStage, milestone.id, milestone.tenant_id]
           );
 
           console.log(`[PaymentReminderJob] Triggering ${intensity} reminder for milestone ${milestone.id}`);

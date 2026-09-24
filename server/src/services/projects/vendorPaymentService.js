@@ -10,6 +10,24 @@ class VendorPaymentService {
     try {
       await client.query('BEGIN');
 
+      const projCheck = await client.query(
+        'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+        [projectId, tenantId]
+      );
+      if (projCheck.rows.length === 0) {
+        throw new Error('PROJECT_NOT_FOUND');
+      }
+
+      if (vendorId) {
+        const vendorCheck = await client.query(
+          'SELECT id FROM project_vendors WHERE id = $1 AND tenant_id = $2',
+          [vendorId, tenantId]
+        );
+        if (vendorCheck.rows.length === 0) {
+          throw new Error('VENDOR_NOT_FOUND');
+        }
+      }
+
       // If percentage is provided and linked to a PO, calculate the final amount dynamically
       if (percentage !== undefined && purchaseOrderId) {
         const poRes = await client.query(
@@ -62,9 +80,9 @@ class VendorPaymentService {
     const query = `
       SELECT vpm.*, v.vendor_name, po.po_number, md.delivery_number
       FROM vendor_payment_milestones vpm
-      JOIN project_vendors v ON vpm.vendor_id = v.id
-      LEFT JOIN purchase_orders po ON vpm.purchase_order_id = po.id
-      LEFT JOIN material_deliveries md ON vpm.material_delivery_id = md.id
+      JOIN project_vendors v ON vpm.vendor_id = v.id AND v.tenant_id = vpm.tenant_id
+      LEFT JOIN purchase_orders po ON vpm.purchase_order_id = po.id AND po.tenant_id = vpm.tenant_id
+      LEFT JOIN material_deliveries md ON vpm.material_delivery_id = md.id AND md.tenant_id = vpm.tenant_id
       WHERE vpm.project_id = $1 AND vpm.tenant_id = $2
       ORDER BY vpm.due_date ASC, vpm.created_at DESC
     `;
@@ -86,9 +104,9 @@ class VendorPaymentService {
     const query = `
       SELECT vpm.*, v.vendor_name, po.po_number, md.delivery_number
       FROM vendor_payment_milestones vpm
-      JOIN project_vendors v ON vpm.vendor_id = v.id
-      LEFT JOIN purchase_orders po ON vpm.purchase_order_id = po.id
-      LEFT JOIN material_deliveries md ON vpm.material_delivery_id = md.id
+      JOIN project_vendors v ON vpm.vendor_id = v.id AND v.tenant_id = vpm.tenant_id
+      LEFT JOIN purchase_orders po ON vpm.purchase_order_id = po.id AND po.tenant_id = vpm.tenant_id
+      LEFT JOIN material_deliveries md ON vpm.material_delivery_id = md.id AND md.tenant_id = vpm.tenant_id
       WHERE vpm.id = $1 AND vpm.project_id = $2 AND vpm.tenant_id = $3
     `;
     const res = await pool.query(query, [milestoneId, projectId, tenantId]);

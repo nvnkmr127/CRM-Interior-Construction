@@ -63,8 +63,8 @@ async function completePhase({ tenantId, userId, phaseId }) {
     await pool.query(`
       UPDATE project_phases
       SET status = 'in_progress', updated_at = NOW()
-      WHERE id = $1
-    `, [nextPhase.id]);
+      WHERE id = $1 AND tenant_id = $2
+    `, [nextPhase.id, tenantId]);
   }
 
   // Refetch the signed off phase to return the latest state

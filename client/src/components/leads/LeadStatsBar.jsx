@@ -1,6 +1,7 @@
 import React from 'react';
 import { useAuth } from '../../store/authContext';
 import { usePermissions } from '../../hooks/usePermissions';
+import { isSuperMasterDeveloper } from '../../utils/isSuperMasterDeveloper';
 import styles from '../../pages/leads/LeadsPage.module.css';
 
 export default function LeadStatsBar({ stats, loading }) {
@@ -10,8 +11,7 @@ export default function LeadStatsBar({ stats, loading }) {
   const roleName = (typeof user?.role === 'string' ? user.role : user?.role?.name || '').toLowerCase();
   const permissions = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
 
-  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
-    (roleName === 'superadmin' || roleName === 'admin');
+  const isPlatformDeveloperAdmin = isSuperMasterDeveloper(user);
 
   const isAdmin = isPlatformDeveloperAdmin || 
     roleName === 'superadmin' || 

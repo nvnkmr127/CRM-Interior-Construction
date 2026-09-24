@@ -325,9 +325,9 @@ router.get('/:id/sessions', authorize('users:view_login_history'), async (req, r
     const { rows } = await pool.query(`
       SELECT id, ip_address, user_agent, created_at, last_active_at, expires_at 
       FROM sessions 
-      WHERE user_id = $1
+      WHERE user_id = $1 AND (expires_at IS NULL OR expires_at > NOW())
       ORDER BY last_active_at DESC
-    `, [userId]); // Sessions table might not have tenant_id, but user_id secures it implicitly if they belong to same tenant (which they do since we authenticate admin).
+    `, [userId]);
     return success(res, rows);
   } catch(error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch user sessions', 500);
@@ -365,10 +365,7 @@ router.get('/:id/timeline', async (req, res, next) => {
         id::text, 
         action as type,
         action as title,
-        CASE 
-          WHEN old_value IS NOT NULL AND new_value IS NOT NULL THEN CONCAT('Changed from ', old_value, ' to ', new_value)
-          ELSE 'Event logged'
-        END as description,
+        'Updated employee account details' as description,
         created_at as timestamp,
         (SELECT name FROM users WHERE id = audit_logs.user_id) as actor_name,
         'log' as source
@@ -384,9 +381,11 @@ router.get('/:id/timeline', async (req, res, next) => {
         'Project Assigned' as title,
         CONCAT('Assigned to project: ', p.name) as description,
         p.created_at as timestamp,
-        'System' as actor_name,
+        COALESCE(u_creator.name, u_pm.name, 'System') as actor_name,
         'project' as source
       FROM projects p
+      LEFT JOIN users u_creator ON p.created_by = u_creator.id
+      LEFT JOIN users u_pm ON p.pm_id = u_pm.id
       WHERE p.tenant_id = $1 AND (p.pm_id = $2 OR p.designer_id = $2)
 
       UNION ALL
@@ -398,9 +397,11 @@ router.get('/:id/timeline', async (req, res, next) => {
         'Task Assigned' as title,
         CONCAT('Assigned task: ', t.title) as description,
         t.created_at as timestamp,
-        'System' as actor_name,
+        COALESCE(u_creator.name, u_assignee.name, 'System') as actor_name,
         'task' as source
       FROM tasks t
+      LEFT JOIN users u_creator ON t.created_by = u_creator.id
+      LEFT JOIN users u_assignee ON t.assignee_id = u_assignee.id
       WHERE t.tenant_id = $1 AND t.assignee_id = $2
 
       UNION ALL
@@ -464,18 +465,77 @@ router.get('/:id/timeline', async (req, res, next) => {
 });
 
 // Get User Audit Logs
+// Get User Audit Logs
 router.get('/:id/audit', async (req, res, next) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
   try {
+    // 1. Self-heal existing legacy api.* entries in the database to proper business actions
+    await pool.query(`
+      UPDATE audit_logs
+      SET 
+        action = CASE
+          WHEN new_value::text ILIKE '%/users%' OR new_value::text ILIKE '%/profile%' THEN 'user.profile_updated'
+          WHEN new_value::text ILIKE '%/projects%' THEN 'project.updated'
+          WHEN new_value::text ILIKE '%/tasks%' THEN 'task.updated'
+          WHEN new_value::text ILIKE '%/leads%' THEN 'lead.updated'
+          WHEN new_value::text ILIKE '%/invoices%' OR new_value::text ILIKE '%/payments%' THEN 'payment.recorded'
+          WHEN new_value::text ILIKE '%/documents%' THEN 'document.uploaded'
+          WHEN action = 'api.post' THEN 'record.created'
+          WHEN action = 'api.delete' THEN 'record.deleted'
+          ELSE 'record.updated'
+        END,
+        entity = CASE
+          WHEN new_value::text ILIKE '%/users%' OR new_value::text ILIKE '%/profile%' THEN 'user'
+          WHEN new_value::text ILIKE '%/projects%' THEN 'project'
+          WHEN new_value::text ILIKE '%/tasks%' THEN 'task'
+          WHEN new_value::text ILIKE '%/leads%' THEN 'lead'
+          WHEN new_value::text ILIKE '%/invoices%' OR new_value::text ILIKE '%/payments%' THEN 'payment'
+          WHEN new_value::text ILIKE '%/documents%' THEN 'document'
+          ELSE 'workspace'
+        END
+      WHERE tenant_id = $1 
+        AND (action LIKE 'api.%' OR action IN ('api.post', 'api.patch', 'api.put', 'api.delete') OR entity = 'api_route')
+    `, [tenantId]).catch(err => logger.error('[AuditLogs] Self-healing update notice:', err.message));
+
+    // 2. Fetch clean audit logs for the user
     const { rows } = await pool.query(`
-      SELECT id, action, entity, entity_id, ip_address, created_at 
-      FROM audit_logs 
-      WHERE tenant_id = $1 AND user_id = $2
-      ORDER BY created_at DESC
-      LIMIT 100
+      SELECT 
+        al.id, 
+        al.action, 
+        al.entity, 
+        al.entity_id, 
+        al.old_value, 
+        al.new_value, 
+        al.ip_address, 
+        al.browser, 
+        al.device, 
+        al.created_at,
+        al.user_id,
+        u.name as actor_name, 
+        u.email as actor_email
+      FROM audit_logs al
+      LEFT JOIN users u ON al.user_id = u.id
+      WHERE al.tenant_id = $1 AND (al.user_id = $2 OR (al.entity = 'user' AND al.entity_id::text = $2::text))
+      ORDER BY al.created_at DESC
+      LIMIT 150
     `, [tenantId, userId]);
-    return success(res, rows);
+
+    // Sanitize any remaining unmigrated action names before sending to client
+    const sanitizedRows = rows.map(r => {
+      let action = r.action || '';
+      if (action.startsWith('api.') || action === 'api_route') {
+        const newValStr = typeof r.new_value === 'string' ? r.new_value : JSON.stringify(r.new_value || {});
+        if (newValStr.includes('/users') || newValStr.includes('/profile')) action = 'user.profile_updated';
+        else if (newValStr.includes('/projects')) action = 'project.updated';
+        else if (newValStr.includes('/tasks')) action = 'task.updated';
+        else if (newValStr.includes('/leads')) action = 'lead.updated';
+        else action = 'user.profile_updated';
+      }
+      return { ...r, action };
+    });
+
+    return success(res, sanitizedRows);
   } catch(error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to fetch user audit logs', 500);
   }
@@ -661,7 +721,7 @@ router.patch('/:id', authenticate, async (req, res, next) => {
 
     if (effectiveRoleId) {
        const targetUser = rows[0];
-       const { rows: roleRows } = await pool.query('SELECT name FROM roles WHERE id=$1', [resolvedRoleId]);
+       const { rows: roleRows } = await pool.query('SELECT name FROM roles WHERE id=$1 AND tenant_id=$2', [resolvedRoleId, tenantId]);
        if (roleRows.length > 0) {
          queueEmail(tenantId, userIdToUpdate, targetUser.email, 'Role Updated', 'role_changed', { name: targetUser.name, newRole: roleRows[0].name });
          const { logAction } = require('../services/auditLog');
@@ -817,7 +877,7 @@ router.post('/:id/approve', authorize('users:activate_user'), async (req, res, n
     
     const uEmail = rows[0].email;
     const uName = rows[0].name;
-    const { rows: roleRows } = await pool.query('SELECT name FROM roles WHERE id=$1', [rows[0].role_id]);
+    const { rows: roleRows } = await pool.query('SELECT name FROM roles WHERE id=$1 AND tenant_id=$2', [rows[0].role_id, tenantId]);
     const roleName = roleRows[0]?.name || 'Employee';
 
     queueEmail(tenantId, userId, uEmail, 'Account Approved', 'approval_granted', { name: uName });

@@ -41,6 +41,16 @@ async function getAutoVerification(projectId, tenantId) {
 }
 
 async function getRawClosureChecklist(projectId, tenantId) {
+  const projCheck = await pool.query(
+    'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+    [projectId, tenantId]
+  );
+  if (projCheck.rows.length === 0) {
+    const err = new Error('PROJECT_NOT_FOUND');
+    err.status = 404;
+    throw err;
+  }
+
   try {
     const res = await pool.query(
       'SELECT * FROM project_closure_checklists WHERE project_id = $1 AND tenant_id = $2',

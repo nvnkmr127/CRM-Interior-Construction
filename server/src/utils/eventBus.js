@@ -56,9 +56,9 @@ eventBus.on('RESOURCE_UNAVAILABLE', async (payload) => {
         const { rows: tasks } = await pool.query(
             `SELECT t.id, t.title, p.pm_id, p.name as project_name 
              FROM tasks t 
-             JOIN projects p ON t.project_id = p.id
-             WHERE t.assigned_to = $1 AND t.status != 'completed' AND t.status != 'cancelled'`,
-            [payload.userId]
+             JOIN projects p ON t.project_id = p.id AND p.tenant_id = t.tenant_id
+             WHERE t.tenant_id = $1 AND (t.assigned_to = $2 OR t.assignee_id = $2) AND t.status != 'completed' AND t.status != 'cancelled'`,
+            [payload.tenantId, payload.userId]
         );
         for (const task of tasks) {
             if (task.pm_id) {

@@ -79,6 +79,14 @@ router.post('/', authorize('design:manage'), validate(createAssetSchema), async 
     const data = req.body;
     const userId = req.user.userId;
 
+    const { rows: projCheck } = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [projectId, tenantId]
+    );
+    if (projCheck.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+
     const query = `
       INSERT INTO design_assets (tenant_id, project_id, title, description, asset_type, is_visible_to_client, created_by)
       VALUES ($1, $2, $3, $4, $5, $6, $7)

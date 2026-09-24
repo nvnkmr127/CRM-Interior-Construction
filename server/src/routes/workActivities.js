@@ -73,7 +73,7 @@ router.get('/', authorize('projects:read'), async (req, res) => {
 router.get('/templates', authorize('projects:read'), async (req, res) => {
   try {
     const { trade, roomType } = req.query;
-    const templates = await workActivityRepository.findTemplates(trade, roomType);
+    const templates = await workActivityRepository.findTemplates(trade, roomType, req.tenantId);
     return success(res, templates);
   } catch (error) {
     logger.error('[WorkActivities Router] Templates list error:', error);
@@ -84,6 +84,14 @@ router.get('/templates', authorize('projects:read'), async (req, res) => {
 // POST /api/projects/:projectId/work-activities
 router.post('/', authorize('projects:manage'), validate(createActivitySchema), async (req, res) => {
   try {
+    const { rows: projCheck } = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [req.params.projectId, req.tenantId]
+    );
+    if (projCheck.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+
     const data = req.body;
     data.project_id = req.params.projectId;
 
@@ -98,6 +106,14 @@ router.post('/', authorize('projects:manage'), validate(createActivitySchema), a
 // POST /api/projects/:projectId/work-activities/generate
 router.post('/generate', authorize('projects:manage'), validate(generateSchema), async (req, res) => {
   try {
+    const { rows: projCheck } = await pool.query(
+      `SELECT id FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [req.params.projectId, req.tenantId]
+    );
+    if (projCheck.length === 0) {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+
     const { phaseId, roomName, trade } = req.body;
     const created = await workActivityRepository.generateActivities(
       req.tenantId,
@@ -163,8 +179,8 @@ router.get('/dependencies', authorize('projects:read'), async (req, res) => {
              pwa1.activity_name as activity_name, pwa1.trade as activity_trade, pwa1.room_name as activity_room,
              pwa2.activity_name as depends_on_activity_name, pwa2.trade as depends_on_activity_trade, pwa2.room_name as depends_on_activity_room
       FROM work_activity_dependencies wad
-      JOIN project_work_activities pwa1 ON wad.activity_id = pwa1.id
-      JOIN project_work_activities pwa2 ON wad.depends_on_activity_id = pwa2.id
+      JOIN project_work_activities pwa1 ON wad.activity_id = pwa1.id AND pwa1.tenant_id = wad.tenant_id
+      JOIN project_work_activities pwa2 ON wad.depends_on_activity_id = pwa2.id AND pwa2.tenant_id = wad.tenant_id
       WHERE wad.project_id = $1 AND wad.tenant_id = $2
     `, [req.params.projectId, req.tenantId]);
     return success(res, rows);
@@ -209,6 +225,14 @@ router.post('/dependencies', authorize('projects:manage'), validate(createDepend
 
     if (activityId === dependsOnActivityId) {
       return fail(res, 'VALIDATION_ERROR', 'An activity cannot depend on itself.', 400);
+    }
+
+    const { rows: actCheck } = await pool.query(
+      `SELECT id FROM project_work_activities WHERE id IN ($1, $2) AND project_id = $3 AND tenant_id = $4`,
+      [activityId, dependsOnActivityId, req.params.projectId, req.tenantId]
+    );
+    if (actCheck.length < 2) {
+      return fail(res, 'NOT_FOUND', 'One or both work activities not found in this project.', 404);
     }
 
     const hasCycle = await checkCircularDependency(req.tenantId, req.params.projectId, activityId, dependsOnActivityId);
@@ -285,6 +309,16 @@ router.put('/dependencies/bulk', authorize('projects:manage'), async (req, res) 
     }
 
     await client.query('BEGIN');
+
+    const { rows: projCheck } = await client.query(
+      `SELECT id FROM projects WHERE id = $1 AND tenant_id = $2`,
+      [req.params.projectId, req.tenantId]
+    );
+    if (projCheck.length === 0) {
+      await client.query('ROLLBACK');
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+
     await client.query(
       'DELETE FROM work_activity_dependencies WHERE tenant_id = $1 AND project_id = $2',
       [req.tenantId, req.params.projectId]
@@ -316,7 +350,7 @@ const storage = require('../utils/storage');
 // POST /api/projects/:projectId/work-activities/:id/photos
 router.post('/:id/photos', authorize('projects:manage'), upload.single('file'), async (req, res) => {
   try {
-    const { id: activityId } = req.params;
+    const { id: activityId, projectId } = req.params;
     const tenantId = req.tenantId;
     const { caption } = req.body;
 
@@ -325,7 +359,7 @@ router.post('/:id/photos', authorize('projects:manage'), upload.single('file'), 
     }
 
     const activity = await workActivityRepository.findActivityById(activityId, tenantId);
-    if (!activity) {
+    if (!activity || activity.project_id !== projectId) {
       return fail(res, 'NOT_FOUND', 'Work activity not found.', 404);
     }
 

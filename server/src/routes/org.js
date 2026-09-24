@@ -196,13 +196,14 @@ router.patch('/departments/:id', authorize('users:manage'), async (req, res) => 
     if (parent_id) {
       const { rows: tree } = await pool.query(`
         WITH RECURSIVE check_tree AS (
-          SELECT id, parent_id FROM ${req.route.path.includes('departments') ? 'departments' : 'branches'} WHERE id = $1
+          SELECT id, parent_id FROM departments WHERE id = $1 AND tenant_id = $2
           UNION ALL
-          SELECT t.id, t.parent_id FROM ${req.route.path.includes('departments') ? 'departments' : 'branches'} t
+          SELECT t.id, t.parent_id FROM departments t
           INNER JOIN check_tree ct ON ct.parent_id = t.id
+          WHERE t.tenant_id = $2
         )
         SELECT id FROM check_tree
-      `, [parent_id]);
+      `, [parent_id, tenantId]);
       if (tree.some(node => node.id === id)) return fail(res, 'VALIDATION_ERROR', 'Circular structure detected', 400);
     }
 
@@ -300,13 +301,14 @@ router.patch('/branches/:id', authorize('users:manage'), async (req, res) => {
     if (parent_id) {
       const { rows: tree } = await pool.query(`
         WITH RECURSIVE check_tree AS (
-          SELECT id, parent_id FROM ${req.route.path.includes('departments') ? 'departments' : 'branches'} WHERE id = $1
+          SELECT id, parent_id FROM branches WHERE id = $1 AND tenant_id = $2
           UNION ALL
-          SELECT t.id, t.parent_id FROM ${req.route.path.includes('departments') ? 'departments' : 'branches'} t
+          SELECT t.id, t.parent_id FROM branches t
           INNER JOIN check_tree ct ON ct.parent_id = t.id
+          WHERE t.tenant_id = $2
         )
         SELECT id FROM check_tree
-      `, [parent_id]);
+      `, [parent_id, tenantId]);
       if (tree.some(node => node.id === id)) return fail(res, 'VALIDATION_ERROR', 'Circular structure detected', 400);
     }
 

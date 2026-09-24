@@ -16,7 +16,7 @@ router.get('/lead/:leadId', authenticate, async (req, res, next) => {
     const query = `
       SELECT sv.*, u.name as assignee_name
       FROM site_visits sv
-      LEFT JOIN users u ON sv.assignee_id = u.id
+      LEFT JOIN users u ON sv.assignee_id = u.id AND u.tenant_id = sv.tenant_id
       WHERE sv.tenant_id = $1 AND sv.lead_id = $2
       ORDER BY sv.scheduled_at DESC
     `;
@@ -37,7 +37,7 @@ router.get('/project/:projectId', authenticate, async (req, res, next) => {
     const query = `
       SELECT sv.*, u.name as assignee_name
       FROM site_visits sv
-      LEFT JOIN users u ON sv.assignee_id = u.id
+      LEFT JOIN users u ON sv.assignee_id = u.id AND u.tenant_id = sv.tenant_id
       WHERE sv.tenant_id = $1 AND sv.project_id = $2
       ORDER BY sv.scheduled_at DESC
     `;
@@ -54,6 +54,10 @@ router.post('/lead/:leadId', authenticate, async (req, res, next) => {
   try {
     const { leadId } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;
+
+    const leadCheck = await pool.query('SELECT id FROM leads WHERE id = $1 AND tenant_id = $2', [leadId, tenantId]);
+    if (leadCheck.rows.length === 0) return fail(res, 'NOT_FOUND', 'Lead not found.', 404);
+
     const { scheduled_at, assignee_id, notes, checklist, client_invited } = req.body;
 
     const query = `
@@ -89,6 +93,10 @@ router.post('/project/:projectId', authenticate, async (req, res, next) => {
   try {
     const { projectId } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;
+
+    const projectCheck = await pool.query('SELECT id FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
+    if (projectCheck.rows.length === 0) return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+
     const { scheduled_at, assignee_id, notes, checklist, client_invited, agenda, next_steps } = req.body;
 
     const query = `
@@ -234,6 +242,10 @@ router.post('/:id/photos', authenticate, upload.single('file'), async (req, res,
   try {
     const { id: siteVisitId } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;
+
+    const visitCheck = await pool.query('SELECT id FROM site_visits WHERE id = $1 AND tenant_id = $2', [siteVisitId, tenantId]);
+    if (visitCheck.rows.length === 0) return fail(res, 'NOT_FOUND', 'Site visit not found', 404);
+
     const { caption } = req.body;
 
     if (!req.file) {
@@ -303,6 +315,10 @@ router.post('/:id/linked-items', authenticate, async (req, res, next) => {
   try {
     const { id } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;
+
+    const visitCheck = await pool.query('SELECT id FROM site_visits WHERE id = $1 AND tenant_id = $2', [id, tenantId]);
+    if (visitCheck.rows.length === 0) return fail(res, 'NOT_FOUND', 'Site visit not found', 404);
+
     const { item_type, item_id } = req.body;
 
     if (!item_type || !item_id) {
@@ -370,8 +386,8 @@ router.get('/', authenticate, async (req, res, next) => {
     const query = `
       SELECT sv.*, u.name as assignee_name, l.name as lead_name
       FROM site_visits sv
-      LEFT JOIN users u ON sv.assignee_id = u.id
-      LEFT JOIN leads l ON sv.lead_id = l.id
+      LEFT JOIN users u ON sv.assignee_id = u.id AND u.tenant_id = sv.tenant_id
+      LEFT JOIN leads l ON sv.lead_id = l.id AND l.tenant_id = sv.tenant_id AND l.deleted_at IS NULL
       WHERE sv.tenant_id = $1
       ORDER BY sv.scheduled_at DESC
     `;

@@ -1,0 +1,94 @@
+.banner {
+  background: var(--color-surface);
+  border-bottom: 2px solid var(--color-warning);
+  padding: var(--space-2) var(--space-4);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+  z-index: 110;
+  box-shadow: var(--shadow-sm);
+}
+
+.left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: wrap;
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: var(--color-warning);
+  color: #1a1a1a;
+  font-weight: 700;
+  font-size: var(--text-xs);
+  padding: 2px 8px;
+  border-radius: var(--radius-full);
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+}
+
+.text {
+  font-size: var(--text-xs);
+  color: var(--color-text);
+  font-weight: 500;
+}
+
+.workspaceName {
+  color: var(--color-accent);
+  font-weight: 700;
+}
+
+.slug {
+  color: var(--color-text-muted);
+  font-family: var(--font-mono, monospace);
+  font-size: 11px;
+}
+
+.planTag {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  text-transform: capitalize;
+}
+
+.right {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.exitBtn {
+  background: var(--color-surface-2);
+  border: 1px solid var(--color-warning);
+  color: var(--color-text);
+  font-size: var(--text-xs);
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: var(--transition-fast);
+}
+
+.exitBtn:hover {
+  background: var(--color-warning);
+  color: #1a1a1a;
+  transform: translateY(-1px);
+}
+
+.exitBtn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
+}

@@ -163,7 +163,7 @@ const PLAN_DEFAULTS = {
     'coordination', 'handover-dashboard', 'retention-dashboard',
     'resource-capacity', 'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity',
     'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
-    'team-management', 'team-members', 'roles-permissions', 'organization'
+    'team-management', 'team-members', 'roles-permissions', 'organization', 'email-templates', 'logs'
   ],
   growth: [
     'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
@@ -171,7 +171,7 @@ const PLAN_DEFAULTS = {
     'analytics-delay', 'coordination', 'handover-dashboard', 'retention-dashboard', 'resource-capacity',
     'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity',
     'finance-overview', 'financial-approvals', 'team-management', 'team-members',
-    'roles-permissions', 'organization'
+    'roles-permissions', 'organization', 'email-templates', 'logs'
   ],
   enterprise: [
     'dashboard', 'leads', 'leads-dashboard', 'leads-list', 'leads-kanban', 'leads-calendar', 'leads-map',
@@ -182,8 +182,7 @@ const PLAN_DEFAULTS = {
     'resource-capacity', 'absences', 'inventory', 'factory-production', 'vendor-performance', 'vendor-capacity', 'vendor-lead-times',
     'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast',
     'financial-thresholds', 'team-management', 'team-members', 'roles-permissions', 'organization',
-    'login-history', 'audit-trail', 'superadmin', 'api-keys', 'api-integration', 'webhooks',
-    'email-templates', 'logs'
+    'login-history', 'audit-trail', 'email-templates', 'logs'
   ]
 };
 

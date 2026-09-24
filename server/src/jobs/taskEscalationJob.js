@@ -15,8 +15,8 @@ class TaskEscalationJob {
     const query = `
       SELECT t.*, p.manager_id, p.name as project_name, u.name as assignee_name
       FROM tasks t
-      JOIN projects p ON t.project_id = p.id
-      LEFT JOIN users u ON t.assignee_id = u.id
+      JOIN projects p ON t.project_id = p.id AND p.tenant_id = t.tenant_id
+      LEFT JOIN users u ON t.assignee_id = u.id AND u.tenant_id = t.tenant_id
       WHERE t.status = 'blocked'
         AND t.deleted_at IS NULL
         AND t.blocked_at IS NOT NULL

@@ -14,13 +14,16 @@ router.get('/', async (req, res, next) => {
     const { projectId } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;
 
+    const projCheck = await pool.query('SELECT 1 FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
+    if (projCheck.rows.length === 0) return fail(res, 'NOT_FOUND', 'Project not found', 404);
+
     // Run auto-detection
     await delayNotificationService.detectAndCreateDelayDrafts(tenantId, projectId);
 
     const query = `
       SELECT dn.*, m.name as milestone_name
       FROM delay_notifications dn
-      LEFT JOIN milestones m ON dn.milestone_id = m.id
+      LEFT JOIN milestones m ON dn.milestone_id = m.id AND m.tenant_id = dn.tenant_id
       WHERE dn.project_id = $1 AND dn.tenant_id = $2
       ORDER BY dn.created_at DESC
     `;

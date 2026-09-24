@@ -374,13 +374,16 @@ router.delete('/:tid', authorize(['projects:manage', 'projects:write', 'projects
 // GET /api/projects/:projectId/tasks/:tid/comments
 router.get('/:tid/comments', authorize(['projects:read', 'tasks:read', 'tasks:view']), async (req, res, next) => {
   try {
+    const task = await taskRepository.findTaskById(req.tenantId, req.params.tid);
+    if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
+
     const { rows } = await pool.query(`
       SELECT c.*, u.name as user_name
       FROM task_comments c
-      LEFT JOIN users u ON c.user_id = u.id
+      LEFT JOIN users u ON c.user_id = u.id AND u.tenant_id = $2
       WHERE c.task_id = $1
       ORDER BY c.created_at ASC
-    `, [req.params.tid]);
+    `, [req.params.tid, req.tenantId]);
     return success(res, rows);
   } catch (error) {
     logger.error('[Tasks Router] List comments error:', error);
@@ -415,6 +418,9 @@ router.post('/:tid/comments', authorize(['projects:read', 'tasks:read', 'tasks:v
 // GET /api/projects/:projectId/tasks/:tid/attachments
 router.get('/:tid/attachments', authorize(['projects:read', 'tasks:read', 'tasks:view']), async (req, res, next) => {
   try {
+    const task = await taskRepository.findTaskById(req.tenantId, req.params.tid);
+    if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
+
     const { rows } = await pool.query(`
       SELECT * FROM task_attachments 
       WHERE task_id = $1 AND tenant_id = $2 AND status = 'active'
@@ -444,6 +450,9 @@ router.post('/:tid/attachments', authorize('projects:manage'), upload.array('fil
     const tenantId = req.tenantId;
     const tid = req.params.tid;
     
+    const task = await taskRepository.findTaskById(tenantId, tid);
+    if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
+
     if (!req.files || req.files.length === 0) {
       return fail(res, 'BAD_REQUEST', 'No files uploaded', 400);
     }
@@ -497,7 +506,7 @@ router.patch('/:tid/attachments/:attachmentId', authorize('projects:manage'), up
     }
     
     const oldAtt = oldRes.rows[0];
-    await client.query("UPDATE task_attachments SET status = 'replaced' WHERE id = $1", [attachmentId]);
+    await client.query("UPDATE task_attachments SET status = 'replaced' WHERE id = $1 AND tenant_id = $2", [attachmentId, tenantId]);
     
     const fileUrl = `${process.env.API_URL || 'http://localhost:3000'}/uploads/attachments/${req.file.filename}`;
     const { rows } = await client.query(`

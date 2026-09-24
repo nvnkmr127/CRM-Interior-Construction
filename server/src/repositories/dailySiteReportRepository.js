@@ -14,6 +14,11 @@ class DailySiteReportRepository {
       supervisor_signature
     } = data;
 
+    const projectCheck = await pool.query('SELECT 1 FROM projects WHERE id = $1 AND tenant_id = $2', [project_id, tenantId]);
+    if (projectCheck.rows.length === 0) {
+      throw new Error('Project not found');
+    }
+
     const query = `
       INSERT INTO daily_site_reports (
         tenant_id, project_id, report_date, work_done, manpower, materials, issues_encountered, photos, submitted_by, tomorrows_plan, supervisor_signature
@@ -43,7 +48,7 @@ class DailySiteReportRepository {
     const query = `
       SELECT r.*, u.name as submitted_by_name
       FROM daily_site_reports r
-      LEFT JOIN users u ON r.submitted_by = u.id
+      LEFT JOIN users u ON r.submitted_by = u.id AND u.tenant_id = r.tenant_id
       WHERE r.tenant_id = $1 AND r.project_id = $2
       ORDER BY r.report_date DESC, r.created_at DESC
     `;
@@ -55,7 +60,7 @@ class DailySiteReportRepository {
     const query = `
       SELECT r.*, u.name as submitted_by_name
       FROM daily_site_reports r
-      LEFT JOIN users u ON r.submitted_by = u.id
+      LEFT JOIN users u ON r.submitted_by = u.id AND u.tenant_id = r.tenant_id
       WHERE r.tenant_id = $1 AND r.id = $2
     `;
     const { rows } = await pool.query(query, [tenantId, id]);

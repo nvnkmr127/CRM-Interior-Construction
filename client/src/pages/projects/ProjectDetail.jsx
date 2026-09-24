@@ -5,6 +5,8 @@ import { Button, Badge, PermissionButton } from '../../components/ui';
 import { usePagePermissions } from '../../hooks/usePagePermissions';
 import styles from './ProjectDetail.module.css';
 import { getProject, deleteProject, updateProject, archiveProject } from '../../api/projects';
+import { getProjectCoverages } from '../../api/leaveApi';
+import { useAuth } from '../../store/authContext';
 import ProjectForm from '../../components/projects/ProjectForm';
 import ReopenProjectModal from '../../components/projects/ReopenProjectModal';
 import CancelProjectModal from '../../components/projects/CancelProjectModal';
@@ -278,6 +280,7 @@ function daysRemaining(targetDate) {
 }
 
 const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit }) {
+  const { user } = useAuth();
   const baseTargetDate = project.target_date ? new Date(project.target_date) : null;
   const timelineImpact = project.stats?.approvedTimelineImpactDays || 0;
   const revisedTargetDate = baseTargetDate && timelineImpact > 0 ? new Date(baseTargetDate.getTime() + timelineImpact * 24 * 60 * 60 * 1000) : null;
@@ -288,6 +291,14 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
     currentResourceId: '',
     currentResourceName: ''
   });
+  const [projectCoverages, setProjectCoverages] = useState([]);
+
+  useEffect(() => {
+    if (!project?.id) return;
+    getProjectCoverages(project.id)
+      .then(data => setProjectCoverages(Array.isArray(data) ? data : []))
+      .catch(() => setProjectCoverages([]));
+  }, [project?.id]);
 
   // custom_fields may hold advance_amount, payment_terms, etc from conversion form
   const cf = project.custom_fields || {};
@@ -505,8 +516,17 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
                 {(member.name || '?').charAt(0)}
               </div>
               <div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
                   {member.name}
+                  {(() => {
+                    const cov = (projectCoverages || []).find(c => String(c.on_leave_user_id) === String(member.id));
+                    if (!cov) return null;
+                    return (
+                      <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-accent, #3b82f6)', background: 'var(--color-accent-bg, #eff6ff)', padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
+                        🤝 Covered by {cov.covering_user_name}
+                      </span>
+                    );
+                  })()}
                   {member.key && (
                     <button
                       onClick={() => setHandoverState({
@@ -537,6 +557,55 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
           ))}
         </div>
       </div>
+
+      {/* Active Colleague Handover & Coverage Banner */}
+      {projectCoverages && projectCoverages.length > 0 && (
+        <div style={{
+          background: 'var(--color-surface, #ffffff)',
+          borderRadius: 'var(--radius-lg, 12px)',
+          border: '1px solid var(--color-border, #e5e1d8)',
+          borderLeft: '4px solid var(--color-accent, #e8935a)',
+          padding: '16px 20px',
+          boxShadow: 'var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.05))'
+        }}>
+          <div style={{ fontWeight: 700, fontSize: 'var(--text-sm, 14px)', color: 'var(--color-text, #1c1c1e)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '10px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+              <span>🌴 Temporary Colleague Handover & Coverage</span>
+              <span style={{ fontSize: '11px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '999px', fontWeight: 600 }}>Active Delegation</span>
+            </div>
+            <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #9ca3af)', fontWeight: 500 }}>
+              {projectCoverages.length} {projectCoverages.length === 1 ? 'delegation' : 'delegations'}
+            </span>
+          </div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+            {projectCoverages.map(cov => {
+              const isCovering = String(user?.id) === String(cov.covering_user_id);
+              return (
+                <div key={cov.id} style={{ fontSize: 'var(--text-sm, 13px)', color: 'var(--color-text-secondary, #4b5563)', background: isCovering ? 'var(--color-accent-bg, #eff6ff)' : 'var(--color-surface-2, #f9fafb)', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${isCovering ? 'var(--color-accent, #bfdbfe)' : 'var(--color-border, #e5e7eb)'}` }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '8px' }}>
+                    <div>
+                      <strong style={{ color: 'var(--color-text, #111827)' }}>{cov.covering_user_name}</strong> ({cov.covering_role || 'Team Member'}) is covering for <strong style={{ color: 'var(--color-text, #111827)' }}>{cov.on_leave_user_name}</strong> ({cov.on_leave_role || 'Colleague on Leave'})
+                      <span style={{ marginLeft: '8px', fontSize: '12px', color: 'var(--color-text-muted, #9ca3af)' }}>
+                        ({new Date(cov.start_date).toLocaleDateString()} – {new Date(cov.end_date).toLocaleDateString()})
+                      </span>
+                    </div>
+                    {isCovering && (
+                      <span style={{ fontSize: '11px', fontWeight: 600, color: '#1d4ed8', background: '#dbeafe', padding: '2px 8px', borderRadius: '4px' }}>
+                        You are covering this
+                      </span>
+                    )}
+                  </div>
+                  {cov.handover_notes && (
+                    <div style={{ marginTop: '6px', fontStyle: 'italic', fontSize: '13px', color: 'var(--color-text, #374151)', background: 'var(--color-surface, #ffffff)', padding: '6px 10px', borderRadius: '4px', border: '1px dashed var(--color-border, #e5e7eb)' }}>
+                      Handover Notes: "{cov.handover_notes}"
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Pre-Conversion Checklist — only shown for converted leads */}
       {project.lead_id && (

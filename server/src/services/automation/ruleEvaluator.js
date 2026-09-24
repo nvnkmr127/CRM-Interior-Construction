@@ -57,8 +57,8 @@ async function processEvent(tenantId, eventType, record, changes = {}) {
         await pool.query(`
           UPDATE automation_rules 
           SET last_run_at = CURRENT_TIMESTAMP, run_count = COALESCE(run_count, 0) + 1 
-          WHERE id = $1
-        `, [ruleRow.id]);
+          WHERE id = $1 AND tenant_id = $2
+        `, [ruleRow.id, tenantId]);
 
         const context = {
           tenantId,

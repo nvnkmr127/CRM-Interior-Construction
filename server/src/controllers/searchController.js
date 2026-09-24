@@ -71,7 +71,7 @@ exports.globalSearchHandler = async function globalSearchHandler(req, res, next)
     if (searchTypes.includes('projects')) {
       let query = `
         SELECT id, name, client_name, status,
-          (SELECT name FROM users WHERE id=pm_id) as pm_name
+          (SELECT name FROM users WHERE id=pm_id AND tenant_id = $1) as pm_name
         FROM projects
         WHERE tenant_id = $1 AND deleted_at IS NULL
       `;
@@ -102,7 +102,7 @@ exports.globalSearchHandler = async function globalSearchHandler(req, res, next)
         SELECT t.id, t.title, t.status, t.priority,
           p.name as project_name, p.id as project_id
         FROM tasks t
-        JOIN projects p ON p.id=t.project_id
+        JOIN projects p ON p.id=t.project_id AND p.tenant_id = t.tenant_id
         WHERE t.tenant_id = $1 AND t.deleted_at IS NULL
       `;
       const params = [tenantId];
@@ -162,7 +162,7 @@ exports.globalSearchHandler = async function globalSearchHandler(req, res, next)
         SELECT u.id, u.name, u.email, u.role_id,
           COALESCE(r.name, 'Team Member') as role
         FROM users u
-        LEFT JOIN roles r ON r.id = u.role_id
+        LEFT JOIN roles r ON r.id = u.role_id AND (r.tenant_id = u.tenant_id OR r.tenant_id IS NULL)
         WHERE u.tenant_id = $1 AND u.deleted_at IS NULL
       `;
       const params = [tenantId];

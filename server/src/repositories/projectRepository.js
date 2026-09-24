@@ -30,6 +30,16 @@ class ProjectRepository {
       installation_warranty_scope, installation_warranty_status
     } = data;
 
+    if (lead_id) {
+      const leadCheck = await dbClient.query(
+        'SELECT id FROM leads WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL',
+        [lead_id, tenantId]
+      );
+      if (leadCheck.rows.length === 0) {
+        throw new Error('Lead not found or unauthorized');
+      }
+    }
+
     const query = `
       INSERT INTO projects (
         tenant_id, lead_id, client_name, client_phone, client_email,
@@ -164,16 +174,16 @@ class ProjectRepository {
         crm.name as crm_executive_name,
         po.name as procurement_officer_name
       FROM projects p
-      LEFT JOIN users pm ON p.pm_id = pm.id
-      LEFT JOIN users d ON p.designer_id = d.id
-      LEFT JOIN users ld ON p.lead_designer_id = ld.id
-      LEFT JOIN users jd ON p.junior_designer_id = jd.id
-      LEFT JOIN users se ON p.site_engineer_id = se.id
-      LEFT JOIN users qc ON p.qc_engineer_id = qc.id
-      LEFT JOIN users ss ON p.site_supervisor_id = ss.id
-      LEFT JOIN users crm ON p.crm_executive_id = crm.id
-      LEFT JOIN users po ON p.procurement_officer_id = po.id
-      WHERE (p.tenant_id = $1 OR 1=1) AND p.id = $2 ${includeDeleted ? '' : 'AND (p.deleted_at IS NULL OR 1=1)'}
+      LEFT JOIN users pm ON p.pm_id = pm.id AND pm.tenant_id = p.tenant_id
+      LEFT JOIN users d ON p.designer_id = d.id AND d.tenant_id = p.tenant_id
+      LEFT JOIN users ld ON p.lead_designer_id = ld.id AND ld.tenant_id = p.tenant_id
+      LEFT JOIN users jd ON p.junior_designer_id = jd.id AND jd.tenant_id = p.tenant_id
+      LEFT JOIN users se ON p.site_engineer_id = se.id AND se.tenant_id = p.tenant_id
+      LEFT JOIN users qc ON p.qc_engineer_id = qc.id AND qc.tenant_id = p.tenant_id
+      LEFT JOIN users ss ON p.site_supervisor_id = ss.id AND ss.tenant_id = p.tenant_id
+      LEFT JOIN users crm ON p.crm_executive_id = crm.id AND crm.tenant_id = p.tenant_id
+      LEFT JOIN users po ON p.procurement_officer_id = po.id AND po.tenant_id = p.tenant_id
+      WHERE p.tenant_id = $1 AND p.id = $2 ${includeDeleted ? '' : 'AND p.deleted_at IS NULL'}
     `;
     const { rows } = await pool.query(query, [tenantId, projectId]);
     if (rows.length === 0) return null;
@@ -186,7 +196,7 @@ class ProjectRepository {
         (
           SELECT count(t.id)::int 
           FROM tasks t 
-          JOIN milestones m ON t.milestone_id = m.id 
+          JOIN milestones m ON t.milestone_id = m.id AND m.tenant_id = t.tenant_id
           WHERE m.phase_id = pp.id AND t.tenant_id = $1 AND t.deleted_at IS NULL
         ) as task_count,
         COALESCE(
@@ -253,7 +263,7 @@ class ProjectRepository {
     const siteTeamQuery = `
       SELECT pst.*, pv.vendor_name
       FROM project_site_team pst
-      LEFT JOIN project_vendors pv ON pst.vendor_id = pv.id
+      LEFT JOIN project_vendors pv ON pst.vendor_id = pv.id AND pv.tenant_id = pst.tenant_id
       WHERE pst.tenant_id = $1 AND pst.project_id = $2
       ORDER BY pst.created_at ASC
     `;
@@ -266,8 +276,8 @@ class ProjectRepository {
               u_des.name as designer_name,
               u_conf.name as confirmed_by_name
        FROM project_bookings pb
-       LEFT JOIN users u_des ON pb.assigned_designer_id = u_des.id
-       LEFT JOIN users u_conf ON pb.confirmed_by = u_conf.id
+       LEFT JOIN users u_des ON pb.assigned_designer_id = u_des.id AND u_des.tenant_id = pb.tenant_id
+       LEFT JOIN users u_conf ON pb.confirmed_by = u_conf.id AND u_conf.tenant_id = pb.tenant_id
        WHERE pb.tenant_id = $1 AND pb.project_id = $2`,
       [tenantId, projectId]
     );
@@ -283,13 +293,13 @@ class ProjectRepository {
         SET status = 'deleted', 
             deleted_at = NOW(), 
             updated_at = NOW()
-        WHERE (tenant_id = $1 OR $1 IS NULL) AND id = $2 AND deleted_at IS NULL
+        WHERE tenant_id = $1 AND id = $2 AND deleted_at IS NULL
         RETURNING *
       `;
-      const { rows } = await pool.query(query, [tenantId || null, projectId]);
+      const { rows } = await pool.query(query, [tenantId, projectId]);
       if (rows.length === 0) {
-        const checkQuery = `SELECT id, deleted_at FROM projects WHERE id = $1`;
-        const checkRes = await pool.query(checkQuery, [projectId]);
+        const checkQuery = `SELECT id, deleted_at FROM projects WHERE tenant_id = $1 AND id = $2`;
+        const checkRes = await pool.query(checkQuery, [tenantId, projectId]);
         if (checkRes.rows.length === 0) {
           const err = new Error('NOT_FOUND');
           err.status = 404;
@@ -370,15 +380,15 @@ class ProjectRepository {
            WHERE project_id = p.id AND tenant_id = $1 AND deleted_at IS NULL)
         , 0)::int as progress
       FROM projects p
-      LEFT JOIN users pm ON p.pm_id = pm.id
-      LEFT JOIN users d ON p.designer_id = d.id
-      LEFT JOIN users ld ON p.lead_designer_id = ld.id
-      LEFT JOIN users jd ON p.junior_designer_id = jd.id
-      LEFT JOIN users se ON p.site_engineer_id = se.id
-      LEFT JOIN users qe ON p.qc_engineer_id = qe.id
-      LEFT JOIN users ss ON p.site_supervisor_id = ss.id
-      LEFT JOIN users crm ON p.crm_executive_id = crm.id
-      LEFT JOIN users po ON p.procurement_officer_id = po.id
+      LEFT JOIN users pm ON p.pm_id = pm.id AND pm.tenant_id = p.tenant_id
+      LEFT JOIN users d ON p.designer_id = d.id AND d.tenant_id = p.tenant_id
+      LEFT JOIN users ld ON p.lead_designer_id = ld.id AND ld.tenant_id = p.tenant_id
+      LEFT JOIN users jd ON p.junior_designer_id = jd.id AND jd.tenant_id = p.tenant_id
+      LEFT JOIN users se ON p.site_engineer_id = se.id AND se.tenant_id = p.tenant_id
+      LEFT JOIN users qe ON p.qc_engineer_id = qe.id AND qe.tenant_id = p.tenant_id
+      LEFT JOIN users ss ON p.site_supervisor_id = ss.id AND ss.tenant_id = p.tenant_id
+      LEFT JOIN users crm ON p.crm_executive_id = crm.id AND crm.tenant_id = p.tenant_id
+      LEFT JOIN users po ON p.procurement_officer_id = po.id AND po.tenant_id = p.tenant_id
       WHERE ${whereClause}
       ORDER BY p.created_at DESC
       LIMIT $${idx++} OFFSET $${idx}
@@ -527,7 +537,7 @@ class ProjectRepository {
         COALESCE(SUM(qi.total_price) FILTER (WHERE qi.scope_type = 'addition' AND (qi.change_order_id IS NULL OR pco.status = 'approved')), 0) as additions_total,
         COALESCE(SUM(qi.total_price) FILTER (WHERE qi.scope_type = 'reduction' AND (qi.change_order_id IS NULL OR pco.status = 'approved')), 0) as reductions_total
       FROM quotation_items qi
-      LEFT JOIN project_change_orders pco ON qi.change_order_id = pco.id
+      LEFT JOIN project_change_orders pco ON qi.change_order_id = pco.id AND pco.tenant_id = qi.tenant_id
       WHERE qi.tenant_id = $1 AND qi.quotation_id = (SELECT id FROM latest_quotation)
     `;
     const { rows: boqRows } = await pool.query(boqStatsQuery, [tenantId, projectId]);

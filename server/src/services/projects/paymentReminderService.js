@@ -35,7 +35,7 @@ async function checkAndSendPaymentReminders(projectId = null) {
         pm.id, pm.tenant_id, pm.project_id, pm.name as milestone_name, pm.amount, pm.due_date, pm.status,
         p.name as project_name, p.client_name, p.client_email, p.client_phone, p.pm_id, p.crm_executive_id
       FROM payment_milestones pm
-      JOIN projects p ON pm.project_id = p.id
+      JOIN projects p ON pm.project_id = p.id AND p.tenant_id = pm.tenant_id
       WHERE pm.status != 'paid' 
         AND pm.is_deferred = false 
         AND pm.due_date IS NOT NULL
@@ -103,9 +103,10 @@ async function checkAndSendPaymentReminders(projectId = null) {
             AND entity_id = $1
             AND action = 'payment_reminder'
             AND new_value = $2
+            AND tenant_id = $3
           LIMIT 1
         `;
-        const checkRes = await pool.query(checkQuery, [milestone.id, reminderType]);
+        const checkRes = await pool.query(checkQuery, [milestone.id, reminderType, milestone.tenant_id]);
         
         if (checkRes.rowCount === 0) {
           logger.info(`[Payment Reminder] Sending "${reminderType}" reminder for milestone "${milestone.milestone_name}" (${milestone.id})`);

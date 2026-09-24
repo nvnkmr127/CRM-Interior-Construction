@@ -1104,4 +1104,127 @@
     at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
     at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
     at async Promise.all (index 4)
-    at async globalSearchHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\searchController.js:189:5)\n\n
+    at async globalSearchHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\searchController.js:189:5)\n\n2026-09-22T09:34:30.357Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:266:20\n\n2026-09-22T09:34:30.430Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:266:20\n\n2026-09-22T09:34:30.442Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:266:20\n\n2026-09-22T09:34:32.006Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:266:20\n\n2026-09-22T09:34:32.027Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:266:20\n\n2026-09-22T09:36:21.412Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:266:20\n\n2026-09-23T11:04:03.116Z\nerror: invalid input syntax for type uuid: "undefined"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at enforceLeadAccess (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\enforceLeadAccess.js:25:33)\n\n2026-09-23T11:04:14.254Z\nError: Cannot use a pool after calling end on the pool
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at enqueueAutomation (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\queues\automationQueue.js:16:18)
+    at createProject (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\services\projects\createProject.js:424:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\projects.js:433:21\n\n2026-09-23T11:04:52.828Z\nerror: operator does not exist: uuid = text
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at exports.getEvents (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\eventsController.js:148:22)\n\n2026-09-23T11:04:55.096Z\nerror: operator does not exist: uuid = text
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at exports.getEvents (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\eventsController.js:134:24)\n\n2026-09-23T11:20:22.515Z\nError: Validation failed
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:83:21
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at router.handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:186:3)
+    at router (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:60:12)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\auditLogger.js:128:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:221:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\middleware\responseFormatter.js:80:3)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:144:5)
+    at AsyncLocalStorage.run (node:internal/async_local_storage/async_context_frame:63:14)
+    at run (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\app.js:143:21)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at cookieParser (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\cookie-parser\index.js:57:14)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at read (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:42:5)
+    at urlencodedParser (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\types\urlencoded.js:57:5)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at trimPrefix (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:342:13)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:297:9
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\body-parser\lib\read.js:171:5
+    at AsyncResource.runInAsyncScope (node:async_hooks:214:14)
+    at invokeCallback (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:238:16)
+    at done (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:227:7)
+    at IncomingMessage.onEnd (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\raw-body\index.js:287:7)
+    at IncomingMessage.emit (node:events:508:28)
+    at endReadableNT (node:internal/streams/readable:1701:12)
+    at processTicksAndRejections (node:internal/process/task_queues:89:21)\n\n2026-09-23T12:43:01.249Z\nerror: invalid input syntax for type uuid: "Contacted"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async findLeads (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:287:23)
+    at async getLeadsHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:2738:20)\n\n2026-09-23T12:43:01.294Z\nerror: invalid input syntax for type uuid: "Contacted"
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async getLeadStats (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\repositories\leadRepository.js:767:18)
+    at async exports.getLeadStatsHandler (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\controllers\leadController.js:1415:19)\n\n2026-09-24T11:24:16.400Z\nError: Validation failed
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:83:21
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:157:13)
+    at Route.dispatch (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\route.js:117:3)
+    at handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:435:11)
+    at Layer.handleRequest (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\lib\layer.js:152:17)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:295:15
+    at processParams (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:582:12)
+    at next (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:291:5)
+    at router.handle (D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\router\index.js:186:3)\n\n2026-09-24T12:09:35.970Z\nerror: column t.logo_url does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:478:23\n\n2026-09-24T12:09:56.311Z\nerror: column t.logo_url does not exist
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:478:23\n\n2026-09-24T12:14:24.501Z\nTypeError: res.status is not a function
+    at fail (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:23:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:565:35\n\n2026-09-24T12:14:34.265Z\nTypeError: res.status is not a function
+    at fail (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:23:14)
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:565:35\n\n

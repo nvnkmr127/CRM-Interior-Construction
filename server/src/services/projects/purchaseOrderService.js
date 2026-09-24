@@ -27,8 +27,11 @@ class PurchaseOrderService {
       }
 
       // Fetch default delivery address from project site_address if not provided
-      const projectRes = await client.query('SELECT site_address FROM projects WHERE id = $1', [projectId]);
-      const defaultAddress = projectRes.rows.length > 0 ? projectRes.rows[0].site_address : '';
+      const projectRes = await client.query('SELECT site_address FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
+      if (projectRes.rows.length === 0) {
+        throw new Error('PROJECT_NOT_FOUND');
+      }
+      const defaultAddress = projectRes.rows[0].site_address || '';
       const deliveryAddress = poData.deliveryAddress || defaultAddress;
 
       // 2. Insert main PO
@@ -102,10 +105,10 @@ class PurchaseOrderService {
       // 4. Update total PO amount
       const updateRes = await client.query(
         `UPDATE purchase_orders
-         SET total_amount = (SELECT COALESCE(SUM(quantity * unit_price), 0.00) FROM purchase_order_items WHERE purchase_order_id = $1)
-         WHERE id = $1
+         SET total_amount = (SELECT COALESCE(SUM(quantity * unit_price), 0.00) FROM purchase_order_items WHERE purchase_order_id = $1 AND tenant_id = $2)
+         WHERE id = $1 AND tenant_id = $2
          RETURNING *`,
-        [po.id]
+        [po.id, tenantId]
       );
 
       await client.query('COMMIT');
@@ -134,7 +137,7 @@ class PurchaseOrderService {
     const query = `
       SELECT po.*, v.vendor_name
       FROM purchase_orders po
-      LEFT JOIN project_vendors v ON po.vendor_id = v.id
+      LEFT JOIN project_vendors v ON po.vendor_id = v.id AND v.tenant_id = po.tenant_id
       WHERE po.project_id = $1 AND po.tenant_id = $2
       ORDER BY po.created_at DESC
     `;
@@ -146,7 +149,7 @@ class PurchaseOrderService {
     const poQuery = `
       SELECT po.*, v.vendor_name
       FROM purchase_orders po
-      LEFT JOIN project_vendors v ON po.vendor_id = v.id
+      LEFT JOIN project_vendors v ON po.vendor_id = v.id AND v.tenant_id = po.tenant_id
       WHERE po.id = $1 AND po.project_id = $2 AND po.tenant_id = $3
     `;
     const poRes = await pool.query(poQuery, [poId, projectId, tenantId]);
@@ -230,7 +233,7 @@ class PurchaseOrderService {
       // Get vendor name
       let vendorName = 'Unknown Vendor';
       if (updatedPo.vendor_id) {
-        const vRes = await pool.query('SELECT vendor_name FROM project_vendors WHERE id = $1', [updatedPo.vendor_id]);
+        const vRes = await pool.query('SELECT vendor_name FROM project_vendors WHERE id = $1 AND tenant_id = $2', [updatedPo.vendor_id, tenantId]);
         if (vRes.rows.length > 0) vendorName = vRes.rows[0].vendor_name;
       }
       updatedPo.vendor_name = vendorName;
@@ -305,8 +308,8 @@ class PurchaseOrderService {
       let updatedPo = po;
       if (newStatus !== po.status) {
         const poUpdateRes = await client.query(
-          `UPDATE purchase_orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-          [newStatus, poId]
+          `UPDATE purchase_orders SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING *`,
+          [newStatus, poId, tenantId]
         );
         updatedPo = poUpdateRes.rows[0];
       }
@@ -319,7 +322,7 @@ class PurchaseOrderService {
       // Get vendor name
       let vendorName = 'Unknown Vendor';
       if (updatedPo.vendor_id) {
-        const vRes = await pool.query('SELECT vendor_name FROM project_vendors WHERE id = $1', [updatedPo.vendor_id]);
+        const vRes = await pool.query('SELECT vendor_name FROM project_vendors WHERE id = $1 AND tenant_id = $2', [updatedPo.vendor_id, tenantId]);
         if (vRes.rows.length > 0) vendorName = vRes.rows[0].vendor_name;
       }
       updatedPo.vendor_name = vendorName;
@@ -340,7 +343,7 @@ class PurchaseOrderService {
     // Get vendor name for description
     let vendorName = 'Vendor';
     if (po.vendor_id) {
-      const vRes = await client.query('SELECT vendor_name FROM project_vendors WHERE id = $1', [po.vendor_id]);
+      const vRes = await client.query('SELECT vendor_name FROM project_vendors WHERE id = $1 AND tenant_id = $2', [po.vendor_id, tenantId]);
       if (vRes.rows.length > 0) {
         vendorName = vRes.rows[0].vendor_name;
       }
@@ -361,8 +364,8 @@ class PurchaseOrderService {
       if (commRes.rows.length > 0) {
         // Update existing committed expense amount
         await client.query(
-          `UPDATE project_expenses SET amount = $1, description = $2, updated_at = NOW() WHERE id = $3`,
-          [po.total_amount, description, commRes.rows[0].id]
+          `UPDATE project_expenses SET amount = $1, description = $2, updated_at = NOW() WHERE id = $3 AND tenant_id = $4`,
+          [po.total_amount, description, commRes.rows[0].id, tenantId]
         );
       } else {
         // Insert new committed expense
@@ -402,8 +405,8 @@ class PurchaseOrderService {
       if (actRes.rows.length > 0) {
         // Update existing actual expense amount
         await client.query(
-          `UPDATE project_expenses SET amount = $1, description = $2, updated_at = NOW() WHERE id = $3`,
-          [receivedAmount, description, actRes.rows[0].id]
+          `UPDATE project_expenses SET amount = $1, description = $2, updated_at = NOW() WHERE id = $3 AND tenant_id = $4`,
+          [receivedAmount, description, actRes.rows[0].id, tenantId]
         );
       } else {
         // Insert new actual expense

@@ -38,7 +38,8 @@ function avatarColor(name) {
     ['#10B981', '#059669'],
     ['#EC4899', '#BE185D'],
   ];
-  const idx = name.charCodeAt(0) % palette.length;
+  const safeStr = (typeof name === 'string' && name.trim()) ? name.trim() : '?';
+  const idx = safeStr.charCodeAt(0) % palette.length;
   return palette[idx];
 }
 
@@ -962,10 +963,10 @@ export default function SalesExecutiveDashboard() {
                         className={styles.actAvatar}
                         style={{ background: `linear-gradient(135deg, ${c1}, ${c2})` }}
                       >
-                        {act.user.charAt(0)}
+                        {(act.user || '?').charAt(0).toUpperCase()}
                       </div>
                       <div className={styles.actContent}>
-                        <span className={styles.actName}>{act.user}</span>
+                        <span className={styles.actName}>{act.user || 'Unknown User'}</span>
                         {' '}
                         <span className={verbClass[act.action] || styles.verbInfo}>{act.action}</span>
                         {' '}{act.text}
@@ -1079,10 +1080,10 @@ export default function SalesExecutiveDashboard() {
                   background: 'linear-gradient(135deg, #3B82F6, #1D4ED8)'
                 }}
               >
-                {selectedActivity.user.charAt(0)}
+                {(selectedActivity.user || '?').charAt(0).toUpperCase()}
               </div>
               <div>
-                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{selectedActivity.user}</h4>
+                <h4 style={{ margin: 0, fontSize: '1rem', fontWeight: 600 }}>{selectedActivity.user || 'Unknown User'}</h4>
                 <p style={{ margin: 0, fontSize: '0.85rem', color: 'var(--color-text-secondary)' }}>
                   Performed action at {new Date(selectedActivity.created_at || Date.now()).toLocaleString()}
                 </p>

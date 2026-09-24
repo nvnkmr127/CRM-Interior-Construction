@@ -200,7 +200,7 @@ router.post('/:id/activities', authorize('projects:write'), async (req, res, nex
     
     const newActivity = rows[0];
     if (newActivity && newActivity.user_id) {
-      const userRes = await pool.query('SELECT name FROM users WHERE id = $1', [newActivity.user_id]);
+      const userRes = await pool.query('SELECT name FROM users WHERE id = $1 AND tenant_id = $2', [newActivity.user_id, req.tenantId]);
       if (userRes.rows.length > 0) {
         newActivity.user_name = userRes.rows[0].name;
       }
@@ -263,7 +263,7 @@ router.patch('/:id/activities/:aid', authorize('projects:write'), async (req, re
     
     const updatedRow = rows[0];
     if (updatedRow && updatedRow.user_id) {
-      const userRes = await pool.query('SELECT name FROM users WHERE id = $1', [updatedRow.user_id]);
+      const userRes = await pool.query('SELECT name FROM users WHERE id = $1 AND tenant_id = $2', [updatedRow.user_id, req.tenantId]);
       if (userRes.rows.length > 0) {
         updatedRow.user_name = userRes.rows[0].name;
       }
@@ -730,12 +730,12 @@ router.patch('/:id', authorize('projects:update'), validate(updateProjectSchema)
   try {
     const { pool } = require('../config/db');
     // Intercept if this ID belongs to a task or leave from Resource Capacity UI
-    const { rows: raRows } = await pool.query('SELECT entity_type FROM resource_allocations WHERE entity_id = $1 LIMIT 1', [req.params.id]);
+    const { rows: raRows } = await pool.query('SELECT entity_type FROM resource_allocations WHERE entity_id = $1 AND tenant_id = $2 LIMIT 1', [req.params.id, req.tenantId]);
     if (raRows.length > 0 && raRows[0].entity_type !== 'project') {
       const type = raRows[0].entity_type;
       const hours = req.body.pm_hours_allocated !== undefined ? req.body.pm_hours_allocated : req.body.designer_hours_allocated;
       if (type === 'task' && hours !== undefined) {
-         await pool.query('UPDATE tasks SET estimated_hours = $1 WHERE id = $2', [hours, req.params.id]);
+         await pool.query('UPDATE tasks SET estimated_hours = $1 WHERE id = $2 AND tenant_id = $3', [hours, req.params.id, req.tenantId]);
          return success(res, { id: req.params.id, message: 'Task hours updated' });
       } else if (type === 'leave') {
          return success(res, { id: req.params.id, message: 'Leave hours cannot be edited here' });
@@ -2327,8 +2327,8 @@ router.post('/:id/booking/confirm', authenticate, authorize('projects:manage'), 
                status = 'paid', 
                paid_amount = $1, 
                paid_at = $2
-           WHERE id = $3`,
-          [data.advance_amount, new Date().toISOString(), milestoneRes.rows[0].id]
+           WHERE id = $3 AND tenant_id = $4`,
+          [data.advance_amount, new Date().toISOString(), milestoneRes.rows[0].id, tenantId]
         );
       } else {
         const contractVal = Number(project.contract_value || data.advance_amount);
@@ -2573,6 +2573,9 @@ router.post('/:projectId/external-inspections', authorize('projects:write'), asy
     });
     return success(res, data, { message: 'External inspection logged successfully', statusCode: 201 });
   } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Project not found', 404);
+    }
     next(error);
   }
 });

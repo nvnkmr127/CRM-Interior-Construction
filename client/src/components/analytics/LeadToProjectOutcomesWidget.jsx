@@ -22,31 +22,23 @@ export default function LeadToProjectOutcomesWidget({ filters }) {
     ]).then((results) => {
       if (!isMounted) return;
 
-      // Extract raw data from each response
-      // For demonstration and UI mapping, we will simulate the frontend join here.
-      // Since these APIs return aggregate views, we create a unified grouped structure to mock what a true SQL JOIN would return.
+      // Extract real data from responses
+      const profitData = results[0]?.status === 'fulfilled' ? (results[0].value?.data || results[0].value) : null;
+      const csatData = results[2]?.status === 'fulfilled' ? (results[2].value?.data || results[2].value) : null;
+      const snagsData = results[3]?.status === 'fulfilled' ? (results[3].value?.data || results[3].value) : null;
 
-      const mockData = {
-        source: [
-          { name: 'Organic Search', profitMargin: 24.5, csat: 4.6, snags: 12, vendorVariance: -2.1 },
-          { name: 'Referral', profitMargin: 32.1, csat: 4.9, snags: 5, vendorVariance: 0.5 },
-          { name: 'Paid Ads', profitMargin: 18.2, csat: 4.1, snags: 28, vendorVariance: 4.2 },
-          { name: 'Cold Outreach', profitMargin: 21.0, csat: 4.3, snags: 18, vendorVariance: 1.1 }
-        ],
-        salesperson: [
-          { name: 'Sarah Smith', profitMargin: 28.5, csat: 4.8, snags: 10, vendorVariance: -1.5 },
-          { name: 'Mike Johnson', profitMargin: 19.4, csat: 4.2, snags: 22, vendorVariance: 3.8 },
-          { name: 'David Lee', profitMargin: 25.1, csat: 4.5, snags: 15, vendorVariance: 0.2 },
-          { name: 'Emma Davis', profitMargin: 22.8, csat: 4.4, snags: 19, vendorVariance: 1.0 }
-        ]
-      };
+      const sourceItems = Array.isArray(profitData?.source) ? profitData.source : (Array.isArray(profitData?.bySource) ? profitData.bySource : []);
+      const salespersonItems = Array.isArray(profitData?.salesperson) ? profitData.salesperson : (Array.isArray(profitData?.bySalesperson) ? profitData.bySalesperson : []);
 
       // Ensure that if any API threw a fatal network error, we catch it
       const hasFatalError = results.every(r => r.status === 'rejected');
       if (hasFatalError) {
         setError('Failed to load project outcome data from backend.');
       } else {
-        setData(mockData);
+        setData({
+          source: sourceItems,
+          salesperson: salespersonItems
+        });
       }
       setLoading(false);
     });
@@ -58,11 +50,11 @@ export default function LeadToProjectOutcomesWidget({ filters }) {
   if (error) return <div style={{ padding: '16px', color: 'var(--color-danger)', textAlign: 'center' }}>{error}</div>;
   if (!data) return null;
 
-  const activeData = data[groupBy];
+  const activeData = data[groupBy] || [];
   
-  const avgProfit = (activeData.reduce((acc, curr) => acc + curr.profitMargin, 0) / activeData.length).toFixed(1);
-  const avgCsat = (activeData.reduce((acc, curr) => acc + curr.csat, 0) / activeData.length).toFixed(1);
-  const totalSnags = activeData.reduce((acc, curr) => acc + curr.snags, 0);
+  const avgProfit = activeData.length > 0 ? (activeData.reduce((acc, curr) => acc + (curr.profitMargin || 0), 0) / activeData.length).toFixed(1) : '0.0';
+  const avgCsat = activeData.length > 0 ? (activeData.reduce((acc, curr) => acc + (curr.csat || 0), 0) / activeData.length).toFixed(1) : '0.0';
+  const totalSnags = activeData.reduce((acc, curr) => acc + (curr.snags || 0), 0);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (!active || !payload || !payload.length) return null;
@@ -117,20 +109,26 @@ export default function LeadToProjectOutcomesWidget({ filters }) {
 
       {/* Main Chart */}
       <div style={{ flex: 1, minHeight: 0 }}>
-        <ResponsiveContainer minWidth={1} minHeight={1} width="100%" height={280}>
-          <ComposedChart data={activeData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
-            <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} />
-            <YAxis yAxisId="left" tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} tickFormatter={v => v + '%'} />
-            <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} domain={[0, 5]} />
-            
-            <Tooltip content={<CustomTooltip />} />
-            <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-            
-            <Bar yAxisId="left" dataKey="profitMargin" name="Profit Margin" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
-            <Line yAxisId="right" type="monotone" dataKey="csat" name="CSAT Score" stroke="#3b82f6" strokeWidth={3} dot={{ r: 5, fill: '#3b82f6', strokeWidth: 0 }} />
-          </ComposedChart>
-        </ResponsiveContainer>
+        {activeData.length === 0 ? (
+          <div style={{ padding: '48px 16px', textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '13px' }}>
+            No project outcome data recorded yet for this view.
+          </div>
+        ) : (
+          <ResponsiveContainer minWidth={1} minHeight={1} width="100%" height={280}>
+            <ComposedChart data={activeData} margin={{ top: 20, right: 20, bottom: 20, left: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" vertical={false} />
+              <XAxis dataKey="name" tick={{ fontSize: 12, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} />
+              <YAxis yAxisId="left" tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} tickFormatter={v => v + '%'} />
+              <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 11, fill: 'var(--color-text-secondary)' }} axisLine={false} tickLine={false} domain={[0, 5]} />
+              
+              <Tooltip content={<CustomTooltip />} />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+              
+              <Bar yAxisId="left" dataKey="profitMargin" name="Profit Margin" fill="#10b981" radius={[4, 4, 0, 0]} barSize={40} />
+              <Line yAxisId="right" type="monotone" dataKey="csat" name="CSAT Score" stroke="#3b82f6" strokeWidth={3} dot={{ r: 5, fill: '#3b82f6', strokeWidth: 0 }} />
+            </ComposedChart>
+          </ResponsiveContainer>
+        )}
       </div>
 
     </div>

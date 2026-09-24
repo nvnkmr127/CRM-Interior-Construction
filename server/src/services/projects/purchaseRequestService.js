@@ -13,6 +13,14 @@ class PurchaseRequestService {
     try {
       await client.query('BEGIN');
 
+      const projCheck = await client.query(
+        'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+        [projectId, tenantId]
+      );
+      if (projCheck.rows.length === 0) {
+        throw new Error('PROJECT_NOT_FOUND');
+      }
+
       // 1. Insert main Purchase Request
       const prQuery = `
         INSERT INTO purchase_requests 
@@ -84,10 +92,10 @@ class PurchaseRequestService {
       // 3. Update total PR amount
       const updateRes = await client.query(
         `UPDATE purchase_requests
-         SET total_amount = (SELECT COALESCE(SUM(quantity * unit_price), 0.00) FROM purchase_request_items WHERE purchase_request_id = $1)
-         WHERE id = $1
+         SET total_amount = (SELECT COALESCE(SUM(quantity * unit_price), 0.00) FROM purchase_request_items WHERE purchase_request_id = $1 AND tenant_id = $2)
+         WHERE id = $1 AND tenant_id = $2
          RETURNING *`,
-        [pr.id]
+        [pr.id, tenantId]
       );
 
       await client.query('COMMIT');
@@ -107,7 +115,7 @@ class PurchaseRequestService {
     const res = await client.query(
       `SELECT i.*, pr.required_by_date
        FROM purchase_request_items i
-       JOIN purchase_requests pr ON i.purchase_request_id = pr.id
+       JOIN purchase_requests pr ON i.purchase_request_id = pr.id AND pr.tenant_id = i.tenant_id
        WHERE i.purchase_request_id = $1 AND i.tenant_id = $2
        ORDER BY i.created_at ASC`,
       [prId, tenantId]
@@ -153,7 +161,7 @@ class PurchaseRequestService {
     const query = `
       SELECT pr.*, u.name as requested_by_name
       FROM purchase_requests pr
-      LEFT JOIN users u ON pr.requested_by = u.id
+      LEFT JOIN users u ON pr.requested_by = u.id AND u.tenant_id = pr.tenant_id
       WHERE pr.project_id = $1 AND pr.tenant_id = $2
       ORDER BY pr.created_at DESC
     `;
@@ -165,7 +173,7 @@ class PurchaseRequestService {
     const prQuery = `
       SELECT pr.*, u.name as requested_by_name
       FROM purchase_requests pr
-      LEFT JOIN users u ON pr.requested_by = u.id
+      LEFT JOIN users u ON pr.requested_by = u.id AND u.tenant_id = pr.tenant_id
       WHERE pr.id = $1 AND pr.project_id = $2 AND pr.tenant_id = $3
     `;
     const prRes = await pool.query(prQuery, [prId, projectId, tenantId]);
@@ -275,7 +283,7 @@ class PurchaseRequestService {
       const poNumber = `PO-${dateStr}-${randomSuffix}`;
 
       // Fetch default delivery address from project site_address
-      const projectRes = await client.query('SELECT site_address FROM projects WHERE id = $1', [projectId]);
+      const projectRes = await client.query('SELECT site_address FROM projects WHERE id = $1 AND tenant_id = $2', [projectId, tenantId]);
       const defaultAddress = projectRes.rows.length > 0 ? projectRes.rows[0].site_address : '';
 
       const poQuery = `
@@ -322,16 +330,16 @@ class PurchaseRequestService {
       // 5. Update total PO amount
       const updatePoAmountRes = await client.query(
         `UPDATE purchase_orders
-         SET total_amount = (SELECT COALESCE(SUM(quantity * unit_price), 0.00) FROM purchase_order_items WHERE purchase_order_id = $1)
-         WHERE id = $1
+         SET total_amount = (SELECT COALESCE(SUM(quantity * unit_price), 0.00) FROM purchase_order_items WHERE purchase_order_id = $1 AND tenant_id = $2)
+         WHERE id = $1 AND tenant_id = $2
          RETURNING *`,
-        [po.id]
+        [po.id, tenantId]
       );
 
       // 6. Update PR status to ordered
       await client.query(
-        `UPDATE purchase_requests SET status = 'ordered', updated_at = NOW() WHERE id = $1`,
-        [prId]
+        `UPDATE purchase_requests SET status = 'ordered', updated_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+        [prId, tenantId]
       );
 
       await client.query('COMMIT');

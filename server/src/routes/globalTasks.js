@@ -191,13 +191,16 @@ router.delete('/:tid', async (req, res, next) => {
 // GET /api/tasks/:tid/comments
 router.get('/:tid/comments', async (req, res, next) => {
   try {
+    const task = await taskRepository.findTaskById(req.tenantId, req.params.tid);
+    if (!task) return fail(res, 'NOT_FOUND', 'Task not found', 404);
+
     const { rows } = await pool.query(`
       SELECT c.*, u.name as user_name
       FROM task_comments c
-      LEFT JOIN users u ON c.user_id = u.id
+      LEFT JOIN users u ON c.user_id = u.id AND u.tenant_id = $2
       WHERE c.task_id = $1
       ORDER BY c.created_at ASC
-    `, [req.params.tid]);
+    `, [req.params.tid, req.tenantId]);
     return success(res, rows);
   } catch (error) {
     logger.error('[Global Tasks Router] List comments error:', error);
@@ -313,7 +316,7 @@ router.patch('/:tid/attachments/:attachmentId', upload.single('file'), async (re
     }
     
     const oldAtt = oldRes.rows[0];
-    await client.query("UPDATE task_attachments SET status = 'replaced' WHERE id = $1", [attachmentId]);
+    await client.query("UPDATE task_attachments SET status = 'replaced' WHERE id = $1 AND tenant_id = $2", [attachmentId, tenantId]);
     
     const fileUrl = `${process.env.API_URL || 'http://localhost:3000'}/uploads/attachments/${req.file.filename}`;
     const { rows } = await client.query(`

@@ -15,6 +15,24 @@ class MaterialDeliveryService {
     try {
       await client.query('BEGIN');
 
+      const projCheck = await client.query(
+        'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+        [projectId, tenantId]
+      );
+      if (projCheck.rows.length === 0) {
+        throw new Error('PROJECT_NOT_FOUND');
+      }
+
+      if (purchaseOrderId) {
+        const poCheck = await client.query(
+          'SELECT id FROM purchase_orders WHERE id = $1 AND project_id = $2 AND tenant_id = $3',
+          [purchaseOrderId, projectId, tenantId]
+        );
+        if (poCheck.rows.length === 0) {
+          throw new Error('PURCHASE_ORDER_NOT_FOUND');
+        }
+      }
+
       // 1. Determine status based on items
       let anyDamaged = false;
       let allReceived = true;
@@ -115,7 +133,7 @@ class MaterialDeliveryService {
         }
 
         // Fetch PO details to get current status
-        const poRes = await client.query('SELECT status FROM purchase_orders WHERE id = $1', [purchaseOrderId]);
+        const poRes = await client.query('SELECT status FROM purchase_orders WHERE id = $1 AND tenant_id = $2', [purchaseOrderId, tenantId]);
         const poStatus = poRes.rows[0]?.status;
 
         let newStatus = poStatus;
@@ -130,8 +148,8 @@ class MaterialDeliveryService {
         }
 
         const poUpdateRes = await client.query(
-          `UPDATE purchase_orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-          [newStatus, purchaseOrderId]
+          `UPDATE purchase_orders SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING *`,
+          [newStatus, purchaseOrderId, tenantId]
         );
         const updatedPo = poUpdateRes.rows[0];
 
@@ -156,7 +174,7 @@ class MaterialDeliveryService {
     const query = `
       SELECT mdi.*, poi.brand, poi.material_specifications
       FROM material_delivery_items mdi
-      LEFT JOIN purchase_order_items poi ON mdi.po_item_id = poi.id
+      LEFT JOIN purchase_order_items poi ON mdi.po_item_id = poi.id AND poi.tenant_id = mdi.tenant_id
       WHERE mdi.material_delivery_id = $1 AND mdi.tenant_id = $2
       ORDER BY mdi.created_at ASC
     `;
@@ -179,8 +197,8 @@ class MaterialDeliveryService {
     const query = `
       SELECT md.*, u.name as receiver_name, po.po_number
       FROM material_deliveries md
-      LEFT JOIN users u ON md.received_by = u.id
-      LEFT JOIN purchase_orders po ON md.purchase_order_id = po.id
+      LEFT JOIN users u ON md.received_by = u.id AND u.tenant_id = md.tenant_id
+      LEFT JOIN purchase_orders po ON md.purchase_order_id = po.id AND po.tenant_id = md.tenant_id
       WHERE md.project_id = $1 AND md.tenant_id = $2
       ORDER BY md.actual_receipt_date DESC, md.created_at DESC
     `;
@@ -192,8 +210,8 @@ class MaterialDeliveryService {
     const query = `
       SELECT md.*, u.name as receiver_name, po.po_number
       FROM material_deliveries md
-      LEFT JOIN users u ON md.received_by = u.id
-      LEFT JOIN purchase_orders po ON md.purchase_order_id = po.id
+      LEFT JOIN users u ON md.received_by = u.id AND u.tenant_id = md.tenant_id
+      LEFT JOIN purchase_orders po ON md.purchase_order_id = po.id AND po.tenant_id = md.tenant_id
       WHERE md.id = $1 AND md.project_id = $2 AND md.tenant_id = $3
     `;
     const res = await pool.query(query, [deliveryId, projectId, tenantId]);
@@ -314,7 +332,7 @@ class MaterialDeliveryService {
             ]
           );
  
-          const itemRes = await client.query('SELECT po_item_id FROM material_delivery_items WHERE id = $1', [itemId]);
+          const itemRes = await client.query('SELECT po_item_id FROM material_delivery_items WHERE id = $1 AND tenant_id = $2', [itemId, tenantId]);
           const poItemId = itemRes.rows[0]?.po_item_id;
           if (poItemId) {
             const sumRes = await client.query(
@@ -353,9 +371,9 @@ class MaterialDeliveryService {
           const poRes = await client.query(
             `SELECT pr.requested_by, po.po_number 
              FROM purchase_orders po
-             LEFT JOIN purchase_requests pr ON po.purchase_request_id = pr.id
-             WHERE po.id = $1`,
-            [delivery.purchase_order_id]
+             LEFT JOIN purchase_requests pr ON po.purchase_request_id = pr.id AND pr.tenant_id = po.tenant_id
+             WHERE po.id = $1 AND po.tenant_id = $2`,
+            [delivery.purchase_order_id, tenantId]
           );
           if (poRes.rows.length > 0 && poRes.rows[0].requested_by) {
             const po = poRes.rows[0];
@@ -417,7 +435,7 @@ class MaterialDeliveryService {
           if (rec < qty) allFullyReceived = false;
         }
  
-        const poRes = await client.query('SELECT status FROM purchase_orders WHERE id = $1', [purchaseOrderId]);
+        const poRes = await client.query('SELECT status FROM purchase_orders WHERE id = $1 AND tenant_id = $2', [purchaseOrderId, tenantId]);
         const poStatus = poRes.rows[0]?.status;
  
         let newStatus = poStatus;
@@ -432,8 +450,8 @@ class MaterialDeliveryService {
         }
  
         const poUpdateRes = await client.query(
-          `UPDATE purchase_orders SET status = $1, updated_at = NOW() WHERE id = $2 RETURNING *`,
-          [newStatus, purchaseOrderId]
+          `UPDATE purchase_orders SET status = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3 RETURNING *`,
+          [newStatus, purchaseOrderId, tenantId]
         );
         const updatedPo = poUpdateRes.rows[0];
  

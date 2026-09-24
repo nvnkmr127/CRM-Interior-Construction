@@ -1,6 +1,6 @@
 const express = require('express');
 const authenticate = require('../middleware/authenticate');
-const { success, _fail } = require('../utils/response');
+const { success, fail } = require('../utils/response');
 const pool = require('../config/db');
 
 const router = express.Router();
@@ -30,6 +30,9 @@ router.post('/lead/:leadId', async (req, res, next) => {
     const { leadId } = req.params;
     const tenantId = req.tenantId || req.user.tenantId;
     const { trigger_event } = req.body;
+
+    const leadCheck = await pool.query('SELECT 1 FROM leads WHERE id = $1 AND tenant_id = $2', [leadId, tenantId]);
+    if (leadCheck.rows.length === 0) return fail(res, 'NOT_FOUND', 'Lead not found', 404);
 
     const result = await pool.query(
       `INSERT INTO automated_sequences (tenant_id, lead_id, trigger_event, status, next_run_at)

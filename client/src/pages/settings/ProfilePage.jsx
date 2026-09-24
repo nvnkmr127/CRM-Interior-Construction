@@ -8,6 +8,7 @@ import { useBreadcrumbs } from '../../hooks/useBreadcrumbs'
 import { Avatar, Badge, Button, Input } from '../../components/ui'
 import api from '../../api/axios'
 import { useConfirm } from '../../store/confirmContext'
+import { isSuperMasterDeveloper } from '../../utils/isSuperMasterDeveloper'
 import { format } from 'date-fns'
 
 import {
@@ -23,8 +24,47 @@ import {
   FiCheckSquare,
   FiCheck,
   FiCopy,
-  FiLock
+  FiLock,
+  FiTrash2,
+  FiEye,
+  FiEyeOff
 } from 'react-icons/fi'
+
+const compressImage = (file, maxWidth = 600, maxHeight = 600, quality = 0.85) => {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader()
+    reader.onerror = (err) => reject(err)
+    reader.onload = (e) => {
+      const img = new Image()
+      img.onerror = (err) => reject(err)
+      img.onload = () => {
+        let width = img.width
+        let height = img.height
+
+        if (width > maxWidth || height > maxHeight) {
+          if (width > height) {
+            height = Math.round((height * maxWidth) / width)
+            width = maxWidth
+          } else {
+            width = Math.round((width * maxHeight) / height)
+            height = maxHeight
+          }
+        }
+
+        const canvas = document.createElement('canvas')
+        canvas.width = width
+        canvas.height = height
+        const ctx = canvas.getContext('2d')
+        ctx.drawImage(img, 0, 0, width, height)
+
+        const dataUrl = canvas.toDataURL('image/jpeg', quality)
+        resolve(dataUrl)
+      }
+      img.src = e.target.result
+    }
+    reader.readAsDataURL(file)
+  })
+}
 
 export default function ProfilePage() {
   const { confirm } = useConfirm()
@@ -32,12 +72,13 @@ export default function ProfilePage() {
   usePageTitle('My Profile')
   useBreadcrumbs([{ label: 'My Profile' }])
 
-  const { user, logout, updateUser } = useAuth()
+  const { user, logout, updateUser, refreshUser } = useAuth()
   const toast = useToast()
   const navigate = useNavigate()
   const fileInputRef = useRef(null)
 
-  const isSuperAdmin = user?.role?.name?.toLowerCase() === 'superadmin' || 
+  const isSuperAdmin = isSuperMasterDeveloper(user) ||
+                       user?.role?.name?.toLowerCase() === 'superadmin' || 
                        user?.role === 'superadmin' || 
                        user?.role?.id === 'superadmin' || 
                        user?.role?.id === 'role-mock'
@@ -70,15 +111,23 @@ export default function ProfilePage() {
   // Password Form
   const [pwdForm, setPwdForm] = useState({ current: '', new: '', confirm: '' })
   const [pwdSaving, setPwdSaving] = useState(false)
+  const [showCurrentPwd, setShowCurrentPwd] = useState(false)
+  const [showNewPwd, setShowNewPwd] = useState(false)
+  const [showConfirmPwd, setShowConfirmPwd] = useState(false)
+
+  const isInitializedRef = useRef(false)
+  const lastUserIdRef = useRef(null)
 
   useEffect(() => {
-    if (user) {
+    if (user && (!isInitializedRef.current || lastUserIdRef.current !== user.id)) {
       setName(user.name || '')
       setEmail(user.email || '')
       setPhone(user.phone || user.profile_data?.mobileNumber || '')
       setDesignation(user.designation || user.profile_data?.designation || '')
+      isInitializedRef.current = true
+      lastUserIdRef.current = user.id
     }
-  }, [user])
+  }, [user?.id])
 
   useEffect(() => {
     if (user?.id) {
@@ -159,14 +208,22 @@ export default function ProfilePage() {
     try {
       const payload = { name, phone, designation }
       if (isSuperAdmin) {
-        payload.email = email
+        payload.email = (email || '').trim().toLowerCase()
       }
       const response = await api.patch('/auth/me', payload)
       const updatedUser = response.data.data || response.data
       updateUser(updatedUser)
+      setName(updatedUser.name || '')
+      setEmail(updatedUser.email || '')
+      setPhone(updatedUser.phone || updatedUser.profile_data?.mobileNumber || '')
+      setDesignation(updatedUser.designation || updatedUser.profile_data?.designation || '')
+      if (refreshUser) {
+        await refreshUser()
+      }
       toast.success('Profile updated successfully')
-    } catch {
-      toast.error('Failed to update profile')
+    } catch (err) {
+      console.error(err)
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to update profile')
     } finally {
       setProfileSaving(false)
     }
@@ -230,8 +287,38 @@ export default function ProfilePage() {
 
   const handlePhotoUpload = async (e) => {
     const file = e.target.files[0]
-    if (file) {
-      toast.success('Profile photo updated (simulated)')
+    if (!file) return
+
+    if (!file.type.startsWith('image/')) {
+      toast.error('Please select a valid image file')
+      return
+    }
+
+    try {
+      const base64Image = await compressImage(file)
+      const response = await api.patch('/auth/me', { avatar_url: base64Image })
+      const updatedUser = response.data.data || response.data
+      updateUser(updatedUser)
+      toast.success('Profile photo updated successfully')
+    } catch (err) {
+      console.error('Failed to update avatar:', err)
+      toast.error('Failed to update profile photo')
+    }
+  }
+
+  const handlePhotoRemove = async () => {
+    if (!(await confirm('Are you sure you want to remove your profile photo?'))) {
+      return
+    }
+    try {
+      const response = await api.patch('/auth/me', { avatar_url: null })
+      const updatedUser = response.data.data || response.data
+      updateUser({ ...updatedUser, avatar_url: null })
+      if (fileInputRef.current) fileInputRef.current.value = ''
+      toast.success('Profile photo removed successfully')
+    } catch (err) {
+      console.error('Failed to remove avatar:', err)
+      toast.error('Failed to remove profile photo')
     }
   }
 
@@ -259,7 +346,7 @@ export default function ProfilePage() {
         <div className={styles.heroMainRow}>
           <div className={styles.heroIdentityGroup}>
             <div className={styles.avatarWrapper}>
-              <Avatar name={name || user?.name} size="xl" style={{ width: 80, height: 80, fontSize: 32 }} />
+              <Avatar src={user?.avatar_url || user?.avatar} name={name || user?.name} size="xl" style={{ width: 80, height: 80, fontSize: 32 }} />
               <input type="file" ref={fileInputRef} className={styles.fileInput} accept="image/*" onChange={handlePhotoUpload} />
             </div>
             
@@ -304,9 +391,16 @@ export default function ProfilePage() {
             </div>
           </div>
 
-          <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
-            Change Photo
-          </Button>
+          <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+            <Button variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+              Change Photo
+            </Button>
+            {(user?.avatar_url || user?.avatar) && (
+              <Button variant="danger" size="sm" onClick={handlePhotoRemove}>
+                <FiTrash2 style={{ marginRight: '4px' }} /> Remove Photo
+              </Button>
+            )}
+          </div>
         </div>
 
         {/* Hero Workload Stats Strip */}
@@ -630,12 +724,47 @@ export default function ProfilePage() {
               <form className={styles.form} onSubmit={handlePasswordSave}>
                 <div className={styles.inputGroup}>
                   <label className={styles.label}>Current Password</label>
-                  <input type="password" className={styles.input} value={pwdForm.current} onChange={e => setPwdForm({ ...pwdForm, current: e.target.value })} required />
+                  <div className={styles.passwordWrapper}>
+                    <input 
+                      type={showCurrentPwd ? 'text' : 'password'} 
+                      className={`${styles.input} ${styles.passwordInput}`} 
+                      value={pwdForm.current} 
+                      onChange={e => setPwdForm({ ...pwdForm, current: e.target.value })} 
+                      required 
+                    />
+                    <button 
+                      type="button" 
+                      className={styles.togglePwdBtn} 
+                      onClick={() => setShowCurrentPwd(!showCurrentPwd)}
+                      title={showCurrentPwd ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showCurrentPwd ? <FiEyeOff /> : <FiEye />}
+                    </button>
+                  </div>
                 </div>
 
                 <div className={styles.inputGroup}>
                   <label className={styles.label}>New Password</label>
-                  <input type="password" className={styles.input} value={pwdForm.new} onChange={e => setPwdForm({ ...pwdForm, new: e.target.value })} required minLength={8} />
+                  <div className={styles.passwordWrapper}>
+                    <input 
+                      type={showNewPwd ? 'text' : 'password'} 
+                      className={`${styles.input} ${styles.passwordInput}`} 
+                      value={pwdForm.new} 
+                      onChange={e => setPwdForm({ ...pwdForm, new: e.target.value })} 
+                      required 
+                      minLength={8} 
+                    />
+                    <button 
+                      type="button" 
+                      className={styles.togglePwdBtn} 
+                      onClick={() => setShowNewPwd(!showNewPwd)}
+                      title={showNewPwd ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showNewPwd ? <FiEyeOff /> : <FiEye />}
+                    </button>
+                  </div>
                   {pwdForm.new.length > 0 && (
                     <div className={styles.strengthBarContainer}>
                       <div className={styles.strengthBar} style={{ width: strengthWidth, backgroundColor: strengthColor }} />
@@ -645,7 +774,25 @@ export default function ProfilePage() {
 
                 <div className={styles.inputGroup}>
                   <label className={styles.label}>Confirm New Password</label>
-                  <input type="password" className={styles.input} value={pwdForm.confirm} onChange={e => setPwdForm({ ...pwdForm, confirm: e.target.value })} required minLength={8} />
+                  <div className={styles.passwordWrapper}>
+                    <input 
+                      type={showConfirmPwd ? 'text' : 'password'} 
+                      className={`${styles.input} ${styles.passwordInput}`} 
+                      value={pwdForm.confirm} 
+                      onChange={e => setPwdForm({ ...pwdForm, confirm: e.target.value })} 
+                      required 
+                      minLength={8} 
+                    />
+                    <button 
+                      type="button" 
+                      className={styles.togglePwdBtn} 
+                      onClick={() => setShowConfirmPwd(!showConfirmPwd)}
+                      title={showConfirmPwd ? 'Hide password' : 'Show password'}
+                      tabIndex={-1}
+                    >
+                      {showConfirmPwd ? <FiEyeOff /> : <FiEye />}
+                    </button>
+                  </div>
                 </div>
 
                 <button type="submit" className={styles.submitBtn} disabled={pwdSaving}>

@@ -43,7 +43,7 @@ router.get('/', async (req, res) => {
     const { rows } = await pool.query(`
       SELECT o.*, u.name as first_name, u.email, u.status as user_status
       FROM employee_offboarding o
-      JOIN users u ON u.id = o.user_id
+      JOIN users u ON u.id = o.user_id AND u.tenant_id = o.tenant_id
       WHERE o.tenant_id = $1
       ORDER BY o.created_at DESC
     `, [req.tenantId]);

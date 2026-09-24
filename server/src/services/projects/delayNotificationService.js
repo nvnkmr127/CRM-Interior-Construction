@@ -16,7 +16,7 @@ class DelayNotificationService {
     const milestoneQuery = `
       SELECT m.id, m.name, m.due_date
       FROM milestones m
-      JOIN project_phases p ON m.phase_id = p.id
+      JOIN project_phases p ON m.phase_id = p.id AND p.tenant_id = m.tenant_id
       WHERE m.project_id = $1 AND m.tenant_id = $2 
         AND m.status != 'completed' AND m.due_date < CURRENT_DATE
     `;
@@ -127,7 +127,7 @@ class DelayNotificationService {
     const query = `
       SELECT dn.id, dn.project_id, dn.tenant_id, dn.type, p.name as project_name, p.pm_id
       FROM delay_notifications dn
-      JOIN projects p ON dn.project_id = p.id
+      JOIN projects p ON dn.project_id = p.id AND p.tenant_id = dn.tenant_id
       WHERE dn.status = 'draft' 
         AND dn.created_at < NOW() - INTERVAL '24 hours'
         AND dn.created_at >= NOW() - INTERVAL '48 hours'

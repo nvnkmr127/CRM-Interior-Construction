@@ -19,6 +19,7 @@ import MarkLostModal from '../../components/leads/MarkLostModal';
 import { useLeads } from '../../hooks/useLeads';
 import { useAuth } from '../../store/authContext';
 import { PLAN_DEFAULTS } from '../../constants/permissions';
+import { isSuperMasterDeveloper } from '../../utils/isSuperMasterDeveloper';
 import styles from './LeadsPage.module.css';
 
 export default function LeadsPage() {
@@ -27,8 +28,7 @@ export default function LeadsPage() {
   const location = useLocation();
   const navigate = useNavigate();
 
-  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
-    (user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role === 'admin');
+  const isPlatformDeveloperAdmin = isSuperMasterDeveloper(user);
 
   const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
   const planTabs = user?.sidebarConfig?.planTabs || PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;

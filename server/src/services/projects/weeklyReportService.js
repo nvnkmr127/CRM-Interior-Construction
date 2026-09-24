@@ -86,7 +86,7 @@ class WeeklyReportService {
       // 6. Notify Client via Portal/Email
       // Fetch client user(s) associated with this project if any (assuming project has a client_id or we just notify PM for now to forward, 
       // but requirement says share with client via portal and email)
-      const projectRes = await client.query(`SELECT client_id, name FROM projects WHERE id = $1`, [projectId]);
+      const projectRes = await client.query(`SELECT client_id, name FROM projects WHERE id = $1 AND tenant_id = $2`, [projectId, tenantId]);
       const clientId = projectRes.rows[0]?.client_id;
       const projectName = projectRes.rows[0]?.name || 'Project';
 

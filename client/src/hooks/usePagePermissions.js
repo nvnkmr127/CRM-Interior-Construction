@@ -1,6 +1,7 @@
 import { useAuth } from '../store/authContext';
 import { PAGE_PERMISSIONS_SCHEMA, getDynamicPagePermissionsSchema } from '../constants/pagePermissions';
 import { PLAN_DEFAULTS, getModulesForTabs } from '../constants/permissions';
+import { isSuperMasterDeveloper } from '../utils/isSuperMasterDeveloper';
 
 const PAGE_MODULE_MAPPING = {
   'Financial Overview': ['finance'],
@@ -26,8 +27,7 @@ const PAGE_MODULE_MAPPING = {
 export const usePagePermissions = (moduleName) => {
   const { user } = useAuth();
   
-  const isPlatformDeveloperAdmin = (user?.tenant?.slug === 'demo' || user?.email === 'admin@demo.com') && 
-    (user?.role === 'superadmin' || user?.role?.name?.toLowerCase() === 'superadmin' || user?.role === 'admin' || user?.role?.name?.toLowerCase() === 'admin');
+  const isPlatformDeveloperAdmin = isSuperMasterDeveloper(user);
 
   const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
   const planTabs = user?.sidebarConfig?.planTabs || PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter;

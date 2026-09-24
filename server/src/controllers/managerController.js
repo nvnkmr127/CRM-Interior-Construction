@@ -1,7 +1,10 @@
 const logger = require('../utils/logger');
 const pool = require('../db/pool');
 function getTenantAndUser(req) {
-  return { tenantId: req.user.tenantId, userId: req.user.id };
+  return { 
+    tenantId: req.tenantId || req.user?.tenantId || req.user?.tenant_id, 
+    userId: req.user?.id || req.user?.userId 
+  };
 }
 
 exports.getSlaBreaches = async (req, res, next) => {

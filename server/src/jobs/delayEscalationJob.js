@@ -25,7 +25,7 @@ async function runDelayEscalation() {
 
     // 3. Check and escalate unaddressed drafts across all tenants
     // We can group by tenant to optimize
-    const tenantsRes = await client.query(`SELECT id FROM tenants`);
+    const tenantsRes = await client.query(`SELECT id FROM tenants WHERE is_active = true`);
     const tenants = tenantsRes.rows;
 
     for (const tenant of tenants) {

@@ -17,8 +17,8 @@ router.get('/', authorize('projects:read'), async (req, res, next) => {
     const query = `
       SELECT pm.*, m.name as milestone_name, p.name as project_name
       FROM payment_milestones pm
-      LEFT JOIN milestones m ON m.id = pm.milestone_id
-      LEFT JOIN projects p ON p.id = pm.project_id
+      LEFT JOIN milestones m ON m.id = pm.milestone_id AND m.tenant_id = pm.tenant_id
+      LEFT JOIN projects p ON p.id = pm.project_id AND p.tenant_id = pm.tenant_id
       WHERE pm.tenant_id = $1 AND pm.project_id = $2
         AND pm.status = 'overdue'
       ORDER BY pm.due_date ASC

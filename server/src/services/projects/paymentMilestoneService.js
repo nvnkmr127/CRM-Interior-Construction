@@ -18,6 +18,14 @@ async function getPaymentMilestones({ tenantId, projectId }) {
 async function createPaymentMilestone({ tenantId, userId, data, bypassApproval = false }) {
   const { projectId, name, amount, percentage, dueDate, milestoneId, notes, tdsRate, tdsAmount } = data;
   
+  const projCheck = await pool.query(
+    'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+    [projectId, tenantId]
+  );
+  if (projCheck.rows.length === 0) {
+    throw new Error('PROJECT_NOT_FOUND');
+  }
+
   const threshold = await getTenantThreshold(tenantId, 'finance_payment_threshold', 100000.00);
   const isSuperadmin = await isUserSuperadmin(userId);
   const requiresApproval = !bypassApproval && !isSuperadmin && amount && amount > threshold;
@@ -60,7 +68,7 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
   const { title, name, amount, due_date, proof_document, status, invoice_reference, paid_at, paid_amount, tds_rate, tds_amount, is_deferred, deferral_reference } = data;
 
   // Retrieve current to check transition
-  const currentResult = await pool.query(`SELECT * FROM payment_milestones WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL)`, [milestoneId, tenantId]);
+  const currentResult = await pool.query(`SELECT * FROM payment_milestones WHERE id = $1 AND tenant_id = $2`, [milestoneId, tenantId]);
   if (currentResult.rowCount === 0) throw new Error('NOT_FOUND');
   const current = currentResult.rows[0];
 
@@ -78,7 +86,7 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
   if (requiresApproval) {
     // Keep it as pending_approval but do not apply the updates yet
     const updateRes = await pool.query(
-      `UPDATE payment_milestones SET status = 'pending_approval' WHERE id = $1 AND (tenant_id = $2 OR tenant_id IS NULL) RETURNING *`,
+      `UPDATE payment_milestones SET status = 'pending_approval' WHERE id = $1 AND tenant_id = $2 RETURNING *`,
       [milestoneId, tenantId]
     );
     const updated = updateRes.rows[0];
@@ -175,7 +183,7 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
   const updateQuery = `
     UPDATE payment_milestones
     SET ${updateFields.join(', ')}
-    WHERE (tenant_id = $${tenantIdx} OR tenant_id IS NULL) AND id = $${idIdx}
+    WHERE tenant_id = $${tenantIdx} AND id = $${idIdx}
     RETURNING *
   `;
 
@@ -190,8 +198,8 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
     );
     if (projCheck.rows.length > 0 && projCheck.rows[0].status === 'pending_payment') {
       await pool.query(
-        "UPDATE projects SET status = 'active', updated_at = NOW() WHERE id = $1",
-        [current.project_id]
+        "UPDATE projects SET status = 'active', updated_at = NOW() WHERE id = $1 AND tenant_id = $2",
+        [current.project_id, tenantId]
       );
       
       // Log audit action for project status change

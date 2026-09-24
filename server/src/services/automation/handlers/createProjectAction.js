@@ -15,7 +15,7 @@ async function handle(config, context) {
     const projectName = record.name ? `${record.name} - Project` : `Project for Lead ${record.id}`;
     
     // Check if project already exists for this lead
-    const existCheck = await pool.query(`SELECT id FROM projects WHERE lead_id = $1`, [record.id]);
+    const existCheck = await pool.query(`SELECT id FROM projects WHERE lead_id = $1 AND tenant_id = $2`, [record.id, tenantId]);
     if (existCheck.rows.length > 0) {
       logger.info(`[Automation] Project already exists for Lead ${record.id}`);
       return;

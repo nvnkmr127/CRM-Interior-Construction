@@ -154,12 +154,12 @@ describe('Payment Due Reminder Notifications to Clients', () => {
 
     // Filter events to our created milestones only
     const projectReminderEvents = reminderEvents.filter(e => 
-      [milestone7dBefore, milestoneOnDue, milestone3dOverdue, milestone7dOverdue, milestone14dOverdue].includes(error.milestoneId)
+      [milestone7dBefore, milestoneOnDue, milestone3dOverdue, milestone7dOverdue, milestone14dOverdue].includes(e.milestoneId)
     );
     expect(projectReminderEvents.length).toBe(5);
     
     // Check that we have the expected event types
-    const types = projectReminderEvents.map(e => error.reminderType);
+    const types = projectReminderEvents.map(e => e.reminderType);
     expect(types).toContain('7_days_before');
     expect(types).toContain('due_date');
     expect(types).toContain('3_days_overdue');

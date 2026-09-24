@@ -83,8 +83,8 @@ async function processEmailJob(job) {
     logger.info(`Preview URL: ${nodemailer.getTestMessageUrl(info)}\n===================================`)
 
     await pool.query(
-      `UPDATE email_queue SET status = 'sent', sent_at = NOW() WHERE id = $1`,
-      [job.id]
+      `UPDATE email_queue SET status = 'sent', sent_at = NOW() WHERE id = $1 AND tenant_id = $2`,
+      [job.id, job.tenant_id]
     )
   } catch (error) {
     const nextRetryCount = job.retry_count + 1
@@ -95,8 +95,8 @@ async function processEmailJob(job) {
       `UPDATE email_queue 
        SET status = $1, error_message = $2, retry_count = $3, 
            next_retry_at = NOW() + interval '${backoffMinutes} minutes' 
-       WHERE id = $4`,
-      [status, error.message, nextRetryCount, job.id]
+       WHERE id = $4 AND tenant_id = $5`,
+      [status, error.message, nextRetryCount, job.id, job.tenant_id]
     )
     logger.error(`[Email Queue] Failed to send email to ${job.recipient_email} (Retry ${nextRetryCount})`)
   }

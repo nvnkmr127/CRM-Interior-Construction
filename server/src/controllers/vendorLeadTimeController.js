@@ -18,6 +18,9 @@ exports.saveLeadTime = async (req, res, next) => {
     const leadTime = await vendorLeadTimeService.saveLeadTime(tenantId, req.body);
     res.status(200).json({ success: true, data: leadTime });
   } catch (error) {
+    if (error.message === 'VENDOR_NOT_FOUND') {
+      return res.status(404).json({ success: false, message: error.message });
+    }
     next(error);
   }
 };

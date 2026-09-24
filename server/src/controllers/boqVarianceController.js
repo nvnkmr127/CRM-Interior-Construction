@@ -29,7 +29,7 @@ exports.getPortfolioBOQVarianceReport = async (req, res, next) => {
           ms.project_id,
           COALESCE(SUM(ms.price_difference * qi.quantity * (1 + (qi.markup_percentage / 100.0))), 0) as material_revisions_total
         FROM material_substitutions ms
-        JOIN quotation_items qi ON ms.boq_item_id = qi.id
+        JOIN quotation_items qi ON ms.boq_item_id = qi.id AND qi.tenant_id = ms.tenant_id
         WHERE ms.tenant_id = $1 AND ms.status = 'approved'
         GROUP BY ms.project_id
       )
@@ -158,7 +158,7 @@ exports.getProjectBOQVarianceReport = async (req, res, next) => {
         SELECT 
           COALESCE(SUM(ms.price_difference * qi.quantity * (1 + (qi.markup_percentage / 100.0))), 0) as material_revisions_total
         FROM material_substitutions ms
-        JOIN quotation_items qi ON ms.boq_item_id = qi.id
+        JOIN quotation_items qi ON ms.boq_item_id = qi.id AND qi.tenant_id = ms.tenant_id
         WHERE ms.tenant_id = $1 AND ms.project_id = $2 AND ms.status = 'approved'
       `;
       const subResTotal = await pool.query(subQueryTotal, [tenantId, projectId]);
@@ -218,7 +218,7 @@ exports.getProjectBOQVarianceReport = async (req, res, next) => {
                ms.price_difference, ms.client_approved_at,
                qi.quantity, qi.markup_percentage, qi.room_or_area
         FROM material_substitutions ms
-        JOIN quotation_items qi ON ms.boq_item_id = qi.id
+        JOIN quotation_items qi ON ms.boq_item_id = qi.id AND qi.tenant_id = ms.tenant_id
         WHERE ms.project_id = $1 AND ms.tenant_id = $2 AND ms.status = 'approved'
         ORDER BY ms.client_approved_at DESC
       `;
@@ -269,7 +269,7 @@ exports.getProjectBOQVarianceReport = async (req, res, next) => {
           COALESCE(qi.room_or_area, 'Unassigned') as room_or_area,
           COALESCE(SUM(ms.price_difference * qi.quantity * (1 + (qi.markup_percentage / 100.0))), 0) as material_revisions_total
         FROM material_substitutions ms
-        JOIN quotation_items qi ON ms.boq_item_id = qi.id
+        JOIN quotation_items qi ON ms.boq_item_id = qi.id AND qi.tenant_id = ms.tenant_id
         WHERE ms.tenant_id = $1 AND ms.project_id = $2 AND ms.status = 'approved'
         GROUP BY COALESCE(qi.room_or_area, 'Unassigned')
       `;

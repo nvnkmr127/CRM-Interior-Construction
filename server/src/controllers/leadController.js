@@ -403,7 +403,7 @@ exports.createPublicLeadHandler = async (req, res, next) => {
     // Optionally retrieve the assigned rep's info for the "Thank You" screen
     let repInfo = null;
     if (lead.assigned_rep_id) {
-       const repRes = await pool.query('SELECT name, avatar_url as photo FROM users WHERE id = $1', [lead.assigned_rep_id]);
+       const repRes = await pool.query('SELECT name, avatar_url as photo FROM users WHERE id = $1 AND tenant_id = $2', [lead.assigned_rep_id, tenantId]);
        if (repRes.rows.length > 0) {
           repInfo = repRes.rows[0];
        }
@@ -1115,7 +1115,7 @@ exports.summarizeMeetingHandler = async function summarizeMeetingHandler(req, re
     const { id: leadId } = req.params;
     const { _transcript } = req.body;
 
-    const leadRes = await pool.query('SELECT tenant_id FROM leads WHERE id = $1', [leadId]);
+    const leadRes = await pool.query('SELECT tenant_id FROM leads WHERE id = $1 AND tenant_id = $2', [leadId, tenantId]);
     if (leadRes.rows.length === 0) return res.status(404).json({ success: false, error: { message: 'Lead not found' } });
 
     // Insert or update estimate
@@ -2195,7 +2195,7 @@ exports.bulkAssignLeadsHandler = async (req, res, next) => {
         let actorName = 'Admin / Manager';
         if (userId) {
           try {
-            const uRes = await pool.query('SELECT name FROM users WHERE id = $1', [userId]);
+            const uRes = await pool.query('SELECT name FROM users WHERE id = $1 AND tenant_id = $2', [userId, tenantId]);
             if (uRes.rows.length > 0 && uRes.rows[0].name) {
               actorName = uRes.rows[0].name;
             }
