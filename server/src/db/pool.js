@@ -51,7 +51,7 @@ const pool = new Pool({
   ssl: useSSL ? { rejectUnauthorized: false } : false,
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
-  max: 10
+  max: 25
 });
 
 pool.on('error', (error) => {
@@ -70,7 +70,7 @@ const readPool = new Pool({
   ssl: useReadSSL ? { rejectUnauthorized: false } : (useSSL ? { rejectUnauthorized: false } : false),
   connectionTimeoutMillis: 10000,
   idleTimeoutMillis: 30000,
-  max: 10
+  max: 25
 });
 
 readPool.on('error', (error) => {

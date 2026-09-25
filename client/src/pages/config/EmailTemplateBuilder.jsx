@@ -5,7 +5,6 @@ import { useToast } from '../../store/toastContext'
 import { Button, Input, Select, Modal } from '../../components/ui'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
-import Link from '@tiptap/extension-link'
 import DOMPurify from 'dompurify'
 
 const AVAILABLE_TEMPLATES = [
@@ -35,8 +34,9 @@ export default function EmailTemplateBuilder() {
 
   const editor = useEditor({
     extensions: [
-      StarterKit,
-      Link.configure({ openOnClick: false }),
+      StarterKit.configure({
+        link: { openOnClick: false },
+      }),
     ],
     content: htmlContent,
     onUpdate: ({ editor }) => {
@@ -49,16 +49,17 @@ export default function EmailTemplateBuilder() {
   }, [])
 
   useEffect(() => {
-    if (!editor) return
+    if (!editor || editor.isDestroyed) return
     const current = templates.find(t => t.template_key === selectedKey)
-    if (current) {
-      setSubject(current.subject)
-      setHtmlContent(current.html_content)
-      editor.commands.setContent(current.html_content)
-    } else {
-      setSubject('')
-      setHtmlContent('')
-      editor.commands.setContent('')
+    const content = current ? current.html_content : ''
+    setSubject(current ? current.subject : '')
+    setHtmlContent(content)
+    try {
+      if (!editor.isDestroyed) {
+        editor.commands.setContent(content || '')
+      }
+    } catch (e) {
+      console.warn('Could not set editor content:', e)
     }
   }, [selectedKey, templates, editor])
 
@@ -102,8 +103,12 @@ export default function EmailTemplateBuilder() {
   }
 
   const insertVariable = (variable) => {
-    if (editor) {
-      editor.commands.insertContent(`{{${variable}}}`)
+    if (editor && !editor.isDestroyed) {
+      try {
+        editor.commands.insertContent(`{{${variable}}}`)
+      } catch (err) {
+        console.warn('Could not insert variable:', err)
+      }
     }
   }
 
@@ -194,10 +199,10 @@ export default function EmailTemplateBuilder() {
             ) : (
               <div style={{ flex: 1, border: '1px solid var(--color-border)', borderRadius: '8px', overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
                 <div style={{ padding: '8px', borderBottom: '1px solid var(--color-border)', background: 'var(--color-background-soft)', display: 'flex', gap: '8px' }}>
-                  <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBold().run()}><b>B</b></Button>
-                  <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleItalic().run()}><i>I</i></Button>
-                  <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleHeading({ level: 2 }).run()}>H2</Button>
-                  <Button size="sm" variant="ghost" onClick={() => editor.chain().focus().toggleBulletList().run()}>List</Button>
+                  <Button size="sm" variant="ghost" onClick={() => !editor?.isDestroyed && editor?.chain().focus().toggleBold().run()}><b>B</b></Button>
+                  <Button size="sm" variant="ghost" onClick={() => !editor?.isDestroyed && editor?.chain().focus().toggleItalic().run()}><i>I</i></Button>
+                  <Button size="sm" variant="ghost" onClick={() => !editor?.isDestroyed && editor?.chain().focus().toggleHeading({ level: 2 }).run()}>H2</Button>
+                  <Button size="sm" variant="ghost" onClick={() => !editor?.isDestroyed && editor?.chain().focus().toggleBulletList().run()}>List</Button>
                 </div>
                 <div style={{ padding: '16px', flex: 1, overflowY: 'auto', background: 'var(--color-background)' }}>
                   <EditorContent editor={editor} style={{ minHeight: '300px' }} />

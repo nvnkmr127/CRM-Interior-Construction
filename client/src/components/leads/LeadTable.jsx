@@ -277,7 +277,7 @@ export default function LeadTable({
       alert('Failed to bulk delete leads');
     }
   };
-  if (loading) {
+  if (loading && (!filteredLeads || filteredLeads.length === 0)) {
     return (
       <div className={styles.listWrapper} style={{ padding: '20px' }}>
         <ContentLoader type="table" rows={5} />

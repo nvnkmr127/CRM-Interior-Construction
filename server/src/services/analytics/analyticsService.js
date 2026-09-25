@@ -3,6 +3,11 @@ const readPool = db.readPool || db;
 const dataScope = require('../../middleware/dataScope');
 
 exports.getGlobalStats = async (tenantId, userId, user = {}, options = {}) => {
+  const { getCache, setCache } = require('../../utils/cache');
+  const cacheKey = `analytics:global_stats:${tenantId}:${userId}:${options.period || 'all'}:${options.startDate || ''}:${options.endDate || ''}`;
+  const cached = await getCache(cacheKey).catch(() => null);
+  if (cached) return cached;
+
   const rName = (typeof user?.role === 'string' ? user?.role : user?.role?.name || '').toLowerCase();
   const perms = Array.isArray(user?.permissions) ? user.permissions : (Array.isArray(user?.role?.permissions) ? user.role.permissions : []);
   
@@ -197,7 +202,7 @@ exports.getGlobalStats = async (tenantId, userId, user = {}, options = {}) => {
     };
   });
 
-  return {
+  const result = {
     activeLeads: {
       count: activeCount,
       prevWeekCount,
@@ -232,6 +237,9 @@ exports.getGlobalStats = async (tenantId, userId, user = {}, options = {}) => {
       tasks: mapTo12Points(tasksSparkRes.rows, 'count')
     }
   };
+
+  await setCache(cacheKey, result, 60).catch(() => {});
+  return result;
 };
 
 exports.getSalesDashboard = async (tenantId, userId, user) => {

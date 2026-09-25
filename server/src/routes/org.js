@@ -42,10 +42,19 @@ router.get('/hierarchy', async (req, res) => {
   const tenantId = req.tenantId;
   try {
     const { rows } = await pool.query(`
-      SELECT u.id, u.name, u.email, u.avatar_url, u.status, u.manager_id, u.department_id, u.branch_id, r.name as role_name
+      SELECT
+        u.id, u.name, u.email, u.avatar_url, u.status, u.manager_id, u.department_id, u.branch_id,
+        r.name as role_name,
+        m.name as manager_name,
+        d.name as department_name,
+        b.name as branch_name
       FROM users u
       LEFT JOIN roles r ON r.id = u.role_id
+      LEFT JOIN users m ON m.id = u.manager_id
+      LEFT JOIN departments d ON d.id = u.department_id
+      LEFT JOIN branches b ON b.id = u.branch_id
       WHERE u.tenant_id = $1 AND u.deleted_at IS NULL
+      ORDER BY u.name ASC
     `, [tenantId]);
     return success(res, rows);
   } catch (error) {
@@ -95,7 +104,8 @@ router.patch('/users/:id', authorize('users:manage'), async (req, res) => {
 
     if (rows.length === 0) return fail(res, 'NOT_FOUND', 'User not found', 404);
 
-    logAction({ tenantId, userId: req.user.userId, action: 'org.user_updated', entity: 'user', entityId: userId });
+    const actorUserId = req.user?.userId || req.user?.id || req.userId;
+    logAction({ tenantId, userId: actorUserId, action: 'org.user_updated', entity: 'user', entityId: userId });
     return success(res, rows[0]);
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to update user organization data', 500);
@@ -134,7 +144,8 @@ router.patch('/users/batch-assign', authorize('users:manage'), async (req, res) 
       WHERE id = ANY($1::uuid[]) AND tenant_id = $2
     `, params);
 
-    logAction({ tenantId, userId: req.user.userId, action: 'org.users_batch_assigned', entity: 'user', details: JSON.stringify({ user_ids, department_id, branch_id }) });
+    const actorUserId = req.user?.userId || req.user?.id || req.userId;
+    logAction({ tenantId, userId: actorUserId, action: 'org.users_batch_assigned', entity: 'user', details: JSON.stringify({ user_ids, department_id, branch_id }) });
     return success(res, { message: 'Users assigned successfully' });
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to batch assign users', 500);
@@ -177,7 +188,8 @@ router.post('/departments', authorize('users:manage'), async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
     `, [tenantId, name, parent_id || null, code || null, description || null, manager_id || null]);
     
-    logAction({ tenantId, userId: req.user.userId, action: 'org.department_created', entity: 'department', entityId: rows[0].id });
+    const actorUserId = req.user?.userId || req.user?.id || req.userId;
+    logAction({ tenantId, userId: actorUserId, action: 'org.department_created', entity: 'department', entityId: rows[0].id });
     return success(res, rows[0]);
   } catch (error) {
     if (error.code === '23505') return fail(res, 'VALIDATION_ERROR', 'Department name already exists', 400);
@@ -226,7 +238,8 @@ router.patch('/departments/:id', authorize('users:manage'), async (req, res) => 
 
     if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Department not found', 404);
     
-    logAction({ tenantId, userId: req.user.userId, action: 'org.department_updated', entity: 'department', entityId: id });
+    const actorUserId = req.user?.userId || req.user?.id || req.userId;
+    logAction({ tenantId, userId: actorUserId, action: 'org.department_updated', entity: 'department', entityId: id });
     return success(res, rows[0]);
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to update department', 500);
@@ -237,9 +250,12 @@ router.delete('/departments/:id', authorize('users:manage'), async (req, res) =>
   const tenantId = req.tenantId;
   const id = req.params.id;
   try {
+    await pool.query(`UPDATE users SET department_id = NULL WHERE department_id = $1 AND tenant_id = $2`, [id, tenantId]);
+    await pool.query(`UPDATE departments SET parent_id = NULL WHERE parent_id = $1 AND tenant_id = $2`, [id, tenantId]);
     const { rowCount } = await pool.query(`DELETE FROM departments WHERE id = $1 AND tenant_id = $2`, [id, tenantId]);
     if (rowCount === 0) return fail(res, 'NOT_FOUND', 'Department not found', 404);
-    logAction({ tenantId, userId: req.user.userId, action: 'org.department_deleted', entity: 'department', entityId: id });
+    const actorUserId = req.user?.userId || req.user?.id || req.userId;
+    logAction({ tenantId, userId: actorUserId, action: 'org.department_deleted', entity: 'department', entityId: id });
     return success(res, { message: 'Deleted' });
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete department', 500);
@@ -282,7 +298,8 @@ router.post('/branches', authorize('users:manage'), async (req, res) => {
       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *
     `, [tenantId, name, parent_id || null, location || null, timezone || null, manager_id || null]);
     
-    logAction({ tenantId, userId: req.user.userId, action: 'org.branch_created', entity: 'branch', entityId: rows[0].id });
+    const actorUserId = req.user?.userId || req.user?.id || req.userId;
+    logAction({ tenantId, userId: actorUserId, action: 'org.branch_created', entity: 'branch', entityId: rows[0].id });
     return success(res, rows[0]);
   } catch (error) {
     if (error.code === '23505') return fail(res, 'VALIDATION_ERROR', 'Branch name already exists', 400);
@@ -331,7 +348,8 @@ router.patch('/branches/:id', authorize('users:manage'), async (req, res) => {
 
     if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Branch not found', 404);
     
-    logAction({ tenantId, userId: req.user.userId, action: 'org.branch_updated', entity: 'branch', entityId: id });
+    const actorUserId = req.user?.userId || req.user?.id || req.userId;
+    logAction({ tenantId, userId: actorUserId, action: 'org.branch_updated', entity: 'branch', entityId: id });
     return success(res, rows[0]);
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to update branch', 500);
@@ -342,9 +360,12 @@ router.delete('/branches/:id', authorize('users:manage'), async (req, res) => {
   const tenantId = req.tenantId;
   const id = req.params.id;
   try {
+    await pool.query(`UPDATE users SET branch_id = NULL WHERE branch_id = $1 AND tenant_id = $2`, [id, tenantId]);
+    await pool.query(`UPDATE branches SET parent_id = NULL WHERE parent_id = $1 AND tenant_id = $2`, [id, tenantId]);
     const { rowCount } = await pool.query(`DELETE FROM branches WHERE id = $1 AND tenant_id = $2`, [id, tenantId]);
     if (rowCount === 0) return fail(res, 'NOT_FOUND', 'Branch not found', 404);
-    logAction({ tenantId, userId: req.user.userId, action: 'org.branch_deleted', entity: 'branch', entityId: id });
+    const actorUserId = req.user?.userId || req.user?.id || req.userId;
+    logAction({ tenantId, userId: actorUserId, action: 'org.branch_deleted', entity: 'branch', entityId: id });
     return success(res, { message: 'Deleted' });
   } catch (error) {
     return fail(res, 'INTERNAL_ERROR', 'Failed to delete branch', 500);

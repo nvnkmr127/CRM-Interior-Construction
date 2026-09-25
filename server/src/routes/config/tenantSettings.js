@@ -35,16 +35,18 @@ router.get('/', async (req, res, next) => {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
 
-    const result = await pool.query('SELECT name, config FROM tenants WHERE id = $1', [tenantId]);
+    const result = await pool.query('SELECT name, slug, config FROM tenants WHERE id = $1', [tenantId]);
     if (result.rows.length === 0) {
       return fail(res, 'NOT_FOUND', 'Tenant not found', 404);
     }
 
     const tenantName = result.rows[0].name;
+    const tenantSlug = result.rows[0].slug;
     const configStr = result.rows[0].config;
     const config = typeof configStr === 'string' ? JSON.parse(configStr || '{}') : (configStr || {});
     return success(res, {
       companyName: tenantName,
+      slug: tenantSlug,
       ...config
     });
   } catch (error) {
@@ -68,8 +70,8 @@ router.patch('/', authorize('config:manage'), async (req, res, next) => {
       return fail(res, 'FORBIDDEN', 'Lacks finance:manage_taxes permission', 403);
     }
 
-    // Extract companyName if present
-    const { companyName, ...configFields } = req.body;
+    // Extract companyName and slug if present
+    const { companyName, slug, ...configFields } = req.body;
 
     if (configFields.logoUrl !== undefined && configFields.logo_url === undefined) {
       configFields.logo_url = configFields.logoUrl;
@@ -78,10 +80,33 @@ router.patch('/', authorize('config:manage'), async (req, res, next) => {
       configFields.accent_colour = configFields.accentColour;
     }
 
-    // Get current config
-    const result = await pool.query('SELECT name, config FROM tenants WHERE id = $1', [tenantId]);
+    // Get current config and slug
+    const result = await pool.query('SELECT name, slug, config FROM tenants WHERE id = $1', [tenantId]);
     if (result.rows.length === 0) {
       return fail(res, 'NOT_FOUND', 'Tenant not found', 404);
+    }
+
+    const currentSlug = result.rows[0].slug;
+    let targetSlug = currentSlug;
+
+    if (slug !== undefined && slug !== null && String(slug).trim().length > 0) {
+      const cleanSlug = String(slug).trim().toLowerCase().replace(/[\s_]+/g, '-');
+      if (cleanSlug.length < 2) {
+        return fail(res, 'INVALID_SLUG', 'Workspace slug must be at least 2 characters long.', 400);
+      }
+      if (!/^[a-z0-9-]+$/.test(cleanSlug)) {
+        return fail(res, 'INVALID_SLUG', 'Workspace slug may only contain lowercase letters, numbers, and hyphens.', 400);
+      }
+      if (currentSlug === 'demo' && cleanSlug !== 'demo') {
+        return fail(res, 'ROOT_SLUG_IMMUTABLE', 'The root demo workspace slug cannot be modified.', 400);
+      }
+      if (cleanSlug !== currentSlug) {
+        const slugCheck = await pool.query('SELECT id FROM tenants WHERE slug = $1 AND id != $2 LIMIT 1', [cleanSlug, tenantId]);
+        if (slugCheck.rows.length > 0) {
+          return fail(res, 'SLUG_TAKEN', 'This workspace slug is already taken by another workspace.', 400);
+        }
+        targetSlug = cleanSlug;
+      }
     }
 
     const currentConfigStr = result.rows[0].config;
@@ -94,20 +119,14 @@ router.patch('/', authorize('config:manage'), async (req, res, next) => {
     };
 
     // Save back to db
-    if (companyName) {
-      await pool.query(
-        'UPDATE tenants SET name = $1, config = $2, updated_at = NOW() WHERE id = $3',
-        [companyName, JSON.stringify(updatedConfig), tenantId]
-      );
-    } else {
-      await pool.query(
-        'UPDATE tenants SET config = $1, updated_at = NOW() WHERE id = $2',
-        [JSON.stringify(updatedConfig), tenantId]
-      );
-    }
+    await pool.query(
+      'UPDATE tenants SET name = COALESCE($1, name), slug = $2, config = $3, updated_at = NOW() WHERE id = $4',
+      [companyName || result.rows[0].name, targetSlug, JSON.stringify(updatedConfig), tenantId]
+    );
 
     return success(res, {
       companyName: companyName || result.rows[0].name,
+      slug: targetSlug,
       ...updatedConfig
     });
   } catch (error) {

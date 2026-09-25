@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { useAuth } from '../../store/authContext'
 import { PLAN_DEFAULTS, MODULE_TAB_MAPPING, isTabPermitted } from '../../constants/permissions'
@@ -91,7 +91,13 @@ const getInitials = (name) => {
 
 export default function Sidebar({ collapsed, mobileOpen, onClose }) {
   const { user } = useAuth()
-  const [dynamicPlanTabs, setDynamicPlanTabs] = useState(user?.sidebarConfig?.planTabs || null)
+  const [dynamicPlanTabs, setDynamicPlanTabs] = useState(() => {
+    try {
+      const cached = sessionStorage.getItem('crm:sidebar-config');
+      if (cached) return JSON.parse(cached);
+    } catch (e) {}
+    return user?.sidebarConfig?.planTabs || null;
+  })
   const [logoFailed, setLogoFailed] = useState(false)
 
   const tenantLogo = user?.tenant?.logoUrl || user?.tenant?.logo_url || user?.tenant?.logo
@@ -106,7 +112,10 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
       try {
         const res = await api.get('/auth/sidebar-config')
         if (isMounted && res.data?.success && res.data?.data?.planTabs) {
-          setDynamicPlanTabs(res.data.data.planTabs)
+          setDynamicPlanTabs(res.data.data.planTabs);
+          try {
+            sessionStorage.setItem('crm:sidebar-config', JSON.stringify(res.data.data.planTabs));
+          } catch (e) {}
         }
       } catch (err) {
         // Fallback gracefully to user.sidebarConfig or defaults
@@ -155,6 +164,66 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
     (user?.role?.enabled_modules && user.role.enabled_modules.includes('finance'))
   )) || isWorkspaceAdmin;
 
+  const renderedNavGroups = useMemo(() => {
+    return NAV_ITEMS.map(group => {
+      // Developer-only groups (Developer Tools) are strictly for the platform developer
+      if ((group.developerOnly || group.group === 'DEVELOPER TOOLS') && !isAdmin) {
+        return null;
+      }
+
+      if (group.adminOnly && !isAdmin && !isWorkspaceAdmin) {
+        const hasAnyGroupItemGranted = group.items.some(item => {
+          if (item.id === 'absences') return true;
+          const modules = user?.role?.enabled_modules || [];
+          const perms = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
+          return modules.includes(item.id) || perms.includes(item.id) || perms.includes(`${item.id}:view`);
+        });
+        if (!hasAnyGroupItemGranted) return null;
+      }
+      if (group.financeOnly && !hasFinancePermission) return null;
+
+      const filterItem = (item) => {
+        // 1. Developer / Admin Bypass: Superadmin / Developer sees all tabs immediately
+        if (isAdmin) return true;
+
+        // Developer-only tabs are strictly restricted to the platform developer
+        if (item.developerOnly) return false;
+
+        return isTabPermitted(item, user, dynamicPlanTabs);
+      };
+
+      const visibleItems = group.items.map(item => {
+        if (item.subItems) {
+          if (!filterItem(item)) return null;
+          const parentModule = item.module;
+          const filteredSubItems = item.subItems.map(sub => ({
+            ...sub,
+            module: sub.module || parentModule
+          })).filter(filterItem);
+          return { ...item, subItems: filteredSubItems };
+        }
+        return item;
+      }).filter(item => {
+        if (!item) return false;
+        if (item.subItems) {
+          return item.subItems.length > 0;
+        }
+        return filterItem(item);
+      });
+
+      if (visibleItems.length === 0) return null;
+
+      return (
+        <div key={group.group} className={styles.navGroup}>
+          {!collapsed && <span className={styles.groupLabel}>{group.group}</span>}
+          {visibleItems.map((item, i) => (
+              <NavItem key={item.to || item.label || i} item={item} collapsed={collapsed} onClose={onClose} />
+          ))}
+        </div>
+      );
+    });
+  }, [isAdmin, isWorkspaceAdmin, hasFinancePermission, user, dynamicPlanTabs, collapsed, onClose]);
+
   return (
     <aside className={`${styles.sidebar} ${collapsed ? styles.collapsed : ''} ${mobileOpen ? styles.mobileOpen : ''}`}>
       {/* Logo area */}
@@ -179,63 +248,7 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
 
       {/* Nav groups */}
       <nav className={styles.nav}>
-        {NAV_ITEMS.map(group => {
-          // Developer-only groups (Developer Tools) are strictly for the platform developer
-          if ((group.developerOnly || group.group === 'DEVELOPER TOOLS') && !isAdmin) {
-            return null;
-          }
-
-          if (group.adminOnly && !isAdmin && !isWorkspaceAdmin) {
-            const hasAnyGroupItemGranted = group.items.some(item => {
-              if (item.id === 'absences') return true;
-              const modules = user?.role?.enabled_modules || [];
-              const perms = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
-              return modules.includes(item.id) || perms.includes(item.id) || perms.includes(`${item.id}:view`);
-            });
-            if (!hasAnyGroupItemGranted) return null;
-          }
-          if (group.financeOnly && !hasFinancePermission) return null;
-
-          const filterItem = (item) => {
-            // 1. Developer / Admin Bypass: Superadmin / Developer sees all tabs immediately
-            if (isAdmin) return true;
-
-            // Developer-only tabs are strictly restricted to the platform developer
-            if (item.developerOnly) return false;
-
-            return isTabPermitted(item, user, dynamicPlanTabs);
-          };
-
-          const visibleItems = group.items.map(item => {
-            if (item.subItems) {
-              if (!filterItem(item)) return null;
-              const parentModule = item.module;
-              const filteredSubItems = item.subItems.map(sub => ({
-                ...sub,
-                module: sub.module || parentModule
-              })).filter(filterItem);
-              return { ...item, subItems: filteredSubItems };
-            }
-            return item;
-          }).filter(item => {
-            if (!item) return false;
-            if (item.subItems) {
-              return item.subItems.length > 0;
-            }
-            return filterItem(item);
-          });
-
-          if (visibleItems.length === 0) return null;
-
-          return (
-            <div key={group.group} className={styles.navGroup}>
-              {!collapsed && <span className={styles.groupLabel}>{group.group}</span>}
-              {visibleItems.map((item, i) => (
-                  <NavItem key={item.to || item.label || i} item={item} collapsed={collapsed} onClose={onClose} />
-              ))}
-            </div>
-          )
-        })}
+        {renderedNavGroups}
       </nav>
 
       <NavLink to="/settings/profile" className={styles.userCard} style={{ textDecoration: 'none', color: 'inherit' }}>

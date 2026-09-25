@@ -68,9 +68,13 @@ export default function RichTextEditor({ value, onChange, hideToolbar = false })
 
   // Update content if value changes externally (e.g. initial load)
   useEffect(() => {
-    if (editor && value !== editor.getHTML()) {
+    if (editor && !editor.isDestroyed && value !== editor.getHTML()) {
       if (!isInternalChange.current) {
-        editor.commands.setContent(value)
+        try {
+          editor.commands.setContent(value)
+        } catch (e) {
+          console.warn('Could not set editor content:', e)
+        }
       }
       isInternalChange.current = false;
     }

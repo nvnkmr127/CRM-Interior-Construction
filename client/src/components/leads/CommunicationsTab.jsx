@@ -1,7 +1,7 @@
 /* eslint-disable no-unused-vars, react-hooks/immutability, react-hooks/exhaustive-deps */
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { getCommunications, createCommunication, draftCommunication, syncCommunications } from '../../api/leads';
-import { Button, Input, ContentLoader, EmptyState } from '../ui';
+import { Button, ContentLoader, EmptyState } from '../ui';
 import { useToast } from '../../store/toastContext';
 
 export default function CommunicationsTab({ leadId, lead }) {
@@ -14,27 +14,49 @@ export default function CommunicationsTab({ leadId, lead }) {
   const [filterChannel, setFilterChannel] = useState('all');
   const [isDrafting, setIsDrafting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const feedEndRef = useRef(null);
+
+  const parseMetadata = (metadata) => {
+    if (!metadata) return {};
+    if (typeof metadata === 'object') return metadata;
+    try {
+      return JSON.parse(metadata);
+    } catch {
+      return {};
+    }
+  };
+
+  const mapActivity = (c) => {
+    const meta = parseMetadata(c.metadata);
+    return {
+      id: c.id,
+      channel: c.type,
+      body: c.notes,
+      direction: meta.direction || 'outbound',
+      status: meta.status || 'sent',
+      reaction: meta.reaction || null,
+      duration: meta.duration || null,
+      sent_at: c.created_at
+    };
+  };
 
   useEffect(() => {
     if (leadId) fetchComms();
   }, [leadId]);
 
+  useEffect(() => {
+    if (!loading && comms.length > 0) {
+      feedEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [comms, filterChannel, loading]);
+
   const fetchComms = async () => {
     setLoading(true);
     try {
       const res = await getCommunications(leadId);
-      if (res.success) {
-        // Map backend schema (type, notes, metadata) to frontend schema
-        const mapped = res.data.map(c => ({
-          id: c.id,
-          channel: c.type,
-          body: c.notes,
-          direction: c.metadata?.direction || 'outbound',
-          status: c.metadata?.status || 'sent',
-          reaction: c.metadata?.reaction,
-          duration: c.metadata?.duration,
-          sent_at: c.created_at
-        }));
+      if (res.success && Array.isArray(res.data)) {
+        const mapped = res.data.map(mapActivity);
+        mapped.sort((a, b) => new Date(a.sent_at) - new Date(b.sent_at));
         setComms(mapped);
       }
     } catch (e) {
@@ -50,20 +72,13 @@ export default function CommunicationsTab({ leadId, lead }) {
       const res = await syncCommunications(leadId);
       if (res.success) {
         toast.success('WhatsApp chat synchronized');
-        const mapped = res.data.map(c => ({
-          id: c.id,
-          channel: c.type,
-          body: c.notes,
-          direction: c.metadata?.direction || 'outbound',
-          status: c.metadata?.status || 'sent',
-          reaction: c.metadata?.reaction,
-          duration: c.metadata?.duration,
-          sent_at: c.created_at
-        }));
+        const dataList = Array.isArray(res.data) ? res.data : (res.data?.messages || []);
+        const mapped = dataList.map(mapActivity);
+        mapped.sort((a, b) => new Date(a.sent_at) - new Date(b.sent_at));
         setComms(mapped);
       }
     } catch (e) {
-      toast.error('Failed to sync WhatsApp chat');
+      toast.error(e?.response?.data?.error?.message || 'Failed to sync WhatsApp chat');
     } finally {
       setIsSyncing(false);
     }
@@ -74,7 +89,7 @@ export default function CommunicationsTab({ leadId, lead }) {
     try {
       const payload = {
         type: channel,
-        notes: message,
+        notes: message.trim(),
         metadata: {
           direction: 'outbound',
           status: 'sent',
@@ -84,13 +99,17 @@ export default function CommunicationsTab({ leadId, lead }) {
       
       const res = await createCommunication(leadId, payload);
       if (res.success) {
-        toast.success(`Logged via ${channel}`);
+        if (channel === 'call') {
+          toast.success('Call logged successfully');
+        } else {
+          toast.success(`Message sent via ${channel === 'whatsapp' ? 'WhatsApp' : channel.toUpperCase()}`);
+        }
         setMessage('');
         if (channel === 'call') setDuration('');
         fetchComms();
       }
     } catch (e) {
-      toast.error('Failed to log communication');
+      toast.error(e?.response?.data?.error?.message || 'Failed to log communication');
     }
   };
 
@@ -98,12 +117,12 @@ export default function CommunicationsTab({ leadId, lead }) {
     setIsDrafting(true);
     try {
       const res = await draftCommunication(leadId, { channel, instructions: message });
-      if (res.success) {
+      if (res.success && res.data?.draft) {
         setMessage(res.data.draft);
         toast.success('Draft generated');
       }
     } catch (e) {
-      toast.error('Failed to generate draft');
+      toast.error(e?.response?.data?.error?.message || 'Failed to generate draft');
     } finally {
       setIsDrafting(false);
     }
@@ -111,39 +130,42 @@ export default function CommunicationsTab({ leadId, lead }) {
 
   if (loading) return <ContentLoader type="list" rows={3} />;
 
-  const isEmailMissing = channel === 'email' && !lead?.email;
-  const isSmsOrWhatsappOrCallMissing = (channel === 'sms' || channel === 'whatsapp' || channel === 'call') && !lead?.phone;
+  const leadPhone = lead?.phone || lead?.custom_fields?.phone;
+  const leadEmail = lead?.email || lead?.custom_fields?.email;
+
+  const isEmailMissing = channel === 'email' && !leadEmail;
+  const isSmsOrWhatsappOrCallMissing = (channel === 'sms' || channel === 'whatsapp' || channel === 'call') && !leadPhone;
   const isSendDisabled = !message.trim() || isEmailMissing || isSmsOrWhatsappOrCallMissing || (channel === 'call' && !duration);
 
   const filteredComms = filterChannel === 'all' ? comms : comms.filter(c => c.channel === filterChannel);
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-[620px] max-h-[75vh] w-full">
       {/* Thread Filtering Tabs */}
-      <div className="flex justify-between items-center mb-4 border-b pb-4" style={{ borderColor: 'rgba(255,255,255,0.2)' }}>
+      <div className="flex justify-between items-center mb-4 border-b pb-4" style={{ borderColor: 'var(--color-border)' }}>
         <div className="flex space-x-2 overflow-x-auto custom-scrollbar">
           {['all', 'whatsapp', 'email', 'sms', 'call'].map(f => (
             <button
               key={f}
               onClick={() => setFilterChannel(f)}
-              className="px-4 py-1.5 rounded-full text-xs font-semibold capitalize whitespace-nowrap transition-all"
+              className="px-4 py-1.5 rounded-full text-xs font-semibold capitalize whitespace-nowrap transition-all cursor-pointer"
               style={
                 filterChannel === f 
-                  ? { background: 'var(--accent)', color: '#fff', boxShadow: '0 4px 10px rgba(170, 59, 255, 0.3)' } 
-                  : { background: 'rgba(255, 255, 255, 0.5)', color: 'var(--color-text-secondary)', border: '1px solid rgba(255,255,255,0.4)' }
+                  ? { background: 'var(--color-accent)', color: 'var(--color-text-inverse, #ffffff)', boxShadow: 'var(--shadow-sm)' } 
+                  : { background: 'var(--color-surface)', color: 'var(--color-text-secondary)', border: '1px solid var(--color-border)' }
               }
             >
               {f}
             </button>
           ))}
         </div>
-        {lead?.phone && (
+        {leadPhone && (
           <Button 
             variant="outline" 
             size="sm" 
             onClick={handleSyncChat} 
             disabled={isSyncing}
-            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'rgba(255, 255, 255, 0.6)', border: '1px solid rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(8px)', color: 'var(--color-text)' }}
+            style={{ display: 'flex', alignItems: 'center', gap: '6px', background: 'var(--color-surface)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
           >
             {isSyncing ? (
               <>
@@ -165,54 +187,75 @@ export default function CommunicationsTab({ leadId, lead }) {
         )}
       </div>
 
-      <div className="flex-1 overflow-y-auto space-y-4 mb-4">
+      {/* Communications Thread */}
+      <div className="flex-1 overflow-y-auto space-y-4 mb-4 pr-1">
         {filteredComms.length === 0 ? (
-          <EmptyState title="No Communications" description="Send a message or log a call to start the conversation." />
+          <EmptyState 
+            title="No Communications" 
+            description={filterChannel === 'all' 
+              ? "Send a message or log a call to start the conversation." 
+              : `No ${filterChannel} communications logged yet.`} 
+          />
         ) : (
-          filteredComms.map(c => (
-            <div key={c.id} className={`p-4 rounded-xl max-w-[80%] relative shadow-sm transition-transform hover:-translate-y-0.5 ${c.direction === 'outbound' ? 'ml-auto' : ''}`} style={c.direction === 'outbound' ? { background: 'var(--accent-bg)', border: '1px solid rgba(170, 59, 255, 0.1)' } : { background: 'rgba(255, 255, 255, 0.7)', backdropFilter: 'blur(10px)', border: '1px solid rgba(255, 255, 255, 0.5)' }}>
-              <div className="text-xs text-gray-500 mb-2 flex justify-between gap-4">
-                <span className="font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
-                  {c.channel}
-                  {c.channel === 'call' && c.duration && (
-                    <span className="px-2 py-0.5 rounded-full text-[10px]" style={{ background: 'var(--accent)', color: '#fff' }}>{c.duration} min</span>
-                  )}
-                </span>
-                <span style={{ color: 'var(--color-text-muted)' }}>{new Date(c.sent_at).toLocaleString()}</span>
-              </div>
-              <p className="text-sm whitespace-pre-wrap mb-1" style={{ color: 'var(--color-text)' }}>{c.body}</p>
-              
-              <div className="flex justify-between items-center mt-2">
-                <div>
-                  {c.reaction && (
-                    <span className="absolute -bottom-2 -left-1 shadow-md border border-gray-100 rounded-full px-2 py-0.5 text-xs select-none transition-all" style={{ background: 'rgba(255, 255, 255, 0.8)', backdropFilter: 'blur(5px)' }}>
-                      {c.reaction}
-                    </span>
-                  )}
-                </div>
-                {c.direction === 'outbound' && (
-                  <div className="text-[10px] flex items-center gap-1 font-bold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>
-                    {c.channel === 'whatsapp' && (
-                      <span className="text-xs">
-                        {c.status === 'read' || c.status === 'seen' || c.status === 'reacted' || c.status === 'replied' ? '✓✓ 🔵' : c.status === 'delivered' ? '✓✓' : c.status === 'sent' ? '✓' : ''}
+          filteredComms.map(c => {
+            const isOutbound = c.direction === 'outbound';
+            return (
+              <div 
+                key={c.id} 
+                className={`p-4 rounded-xl max-w-[82%] relative shadow-sm transition-transform hover:-translate-y-0.5 ${isOutbound ? 'ml-auto' : ''}`} 
+                style={
+                  isOutbound 
+                    ? { background: 'var(--color-accent-light, #FDF0E8)', border: '1px solid var(--color-border)' } 
+                    : { background: 'var(--color-surface)', border: '1px solid var(--color-border)' }
+                }
+              >
+                <div className="text-xs mb-2 flex justify-between gap-4">
+                  <span className="font-bold uppercase tracking-wider flex items-center gap-2" style={{ color: 'var(--color-text-secondary)' }}>
+                    {c.channel}
+                    {c.channel === 'call' && c.duration && (
+                      <span className="px-2 py-0.5 rounded-full text-[10px]" style={{ background: 'var(--color-accent)', color: 'var(--color-text-inverse, #ffffff)' }}>
+                        {c.duration} min
                       </span>
                     )}
-                    {c.status}
+                  </span>
+                  <span style={{ color: 'var(--color-text-muted)' }}>{new Date(c.sent_at).toLocaleString()}</span>
+                </div>
+                <p className="text-sm whitespace-pre-wrap mb-1 leading-relaxed" style={{ color: 'var(--color-text)' }}>{c.body}</p>
+                
+                <div className="flex justify-between items-center mt-2 min-h-[16px]">
+                  <div>
+                    {c.reaction && (
+                      <span className="absolute -bottom-2 -left-1 shadow-md rounded-full px-2 py-0.5 text-xs select-none" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)' }}>
+                        {c.reaction}
+                      </span>
+                    )}
                   </div>
-                )}
+                  {isOutbound && (
+                    <div className="text-[10px] flex items-center gap-1 font-bold uppercase tracking-wider" style={{ color: 'var(--color-accent)' }}>
+                      {c.channel === 'whatsapp' && (
+                        <span className="text-xs">
+                          {c.status === 'read' || c.status === 'seen' || c.status === 'reacted' || c.status === 'replied' ? '✓✓ 🔵' : c.status === 'delivered' ? '✓✓' : c.status === 'sent' ? '✓' : ''}
+                        </span>
+                      )}
+                      {c.status}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
-          ))
+            );
+          })
         )}
+        <div ref={feedEndRef} />
       </div>
 
-      <div className="p-4 rounded-xl mt-auto" style={{ background: 'rgba(255, 255, 255, 0.6)', backdropFilter: 'blur(20px)', WebkitBackdropFilter: 'blur(20px)', border: '1px solid rgba(255, 255, 255, 0.4)', boxShadow: '0 -10px 30px -10px rgba(0, 0, 0, 0.05)' }}>
+      {/* Input Composer Section */}
+      <div className="p-4 rounded-xl mt-auto" style={{ background: 'var(--color-surface)', border: '1px solid var(--color-border)', boxShadow: 'var(--shadow-sm)' }}>
         <div className="flex flex-wrap items-center gap-3 mb-3">
           <select 
             value={channel} 
             onChange={e => setChannel(e.target.value)}
-            className="text-sm rounded-lg p-2 font-medium focus:ring-2 focus:outline-none transition-all"
-            style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid rgba(0,0,0,0.1)', color: 'var(--color-text)' }}
+            className="text-sm rounded-lg p-2 font-medium focus:ring-2 focus:outline-none transition-all cursor-pointer"
+            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
           >
             <option value="whatsapp">WhatsApp</option>
             <option value="email">Email</option>
@@ -228,19 +271,33 @@ export default function CommunicationsTab({ leadId, lead }) {
               onChange={e => setDuration(e.target.value)}
               placeholder="Duration (min)"
               className="w-32 text-sm rounded-lg p-2 focus:ring-2 focus:outline-none transition-all"
-              style={{ background: 'rgba(255,255,255,0.8)', border: '1px solid rgba(0,0,0,0.1)', color: 'var(--color-text)' }}
+              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
             />
           )}
 
           {channel !== 'call' && (
-            <Button variant="outline" size="sm" onClick={handleDraft} disabled={isDrafting} style={{ background: 'linear-gradient(135deg, rgba(170, 59, 255, 0.1), rgba(0, 0, 255, 0.1))', border: '1px solid rgba(170, 59, 255, 0.2)', color: 'var(--color-accent)' }}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={handleDraft} 
+              disabled={isDrafting} 
+              style={{ background: 'var(--color-bg)', border: '1px solid var(--color-accent)', color: 'var(--color-accent)' }}
+            >
               {isDrafting ? 'Drafting...' : '✨ Draft with AI'}
             </Button>
           )}
         </div>
         
-        {isEmailMissing && <div className="text-xs text-red-500 font-medium mb-2 bg-red-50 p-1.5 rounded inline-block">Lead must have an email address to send emails.</div>}
-        {isSmsOrWhatsappOrCallMissing && <div className="text-xs text-red-500 font-medium mb-2 bg-red-50 p-1.5 rounded inline-block">Lead must have a phone number for {channel}.</div>}
+        {isEmailMissing && (
+          <div className="text-xs font-medium mb-2 p-1.5 rounded inline-block" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
+            Lead must have an email address to send emails.
+          </div>
+        )}
+        {isSmsOrWhatsappOrCallMissing && (
+          <div className="text-xs font-medium mb-2 p-1.5 rounded inline-block" style={{ background: 'var(--color-danger-bg)', color: 'var(--color-danger)' }}>
+            Lead must have a phone number for {channel}.
+          </div>
+        )}
         
         <div className="flex gap-3">
           <input 
@@ -248,13 +305,20 @@ export default function CommunicationsTab({ leadId, lead }) {
             onChange={e => setMessage(e.target.value)}
             placeholder={channel === 'call' ? "Log call notes..." : `Type a ${channel} message or AI instruction...`}
             className="flex-1 text-sm rounded-xl p-3 focus:ring-2 focus:outline-none transition-all"
-            style={{ background: 'rgba(255,255,255,0.9)', border: '1px solid rgba(0,0,0,0.1)', color: 'var(--color-text)' }}
+            style={{ background: 'var(--color-bg)', border: '1px solid var(--color-border)', color: 'var(--color-text)' }}
             onKeyDown={e => e.key === 'Enter' && !isSendDisabled && handleSend()}
             disabled={isEmailMissing || isSmsOrWhatsappOrCallMissing}
           />
-          <Button onClick={handleSend} disabled={isSendDisabled} style={{ background: 'var(--accent)', color: '#fff', padding: '0 24px', borderRadius: '12px', fontWeight: 'bold' }}>{channel === 'call' ? 'Log' : 'Send'}</Button>
+          <Button 
+            onClick={handleSend} 
+            disabled={isSendDisabled} 
+            style={{ background: 'var(--color-accent)', color: 'var(--color-text-inverse, #fff)', padding: '0 24px', borderRadius: '12px', fontWeight: 'bold' }}
+          >
+            {channel === 'call' ? 'Log' : 'Send'}
+          </Button>
         </div>
       </div>
     </div>
   );
 }
+

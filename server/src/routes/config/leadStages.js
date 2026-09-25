@@ -4,12 +4,14 @@ const pool = require('../../db/pool');
 const authenticate = require('../../middleware/authenticate');
 const authorize = require('../../middleware/authorize');
 const { success, fail } = require('../../utils/response');
+const { cacheResponse } = require('../../middleware/cache');
+const { clearCachePrefix } = require('../../utils/cache');
 
 const router = express.Router();
 
 router.use(authenticate);
 
-router.get('/', async (req, res, next) => {
+router.get('/', cacheResponse(300), async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
@@ -79,6 +81,7 @@ router.post('/', authorize('config:manage'), async (req, res, next) => {
     ];
 
     const result = await pool.query(query, values);
+    clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
     return success(res, result.rows[0], {}, 201);
   } catch (error) {
     next(error);
@@ -142,6 +145,7 @@ router.put('/:id', authorize('config:manage'), async (req, res, next) => {
       return fail(res, 'NOT_FOUND', 'Stage not found', 404);
     }
 
+    clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
     return success(res, result.rows[0]);
   } catch (error) {
     next(error);
@@ -183,6 +187,7 @@ router.patch('/reorder', authorize('config:manage'), async (req, res, next) => {
       [tenantId]
     );
 
+    clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
     return success(res, result.rows);
   } catch (error) {
     await client.query('ROLLBACK');
@@ -227,6 +232,7 @@ router.delete('/:id', authorize('config:manage'), async (req, res, next) => {
       return fail(res, 'NOT_FOUND', 'Stage not found', 404);
     }
 
+    clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
     return res.status(204).send();
   } catch (error) {
     next(error);

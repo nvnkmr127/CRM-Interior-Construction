@@ -10,6 +10,7 @@ const validate = require('../middleware/validate');
 const taskRepository = require('../repositories/taskRepository');
 const { stripUnauthorizedEdits, filterAllowedFields } = require('../utils/fieldMasker');
 const { clearCachePrefix } = require('../utils/cache');
+const { cacheResponse } = require('../middleware/cache');
 const { createTask } = require('../services/tasks/createTask');
 const { updateTask } = require('../services/tasks/updateTask');
 const { bulkCreateTasks } = require('../services/tasks/bulkCreateTask');
@@ -108,7 +109,7 @@ const commentSchema = z.object({
 });
 
 // GET /api/projects/:projectId/tasks
-router.get('/', authorize(['projects:read', 'tasks:read', 'tasks:view']), dataScope('tasks', 'assignee_id', 't'), async (req, res, next) => {
+router.get('/', authorize(['projects:read', 'tasks:read', 'tasks:view']), dataScope('tasks', 'assignee_id', 't'), cacheResponse(20), async (req, res, next) => {
   try {
     const { milestoneId, assigneeId, status, priority, page, limit, allTasks, includeDeleted } = req.query;
     

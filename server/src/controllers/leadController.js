@@ -770,6 +770,19 @@ exports.getAllFollowupsHandler = async function getAllFollowupsHandler(req, res,
   }
 };
 
+exports.getAllMeetingsHandler = async function getAllMeetingsHandler(req, res, next) {
+  try {
+    const { tenantId } = getTenantAndUser(req);
+    const scopeFilter = req.scopeFilter || '1=1';
+    const { listAllMeetings } = require('../services/activities/activityService');
+    const data = await listAllMeetings({ tenantId, scopeFilter });
+    res.json({ success: true, data });
+  } catch (error) {
+    logger.error('getAllMeetingsHandler error:', error);
+    return next(new Error('System error or unhandled exception'));
+  }
+};
+
 exports.getFollowupsHandler = async function getFollowupsHandler(req, res, next) {
   try {
     const { tenantId } = getTenantAndUser(req);
@@ -1526,7 +1539,7 @@ exports.getCommunicationsHandler = async (req, res, next) => {
     const { rows } = await pool.query(
       `SELECT * FROM activities 
        WHERE lead_id = $1 AND tenant_id = $2 AND type IN ('email', 'whatsapp', 'call', 'sms')
-       ORDER BY created_at DESC`,
+       ORDER BY created_at ASC`,
       [leadId, tenantId]
     );
     res.json({ success: true, data: rows });

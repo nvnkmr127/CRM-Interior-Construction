@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { orgApi } from '../../api/org'
 import { useToast } from '../../store/toastContext'
-import { Button, Input, Select, Avatar, Drawer, Badge } from '../../components/ui'
+import { Button, Input, Select, Avatar, Drawer } from '../../components/ui'
 import { OrgNodeCard } from '../../components/ui'
 import AssignEmployeesModal from './AssignEmployeesModal'
 import layoutStyles from './ConfigLayout.module.css'
@@ -92,6 +92,17 @@ export default function OrganizationManager() {
   const [drawerMode, setDrawerMode] = useState('view') // 'view', 'edit', 'create'
   const [selectedNode, setSelectedNode] = useState(null)
   const [selectedType, setSelectedType] = useState(null)
+  const [formData, setFormData] = useState({
+    name: '',
+    code: '',
+    location: '',
+    timezone: '',
+    parent_id: '',
+    manager_id: '',
+    description: '',
+    department_id: '',
+    branch_id: ''
+  })
 
   // Assign Employees Modal States
   const [isAssignModalOpen, setIsAssignModalOpen] = useState(false)
@@ -107,14 +118,18 @@ export default function OrganizationManager() {
         orgApi.getDepartments(),
         orgApi.getBranches()
       ])
-      setUsers(uRes)
-      setDepartments(dRes)
-      setBranches(bRes)
+      const uList = Array.isArray(uRes) ? uRes : []
+      const dList = Array.isArray(dRes) ? dRes : []
+      const bList = Array.isArray(bRes) ? bRes : []
+
+      setUsers(uList)
+      setDepartments(dList)
+      setBranches(bList)
       
       const initialExpanded = new Set()
-      uRes.filter(u => !u.manager_id).forEach(u => initialExpanded.add(u.id))
-      dRes.filter(d => !d.parent_id).forEach(d => initialExpanded.add(d.id))
-      bRes.filter(b => !b.parent_id).forEach(b => initialExpanded.add(b.id))
+      uList.filter(u => !u.manager_id).forEach(u => initialExpanded.add(u.id))
+      dList.filter(d => !d.parent_id).forEach(d => initialExpanded.add(d.id))
+      bList.filter(b => !b.parent_id).forEach(b => initialExpanded.add(b.id))
       setExpandedNodes(initialExpanded)
     } catch (err) {
       toast.error('Failed to load org structure')
@@ -135,12 +150,26 @@ export default function OrganizationManager() {
     items.forEach(item => itemMap.set(item.id, { ...item, children: [] }))
     
     const hasParent = new Set()
+
+    const isAncestor = (potentialAncestorId, targetParentId) => {
+      let curr = itemMap.get(targetParentId)
+      const visited = new Set()
+      while (curr && curr[parentKey]) {
+        if (visited.has(curr.id)) break
+        visited.add(curr.id)
+        if (curr[parentKey] === potentialAncestorId) return true
+        curr = itemMap.get(curr[parentKey])
+      }
+      return false
+    }
     
     itemMap.forEach(item => {
       const parentId = item[parentKey]
       if (parentId && parentId !== item.id && itemMap.has(parentId)) {
-        itemMap.get(parentId).children.push(item)
-        hasParent.add(item.id)
+        if (!isAncestor(item.id, parentId)) {
+          itemMap.get(parentId).children.push(item)
+          hasParent.add(item.id)
+        }
       }
     })
     
@@ -151,11 +180,6 @@ export default function OrganizationManager() {
       }
     })
     
-    if (roots.length === 0 && items.length > 0) {
-      // Fallback for complete circular reference
-      roots.push(itemMap.values().next().value)
-    }
-    
     return roots
   }
 
@@ -164,19 +188,23 @@ export default function OrganizationManager() {
     try {
       if (type === 'user') {
         const currentTarget = users.find(u => u.id === draggedId)
-        if (currentTarget.manager_id === newParentId) return
+        if (!currentTarget || currentTarget.manager_id === newParentId) return
         setUsers(prev => prev.map(u => u.id === draggedId ? { ...u, manager_id: newParentId } : u))
         await orgApi.updateUserOrgInfo(draggedId, { manager_id: newParentId })
       } else if (type === 'department') {
+        const currentTarget = departments.find(d => d.id === draggedId)
+        if (!currentTarget || currentTarget.parent_id === newParentId) return
         await orgApi.updateDepartment(draggedId, { parent_id: newParentId })
       } else if (type === 'branch') {
+        const currentTarget = branches.find(b => b.id === draggedId)
+        if (!currentTarget || currentTarget.parent_id === newParentId) return
         await orgApi.updateBranch(draggedId, { parent_id: newParentId })
       }
-      toast.success(`${type} hierarchy updated`)
+      toast.success(`${type.charAt(0).toUpperCase() + type.slice(1)} hierarchy updated`)
       setExpandedNodes(prev => new Set(prev).add(newParentId))
       loadData()
     } catch (err) {
-      toast.error(err.response?.data?.message || `Failed to update hierarchy`)
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || `Failed to update hierarchy`)
       loadData() 
     }
   }
@@ -184,10 +212,19 @@ export default function OrganizationManager() {
   // ---- CRUD Handlers ----
   const handleSaveEntity = async (e) => {
     e.preventDefault()
-    const fd = new FormData(e.target)
-    const data = Object.fromEntries(fd.entries())
-    if (!data.manager_id) data.manager_id = null
-    if (!data.parent_id) data.parent_id = null
+    if (!formData.name?.trim() && selectedType !== 'user') {
+      toast.error('Name is required')
+      return
+    }
+
+    const data = {
+      ...formData,
+      name: formData.name ? formData.name.trim() : '',
+      manager_id: formData.manager_id || null,
+      parent_id: formData.parent_id || null,
+      department_id: formData.department_id || null,
+      branch_id: formData.branch_id || null
+    }
     
     try {
       if (selectedType === 'department') {
@@ -198,17 +235,15 @@ export default function OrganizationManager() {
         else await orgApi.createBranch(data)
       } else if (selectedType === 'user') {
         if (drawerMode === 'edit') {
-          if (!data.department_id) data.department_id = null
-          if (!data.branch_id) data.branch_id = null
           await orgApi.updateUserOrgInfo(selectedNode.id, data)
         }
       }
       
-      toast.success(`${selectedType} saved successfully`)
+      toast.success(`${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)} saved successfully`)
       setIsDrawerOpen(false)
       loadData()
     } catch (err) {
-      toast.error(err.response?.data?.message || `Failed to save ${selectedType}`)
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || `Failed to save ${selectedType}`)
     }
   }
 
@@ -217,17 +252,28 @@ export default function OrganizationManager() {
     try {
       if (selectedType === 'department') await orgApi.deleteDepartment(selectedNode.id)
       if (selectedType === 'branch') await orgApi.deleteBranch(selectedNode.id)
-      toast.success(`${selectedType} deleted`)
+      toast.success(`${selectedType.charAt(0).toUpperCase() + selectedType.slice(1)} deleted`)
       setIsDrawerOpen(false)
       loadData()
     } catch (err) {
-      toast.error(`Failed to delete ${selectedType}`)
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || `Failed to delete ${selectedType}`)
     }
   }
 
   const handleNodeClick = (node, type) => {
     setSelectedNode(node)
     setSelectedType(type)
+    setFormData({
+      name: node.name || '',
+      code: node.code || '',
+      location: node.location || '',
+      timezone: node.timezone || 'Asia/Kolkata',
+      parent_id: node.parent_id || '',
+      manager_id: node.manager_id || '',
+      description: node.description || '',
+      department_id: node.department_id || '',
+      branch_id: node.branch_id || ''
+    })
     setDrawerMode('view')
     setIsDrawerOpen(true)
   }
@@ -235,6 +281,17 @@ export default function OrganizationManager() {
   const openCreateDrawer = (type) => {
     setSelectedType(type)
     setSelectedNode(null)
+    setFormData({
+      name: '',
+      code: '',
+      location: '',
+      timezone: 'Asia/Kolkata',
+      parent_id: '',
+      manager_id: '',
+      description: '',
+      department_id: '',
+      branch_id: ''
+    })
     setDrawerMode('create')
     setIsDrawerOpen(true)
   }
@@ -261,27 +318,94 @@ export default function OrganizationManager() {
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-4">
-            {selectedType !== 'user' && (
+          {selectedType !== 'user' && (() => {
+            const assignedUsers = users.filter(u => selectedType === 'department' ? u.department_id === selectedNode.id : u.branch_id === selectedNode.id)
+            const currentHeadName = selectedNode.manager_name || users.find(u => u.id === selectedNode.manager_id)?.name || 'Unassigned'
+
+            return (
               <>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Manager</span>
-                  <span className="font-semibold text-gray-900">{selectedNode.manager_name || 'Unassigned'}</span>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Head / Manager</span>
+                    <span className="font-semibold text-gray-900">{currentHeadName}</span>
+                  </div>
+                  <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                    <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Headcount</span>
+                    <span className="font-semibold text-gray-900">{assignedUsers.length}</span>
+                  </div>
+                  {selectedType === 'branch' && (
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 col-span-2">
+                      <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Location Info</span>
+                      <span className="font-semibold text-gray-900">{selectedNode.location || 'N/A'} {selectedNode.timezone ? `(${selectedNode.timezone})` : ''}</span>
+                    </div>
+                  )}
+                  {selectedType === 'department' && selectedNode.code && (
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 col-span-2">
+                      <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Department Code</span>
+                      <span className="font-semibold text-gray-900">{selectedNode.code}</span>
+                    </div>
+                  )}
+                  {selectedType === 'department' && selectedNode.description && (
+                    <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 col-span-2">
+                      <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Description</span>
+                      <p className="text-sm text-gray-700">{selectedNode.description}</p>
+                    </div>
+                  )}
                 </div>
-                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
-                  <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Headcount</span>
-                  <span className="font-semibold text-gray-900">{selectedNode.employee_count || 0}</span>
+
+                <div className="pt-6 border-t border-gray-100">
+                  <div className="flex justify-between items-center mb-4">
+                    <h3 className="text-sm font-semibold text-gray-900">Assigned Employees ({assignedUsers.length})</h3>
+                    <Button variant="outline" size="sm" onClick={() => setIsAssignModalOpen(true)}>Assign</Button>
+                  </div>
+                  
+                  <div className="space-y-2 mb-6 max-h-[300px] overflow-y-auto pr-1">
+                    {assignedUsers.length === 0 ? (
+                      <p className="text-sm text-gray-500 italic">No employees assigned.</p>
+                    ) : (
+                      assignedUsers.map(u => (
+                        <div key={u.id} className="flex items-center justify-between p-2 hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-100 transition-colors">
+                          <div className="flex items-center gap-3 min-w-0 flex-1 cursor-pointer" onClick={() => handleNodeClick(u, 'user')}>
+                            <Avatar name={u.name} size="sm" url={u.avatar_url} />
+                            <div className="min-w-0 flex-1">
+                              <p className="text-sm font-medium text-gray-900 truncate">{u.name}</p>
+                              <p className="text-xs text-gray-500 truncate">{u.role_name || 'No Role'}</p>
+                            </div>
+                          </div>
+                          <button 
+                            title={`Unassign ${u.name}`}
+                            onClick={async (e) => {
+                              e.stopPropagation()
+                              try {
+                                const patchData = selectedType === 'department' ? { department_id: null } : { branch_id: null }
+                                await orgApi.updateUserOrgInfo(u.id, patchData)
+                                toast.success(`${u.name} unassigned`)
+                                loadData()
+                              } catch (err) {
+                                toast.error('Failed to unassign user')
+                              }
+                            }}
+                            className="text-gray-400 hover:text-red-600 p-1.5 rounded hover:bg-red-50 transition-colors text-xs font-bold"
+                          >
+                            ✕
+                          </button>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  <div className="pt-6 border-t border-gray-100 flex gap-3">
+                    <Button variant="outline" className="flex-1" onClick={() => setDrawerMode('edit')}>Edit</Button>
+                    <Button variant="danger" className="flex-1" onClick={handleDeleteEntity}>Delete</Button>
+                  </div>
                 </div>
               </>
-            )}
-            {selectedType === 'branch' && (
-              <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 col-span-2">
-                <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Location Info</span>
-                <span className="font-semibold text-gray-900">{selectedNode.location} - {selectedNode.timezone}</span>
-              </div>
-            )}
-            {selectedType === 'user' && (
-              <>
+            )
+          })()}
+
+          {selectedType === 'user' && (
+            <>
+              <div className="grid grid-cols-2 gap-4">
                 <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
                   <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Role</span>
                   <span className="font-semibold text-gray-900">{selectedNode.role_name || 'No Role'}</span>
@@ -290,46 +414,25 @@ export default function OrganizationManager() {
                   <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Email</span>
                   <span className="font-semibold text-gray-900 break-words">{selectedNode.email}</span>
                 </div>
-                
-                <div className="pt-6 border-t border-gray-100 flex gap-3 col-span-2">
-                  <Button variant="outline" className="flex-1" onClick={() => setDrawerMode('edit')}>Edit Assignment</Button>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Reports To</span>
+                  <span className="font-semibold text-gray-900">{selectedNode.manager_name || users.find(u => u.id === selectedNode.manager_id)?.name || 'Direct / None'}</span>
                 </div>
-              </>
-            )}
-          </div>
-          
-          {selectedType !== 'user' && (() => {
-            const assignedUsers = users.filter(u => selectedType === 'department' ? u.department_id === selectedNode.id : u.branch_id === selectedNode.id)
-            return (
-              <div className="pt-6 border-t border-gray-100">
-                <div className="flex justify-between items-center mb-4">
-                  <h3 className="text-sm font-semibold text-gray-900">Assigned Employees ({assignedUsers.length})</h3>
-                  <Button variant="outline" size="sm" onClick={() => setIsAssignModalOpen(true)}>Assign</Button>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100">
+                  <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Department</span>
+                  <span className="font-semibold text-gray-900">{selectedNode.department_name || departments.find(d => d.id === selectedNode.department_id)?.name || 'Unassigned'}</span>
                 </div>
-                
-                <div className="space-y-3 mb-6 max-h-[300px] overflow-y-auto pr-2">
-                  {assignedUsers.length === 0 ? (
-                    <p className="text-sm text-gray-500 italic">No employees assigned.</p>
-                  ) : (
-                    assignedUsers.map(u => (
-                      <div key={u.id} className="flex items-center gap-3 p-2 hover:bg-gray-50 rounded-lg border border-transparent hover:border-gray-100 transition-colors cursor-pointer" onClick={() => handleNodeClick(u, 'user')}>
-                        <Avatar name={u.name} size="sm" url={u.avatar_url} />
-                        <div className="min-w-0 flex-1">
-                          <p className="text-sm font-medium text-gray-900 truncate">{u.name}</p>
-                          <p className="text-xs text-gray-500 truncate">{u.role_name || 'No Role'}</p>
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-
-                <div className="pt-6 border-t border-gray-100 flex gap-3">
-                  <Button variant="outline" className="flex-1" onClick={() => setDrawerMode('edit')}>Edit</Button>
-                  <Button variant="danger" className="flex-1" onClick={handleDeleteEntity}>Delete</Button>
+                <div className="bg-gray-50 p-4 rounded-lg border border-gray-100 col-span-2">
+                  <span className="block text-xs font-medium text-gray-500 uppercase mb-1">Branch</span>
+                  <span className="font-semibold text-gray-900">{selectedNode.branch_name || branches.find(b => b.id === selectedNode.branch_id)?.name || 'Unassigned'}</span>
                 </div>
               </div>
-            )
-          })()}
+
+              <div className="pt-6 border-t border-gray-100 flex gap-3">
+                <Button variant="outline" className="flex-1" onClick={() => setDrawerMode('edit')}>Edit Assignment</Button>
+              </div>
+            </>
+          )}
         </div>
       )
     }
@@ -344,56 +447,99 @@ export default function OrganizationManager() {
             <div className="mb-4">
               <p className="text-sm text-gray-500 mb-4">Update organization assignment for <strong>{entity.name}</strong>.</p>
               <div className="space-y-4">
-                <Select label="Manager" name="manager_id" defaultValue={entity.manager_id || ''}>
-                  <option value="">Unassigned</option>
-                  {users.filter(u => u.id !== entity.id).map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </Select>
-                <Select label="Department" name="department_id" defaultValue={entity.department_id || ''}>
-                  <option value="">Unassigned</option>
-                  {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
-                </Select>
-                <Select label="Branch" name="branch_id" defaultValue={entity.branch_id || ''}>
-                  <option value="">Unassigned</option>
-                  {branches.map(b => <option key={b.id} value={b.id}>{b.name}</option>)}
-                </Select>
+                <Select 
+                  label="Manager" 
+                  options={[
+                    { value: '', label: 'Unassigned' },
+                    ...users.filter(u => u.id !== entity.id).map(u => ({ value: u.id, label: u.name }))
+                  ]}
+                  value={formData.manager_id}
+                  onChange={v => setFormData(p => ({ ...p, manager_id: v }))}
+                />
+                <Select 
+                  label="Department" 
+                  options={[
+                    { value: '', label: 'Unassigned' },
+                    ...departments.map(d => ({ value: d.id, label: d.name }))
+                  ]}
+                  value={formData.department_id}
+                  onChange={v => setFormData(p => ({ ...p, department_id: v }))}
+                />
+                <Select 
+                  label="Branch" 
+                  options={[
+                    { value: '', label: 'Unassigned' },
+                    ...branches.map(b => ({ value: b.id, label: b.name }))
+                  ]}
+                  value={formData.branch_id}
+                  onChange={v => setFormData(p => ({ ...p, branch_id: v }))}
+                />
               </div>
             </div>
           ) : (
             <>
-              <Input label={`${isDept ? 'Department' : 'Branch'} Name *`} name="name" defaultValue={entity.name} required />
+              <Input 
+                label={`${isDept ? 'Department' : 'Branch'} Name *`} 
+                value={formData.name} 
+                onChange={e => setFormData(p => ({ ...p, name: e.target.value }))}
+                required 
+              />
               
               {isDept && (
-                <Input label="Department Code" name="code" defaultValue={entity.code} placeholder="e.g. ENG-01" />
+                <Input 
+                  label="Department Code" 
+                  value={formData.code} 
+                  onChange={e => setFormData(p => ({ ...p, code: e.target.value }))}
+                  placeholder="e.g. ENG-01" 
+                />
               )}
     
               {!isDept && (
                 <div className="grid grid-cols-2 gap-4">
-                  <Input label="Location" name="location" defaultValue={entity.location} placeholder="City, Country" />
-                  <Input label="Timezone" name="timezone" defaultValue={entity.timezone} placeholder="e.g. UTC, EST" />
+                  <Input 
+                    label="Location" 
+                    value={formData.location} 
+                    onChange={e => setFormData(p => ({ ...p, location: e.target.value }))}
+                    placeholder="City, Country" 
+                  />
+                  <Input 
+                    label="Timezone" 
+                    value={formData.timezone} 
+                    onChange={e => setFormData(p => ({ ...p, timezone: e.target.value }))}
+                    placeholder="e.g. Asia/Kolkata, UTC" 
+                  />
                 </div>
               )}
               
               <div className="grid grid-cols-2 gap-4">
-                <Select label="Parent" name="parent_id" defaultValue={entity.parent_id || ''}>
-                  <option value="">None (Top Level)</option>
-                  {(isDept ? departments : branches)
-                    .filter(item => item.id !== entity.id)
-                    .map(item => (
-                      <option key={item.id} value={item.id}>{item.name}</option>
-                  ))}
-                </Select>
-                <Select label="Manager" name="manager_id" defaultValue={entity.manager_id || ''}>
-                  <option value="">Unassigned</option>
-                  {users.map(u => <option key={u.id} value={u.id}>{u.name}</option>)}
-                </Select>
+                <Select 
+                  label="Parent" 
+                  options={[
+                    { value: '', label: 'None (Top Level)' },
+                    ...(isDept ? departments : branches)
+                      .filter(item => !entity?.id || item.id !== entity.id)
+                      .map(item => ({ value: item.id, label: item.name }))
+                  ]}
+                  value={formData.parent_id}
+                  onChange={v => setFormData(p => ({ ...p, parent_id: v }))}
+                />
+                <Select 
+                  label="Manager" 
+                  options={[
+                    { value: '', label: 'Unassigned' },
+                    ...users.map(u => ({ value: u.id, label: u.name }))
+                  ]}
+                  value={formData.manager_id}
+                  onChange={v => setFormData(p => ({ ...p, manager_id: v }))}
+                />
               </div>
     
               {isDept && (
                 <div>
                   <label className="block text-sm font-medium text-gray-700 mb-1">Description</label>
                   <textarea 
-                    name="description" 
-                    defaultValue={entity.description} 
+                    value={formData.description} 
+                    onChange={e => setFormData(p => ({ ...p, description: e.target.value }))}
                     className="w-full rounded-md border-gray-300 shadow-sm focus:border-primary-500 focus:ring-primary-500 sm:text-sm p-2 border" 
                     rows={3}
                   />

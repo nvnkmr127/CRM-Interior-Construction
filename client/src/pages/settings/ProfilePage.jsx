@@ -103,6 +103,8 @@ export default function ProfilePage() {
   const [email, setEmail] = useState(user?.email || '')
   const [phone, setPhone] = useState(user?.phone || user?.profile_data?.mobileNumber || '')
   const [designation, setDesignation] = useState(user?.designation || user?.profile_data?.designation || '')
+  const [departmentId, setDepartmentId] = useState(user?.department_id || '')
+  const [workLocation, setWorkLocation] = useState(user?.profile_data?.workLocation || '')
   const [profileSaving, setProfileSaving] = useState(false)
 
   // Extended Profile Data
@@ -124,6 +126,8 @@ export default function ProfilePage() {
       setEmail(user.email || '')
       setPhone(user.phone || user.profile_data?.mobileNumber || '')
       setDesignation(user.designation || user.profile_data?.designation || '')
+      setDepartmentId(user.department_id || '')
+      setWorkLocation(user.profile_data?.workLocation || '')
       isInitializedRef.current = true
       lastUserIdRef.current = user.id
     }
@@ -160,13 +164,17 @@ export default function ProfilePage() {
 
   const userDept = useMemo(() => {
     if (!user) return 'General'
+    if (departmentId) {
+      const d = departments.find(dep => dep.id === departmentId)
+      if (d) return d.name
+    }
     if (user.department_name) return user.department_name
     if (user.department_id) {
       const d = departments.find(dep => dep.id === user.department_id)
       if (d) return d.name
     }
-    return 'Main Studio & HQ'
-  }, [user, departments])
+    return user?.tenant?.name ? `${user.tenant.name} (HQ)` : 'Headquarters'
+  }, [user, departments, departmentId])
 
   const handleCopy = (text, type) => {
     if (!text) return
@@ -188,13 +196,21 @@ export default function ProfilePage() {
     const emailChanged = email !== (user?.email || '')
     const phoneChanged = phone !== (user?.phone || user?.profile_data?.mobileNumber || '')
     const designationChanged = designation !== (user?.designation || user?.profile_data?.designation || '')
+    const departmentChanged = (departmentId || '') !== (user?.department_id || '')
+    const workLocationChanged = workLocation !== (user?.profile_data?.workLocation || '')
 
-    if (nameChanged || emailChanged || phoneChanged || designationChanged) {
+    if (nameChanged || emailChanged || phoneChanged || designationChanged || departmentChanged || workLocationChanged) {
       let details = []
       if (nameChanged) details.push(`Name: "${user?.name || ''}" ➔ "${name}"`)
       if (emailChanged && isSuperAdmin) details.push(`Email: "${user?.email || ''}" ➔ "${email}"`)
       if (phoneChanged) details.push(`Phone: "${user?.phone || ''}" ➔ "${phone}"`)
       if (designationChanged) details.push(`Job Title: "${user?.designation || ''}" ➔ "${designation}"`)
+      if (departmentChanged) {
+        const oldD = departments.find(d => d.id === user?.department_id)?.name || (user?.tenant?.name ? `${user.tenant.name} (HQ)` : 'Headquarters')
+        const newD = departments.find(d => d.id === departmentId)?.name || (user?.tenant?.name ? `${user.tenant.name} (HQ)` : 'Headquarters')
+        details.push(`Department: "${oldD}" ➔ "${newD}"`)
+      }
+      if (workLocationChanged) details.push(`Work Location: "${user?.profile_data?.workLocation || ''}" ➔ "${workLocation}"`)
 
       if (details.length > 0) {
         const confirmMsg = `Are you sure you want to update your profile details?\n\n${details.join('\n')}`
@@ -206,7 +222,13 @@ export default function ProfilePage() {
 
     setProfileSaving(true)
     try {
-      const payload = { name, phone, designation }
+      const payload = { 
+        name, 
+        phone, 
+        designation, 
+        department_id: departmentId || null, 
+        workLocation: workLocation || '' 
+      }
       if (isSuperAdmin) {
         payload.email = (email || '').trim().toLowerCase()
       }
@@ -217,6 +239,8 @@ export default function ProfilePage() {
       setEmail(updatedUser.email || '')
       setPhone(updatedUser.phone || updatedUser.profile_data?.mobileNumber || '')
       setDesignation(updatedUser.designation || updatedUser.profile_data?.designation || '')
+      setDepartmentId(updatedUser.department_id || '')
+      setWorkLocation(updatedUser.profile_data?.workLocation || '')
       if (refreshUser) {
         await refreshUser()
       }
@@ -511,6 +535,32 @@ export default function ProfilePage() {
                   </div>
                 </div>
 
+                <div className={styles.inputRow}>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.label}>Department</label>
+                    <select 
+                      className={styles.input}
+                      value={departmentId}
+                      onChange={e => setDepartmentId(e.target.value)}
+                    >
+                      <option value="">{user?.tenant?.name ? `${user.tenant.name} (HQ)` : 'Workspace Headquarters'}</option>
+                      {departments.map(dep => (
+                        <option key={dep.id} value={dep.id}>{dep.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className={styles.inputGroup}>
+                    <label className={styles.label}>Work Location / Branch</label>
+                    <input 
+                      type="text" 
+                      className={styles.input} 
+                      value={workLocation} 
+                      onChange={e => setWorkLocation(e.target.value)} 
+                      placeholder={user?.tenant?.name ? `${user.tenant.name} (HQ)` : 'e.g. Headquarters / Studio A'} 
+                    />
+                  </div>
+                </div>
+
                 <div className={styles.inputGroup}>
                   <label className={styles.label}>Role</label>
                   <div>
@@ -550,7 +600,7 @@ export default function ProfilePage() {
                 </div>
                 <div className={styles.infoFieldRow}>
                   <span className={styles.infoFieldLabel}>Work Location</span>
-                  <span className={styles.infoFieldValue}>{profile.workLocation || 'Main Studio & HQ'}</span>
+                  <span className={styles.infoFieldValue}>{workLocation || profile.workLocation || (user?.tenant?.name ? `${user.tenant.name} (HQ)` : 'Headquarters')}</span>
                 </div>
                 <div className={styles.infoFieldRow}>
                   <span className={styles.infoFieldLabel}>Date of Joining</span>

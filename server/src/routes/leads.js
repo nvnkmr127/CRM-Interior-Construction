@@ -4,14 +4,30 @@ const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 const dataScope = require('../middleware/dataScope');
 const { cacheResponse } = require('../middleware/cache');
+const { clearCachePrefix } = require('../utils/cache');
 const { createLeadSchema, logActivitySchema } = require('../../../shared/validators/leadSchemas');
 const leadController = require('../controllers/leadController');
 const aiRateLimiter = require('../middleware/aiRateLimiter');
 
 const router = express.Router();
 
+// Auto-purge lead and dashboard cache when any mutation occurs
+router.use((req, res, next) => {
+  if (['POST', 'PATCH', 'PUT', 'DELETE'].includes(req.method)) {
+    const originalSend = res.send;
+    res.send = function(body) {
+      if (res.statusCode >= 200 && res.statusCode < 300) {
+        clearCachePrefix('/api/leads').catch(() => {});
+        clearCachePrefix('/api/dashboard').catch(() => {});
+      }
+      return originalSend.apply(this, arguments);
+    };
+  }
+  next();
+});
+
 router.post('/', authenticate, authorize('leads:create'), validate(createLeadSchema), leadController.createLeadHandler);
-router.get('/', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), leadController.getLeadsHandler);
+router.get('/', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), cacheResponse(15), leadController.getLeadsHandler);
 router.get('/stats', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), cacheResponse(60), leadController.getLeadStatsHandler);
 router.post('/public', validate(createLeadSchema), leadController.createPublicLeadHandler);
 router.get('/check-duplicate', leadController.checkDuplicateHandler);
@@ -39,10 +55,11 @@ const multer = require('multer');
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
 
 router.get('/followups/all', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), leadController.getAllFollowupsHandler);
+router.get('/meetings/all', authenticate, authorize('leads:read'), dataScope('leads', 'assignee_id', 'l'), leadController.getAllMeetingsHandler);
 
 router.param('id', enforceLeadAccess);
 
-router.get('/:id', authenticate, authorize('leads:read'), leadController.getLeadByIdHandler);
+router.get('/:id', authenticate, authorize('leads:read'), cacheResponse(30), leadController.getLeadByIdHandler);
 router.patch('/:id', authenticate, authorize('leads:update'), leadController.updateLeadHandler);
 router.delete('/:id', authenticate, authorize('leads:delete'), leadController.deleteLeadHandler);
 router.post('/:id/restore', authenticate, authorize('leads:delete'), leadController.restoreLeadHandler);

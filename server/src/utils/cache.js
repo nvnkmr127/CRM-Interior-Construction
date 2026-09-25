@@ -79,7 +79,7 @@ const clearCachePrefix = async (prefix) => {
   if (useRedis) {
     try {
       await connectRedis();
-      const keys = await client.keys(`${prefix}*`);
+      const keys = await client.keys(`*${prefix}*`);
       if (keys.length > 0) {
         await client.del(keys);
       }
@@ -89,7 +89,7 @@ const clearCachePrefix = async (prefix) => {
     }
   }
   for (const key of memoryCache.keys()) {
-    if (key.startsWith(prefix)) {
+    if (key.includes(prefix) || key.startsWith(prefix)) {
       memoryCache.delete(key);
     }
   }

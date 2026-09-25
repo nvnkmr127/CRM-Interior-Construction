@@ -139,6 +139,7 @@ export default function SuperAdminSettings() {
   const [editingTenant, setEditingTenant] = useState(null);
   const [settings, setSettings] = useState({
     name: '',
+    slug: '',
     plan: '',
     max_users: 10,
     admin_name: '',
@@ -392,6 +393,7 @@ export default function SuperAdminSettings() {
     setShowEditAdminPassword(false);
     setSettings({
       name: tenant.name || '',
+      slug: tenant.slug || '',
       plan: tenant.plan || 'starter',
       max_users: tenant.max_users || 10,
       admin_name: tenant.admin_name || '',
@@ -416,6 +418,7 @@ export default function SuperAdminSettings() {
     try {
       const formattedSettings = {
         ...settings,
+        slug: (settings.slug || '').trim().toLowerCase().replace(/[\s_]+/g, '-'),
         allowed_ips: settings.allowed_ips ? settings.allowed_ips.split(',').map(ip => ip.trim()) : [],
         allowed_countries: settings.allowed_countries ? settings.allowed_countries.split(',').map(c => c.trim().toUpperCase()) : []
       };
@@ -625,6 +628,20 @@ export default function SuperAdminSettings() {
                     value={settings.name} 
                     onChange={e => setSettings(prev => ({ ...prev, name: e.target.value }))} 
                     required
+                  />
+                  <Input 
+                    label="Workspace Slug (URL / Login Handle)"
+                    type="text" 
+                    placeholder="e.g. zenith-interiors" 
+                    value={settings.slug || ''} 
+                    onChange={e => setSettings(prev => ({ ...prev, slug: e.target.value.toLowerCase().replace(/[\s_]+/g, '-') }))} 
+                    required
+                    disabled={editingTenant?.slug === 'demo'}
+                    helperText={
+                      editingTenant?.slug === 'demo'
+                        ? "The root master platform workspace slug is locked."
+                        : "Used by team members to log in. Note: Changing this requires users to enter the new slug when logging in."
+                    }
                   />
                   <div className={styles.formRow}>
                     <Select 

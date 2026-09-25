@@ -10,8 +10,8 @@ const router = express.Router();
 
 router.use(authenticate);
 
-// Cache stats for 15 seconds
-router.get('/stats', cacheResponse(15), async (req, res) => {
+// Cache stats for 60 seconds
+router.get('/stats', cacheResponse(60), async (req, res) => {
   const tenantId = req.tenantId || (req.user && req.user.tenantId);
   const userId = req.user.id;
   const userRole = req.user.role;
@@ -25,7 +25,7 @@ router.get('/stats', cacheResponse(15), async (req, res) => {
       ? req.user.permissions 
       : (Array.isArray(req.user?.role?.permissions) ? req.user.role.permissions : []);
 
-    const isPlatformDev = (req.tenantSlug === 'demo' || req.user?.email === 'admin@demo.com') && 
+    const isPlatformDev = (req.tenantSlug === 'demo' || req.user?.email === 'admin@demo.com' || req.user?.email === 'digicloudify@gmail.com') && 
       (rName === 'superadmin' || rName === 'admin');
     const isAdmin = isPlatformDev || 
       rName === 'superadmin' || 
@@ -141,7 +141,7 @@ router.get('/pipeline', cacheResponse(600), async (req, res) => {
   }
 });
 
-router.get('/my-tasks', async (req, res) => {
+router.get('/my-tasks', cacheResponse(30), async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.user.id;
   const limit = parseInt(req.query.limit, 10) || 7;
@@ -166,7 +166,7 @@ router.get('/my-tasks', async (req, res) => {
   }
 });
 
-router.get('/payments-due', async (req, res) => {
+router.get('/payments-due', cacheResponse(60), async (req, res) => {
   const tenantId = req.tenantId;
   const limit = parseInt(req.query.limit, 10) || 5;
 

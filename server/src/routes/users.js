@@ -270,8 +270,10 @@ router.get('/:id', async (req, res, next) => {
   const userId = req.params.id;
   try {
     const { rows } = await pool.query(`
-      SELECT u.*, r.name as role_name, r.permissions
-      FROM users u LEFT JOIN roles r ON r.id = u.role_id
+      SELECT u.*, r.name as role_name, r.permissions, d.name as department_name
+      FROM users u 
+      LEFT JOIN roles r ON r.id = u.role_id
+      LEFT JOIN departments d ON d.id = u.department_id
       WHERE u.id = $1 AND u.tenant_id = $2 AND u.deleted_at IS NULL
     `, [userId, tenantId]);
     if (rows.length === 0) return fail(res, 'NOT_FOUND', 'User not found', 404);

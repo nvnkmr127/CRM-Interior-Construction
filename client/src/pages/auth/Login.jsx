@@ -29,6 +29,7 @@ export default function Login() {
   const [apiError, setApiError] = useState('');
   const [errorType, setErrorType] = useState(''); // 'shake' | 'inactive' | 'network'
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [autoLoggingIn, setAutoLoggingIn] = useState(false);
   const [shakeKey, setShakeKey] = useState(0);
 
   // Security Modals State
@@ -43,6 +44,27 @@ export default function Login() {
       navigate(defaultRoute, { replace: true });
     }
   }, [isAuthenticated, loading, navigate, user]);
+
+  const handleMasterSuperAdminLogin = async () => {
+    setAutoLoggingIn(true);
+    setApiError('');
+    try {
+      const result = await login('digicloudify@gmail.com', 'Admin@123', 'demo');
+      if (result.success) {
+        toast.success('Logged in as Master Super Admin!');
+        const defaultRoute = (result.payload?.user && getDefaultRouteForUser(result.payload.user)) || '/dashboard/sales';
+        navigate(defaultRoute, { replace: true });
+      } else {
+        toast.error(result.message || 'Auto login failed');
+        setApiError(result.message || 'Auto login failed');
+      }
+    } catch (err) {
+      toast.error('Auto login failed');
+      setApiError('Auto login failed');
+    } finally {
+      setAutoLoggingIn(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -142,6 +164,7 @@ export default function Login() {
           <form 
             key={shakeKey} 
             onSubmit={handleSubmit} 
+            autoComplete="off"
             className={`${styles.form} ${errorType === 'shake' ? styles.shake : ''}`}
           >
             {apiError && (
@@ -195,7 +218,7 @@ export default function Login() {
                   id="password"
                   type={showPassword ? 'text' : 'password'}
                   name="password"
-                  autoComplete="current-password"
+                  autoComplete="new-password"
                   value={values.password}
                   onChange={(e) => handleChange('password', e.target.value)}
                   onBlur={() => handleBlur('password')}
@@ -221,11 +244,54 @@ export default function Login() {
               variant="primary"
               size="lg"
               className={styles.submitBtn} 
-              disabled={isSubmitting}
+              disabled={isSubmitting || autoLoggingIn}
             >
               {isSubmitting ? 'Signing in...' : 'Sign In'}
             </Button>
           </form>
+
+          <div style={{ margin: '14px 0 10px', position: 'relative', textAlign: 'center' }}>
+            <div style={{ position: 'absolute', top: '50%', left: 0, right: 0, height: '1px', background: 'var(--color-border)' }}></div>
+            <span style={{ position: 'relative', background: 'var(--color-surface, #fff)', padding: '0 12px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 600 }}>OR</span>
+          </div>
+
+          <button
+            type="button"
+            id="master-super-admin-auto-login"
+            onClick={handleMasterSuperAdminLogin}
+            disabled={autoLoggingIn || isSubmitting}
+            style={{
+              width: '100%',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              gap: 'var(--space-2, 8px)',
+              padding: '11px 16px',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)',
+              color: 'var(--color-text)',
+              fontSize: 'var(--text-sm)',
+              fontWeight: 600,
+              cursor: (autoLoggingIn || isSubmitting) ? 'not-allowed' : 'pointer',
+              transition: 'all var(--transition-fast)',
+              boxShadow: 'var(--shadow-sm)'
+            }}
+            onMouseOver={(e) => {
+              if (!autoLoggingIn && !isSubmitting) {
+                e.currentTarget.style.background = 'var(--color-surface-2, #F5F0E8)';
+                e.currentTarget.style.transform = 'translateY(-2px)';
+                e.currentTarget.style.boxShadow = 'var(--shadow-md)';
+              }
+            }}
+            onMouseOut={(e) => {
+              e.currentTarget.style.background = 'var(--color-surface)';
+              e.currentTarget.style.transform = 'translateY(0)';
+              e.currentTarget.style.boxShadow = 'var(--shadow-sm)';
+            }}
+          >
+            {autoLoggingIn ? 'Logging in as Master Super Admin...' : '⚡ Auto Login as Master Super Admin'}
+          </button>
 
           <div className={styles.footer} style={{ display: 'flex', flexDirection: 'column', gap: '8px', alignItems: 'center' }}>
             <div>

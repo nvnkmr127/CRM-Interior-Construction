@@ -157,7 +157,7 @@ async function syncWhatsApp({ tenantId, leadId }) {
   const refreshedCommsRes = await pool.query(
     `SELECT * FROM activities 
      WHERE lead_id = $1 AND tenant_id = $2 AND type IN ('email', 'whatsapp', 'call', 'sms')
-     ORDER BY created_at DESC`,
+     ORDER BY created_at ASC`,
     [leadId, tenantId]
   );
 

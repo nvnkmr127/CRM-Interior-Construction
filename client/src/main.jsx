@@ -41,35 +41,32 @@ window.addEventListener('unhandledrejection', (event) => {
 
 import { PreferencesProvider } from './store/PreferencesContext.jsx';
 
-try {
-  const mockDbStr = localStorage.getItem('mockDatabase_v4');
-  if (mockDbStr) {
-    const mockDb = JSON.parse(mockDbStr);
-    if (!mockDb.force_contacts_purged_final_2) {
-      mockDb.contacts = [
-        {
-          id: 'mock-contact-1',
-          lead_id: 'mock-lead-1',
-          name: 'Priya Sharma',
-          phone: '+91 9876543211',
-          email: 'priya.s@example.com',
-          role: 'Spouse',
-          decision_authority: 'Primary',
-          relationship_notes: 'Highly interested in modular kitchen details.'
+// Defer any non-critical mock DB check out of the critical rendering path
+if (typeof window !== 'undefined') {
+  setTimeout(() => {
+    try {
+      const mockDbStr = localStorage.getItem('mockDatabase_v4');
+      if (mockDbStr) {
+        const mockDb = JSON.parse(mockDbStr);
+        if (!mockDb.force_contacts_purged_final_2) {
+          mockDb.contacts = [
+            {
+              id: 'mock-contact-1',
+              lead_id: 'mock-lead-1',
+              name: 'Priya Sharma',
+              phone: '+91 9876543211',
+              email: 'priya.s@example.com',
+              role: 'Spouse',
+              decision_authority: 'Primary',
+              relationship_notes: 'Highly interested in modular kitchen details.'
+            }
+          ];
+          mockDb.force_contacts_purged_final_2 = true;
+          localStorage.setItem('mockDatabase_v4', JSON.stringify(mockDb));
         }
-      ];
-      mockDb.force_contacts_purged_final_2 = true;
-      localStorage.setItem('mockDatabase_v4', JSON.stringify(mockDb));
-      console.log('Forcefully wiped corrupted contacts from mock database');
-      
-      // Auto-reload once to ensure UI catches up with the fresh DB
-      setTimeout(() => {
-        window.location.reload();
-      }, 500);
-    }
-  }
-} catch (e) {
-  console.error('Error cleaning mock DB', e);
+      }
+    } catch (e) {}
+  }, 1000);
 }
 
 createRoot(document.getElementById('root')).render(

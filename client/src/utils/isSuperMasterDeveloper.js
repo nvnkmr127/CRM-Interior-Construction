@@ -19,7 +19,8 @@ export function isSuperMasterDeveloper(user) {
 
   // 3. Primary master platform root workspace or email
   const isMasterPlatformWorkspace = user?.tenant?.slug === 'demo' || user?.tenant?.id === 'demo';
-  const isMasterPlatformEmail = (user?.email || '').trim().toLowerCase() === 'admin@demo.com';
+  const emailLower = (user?.email || '').trim().toLowerCase();
+  const isMasterPlatformEmail = emailLower === 'admin@demo.com' || emailLower === 'digicloudify@gmail.com';
 
   if (!isMasterPlatformWorkspace && !isMasterPlatformEmail) {
     return false;

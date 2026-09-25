@@ -93,3 +93,30 @@ exports.deleteActivity = async (tenantId, activityId) => {
   );
   return true;
 };
+
+exports.listAllMeetings = async ({ tenantId, scopeFilter = '1=1' }) => {
+  const query = `
+    SELECT a.*,
+           COALESCE(a.metadata->>'meeting_type', 'Google Meet') AS meeting_type,
+           a.metadata->>'meeting_link' AS meeting_link,
+           COALESCE(a.metadata->>'meeting_host', u.name) AS meeting_host,
+           COALESCE(NULLIF(a.metadata->>'duration', '')::integer, 30) AS duration,
+           l.name AS lead_name,
+           l.phone AS lead_phone,
+           l.stage_id,
+           s.name AS stage_name,
+           s.color AS stage_color,
+           u.name AS assignee_name
+    FROM activities a
+    LEFT JOIN leads l ON a.lead_id = l.id
+    LEFT JOIN users u ON l.assignee_id = u.id
+    LEFT JOIN lead_stages s ON l.stage_id = s.id
+    WHERE a.tenant_id = $1 
+      AND a.type = 'meeting'
+      AND a.scheduled_at IS NOT NULL
+      AND (${scopeFilter})
+    ORDER BY a.scheduled_at ASC
+  `;
+  const { rows } = await pool.query(query, [tenantId]);
+  return rows;
+};

@@ -211,55 +211,37 @@ class ProjectRepository {
       WHERE pp.tenant_id = $1 AND pp.project_id = $2
       ORDER BY pp.sort_order ASC, pp.created_at ASC
     `;
-    const phasesRes = await pool.query(phasesQuery, [tenantId, projectId]);
-    project.phases = phasesRes.rows;
 
-    // Fetch payment milestones
     const paymentsQuery = `
       SELECT * FROM payment_milestones
       WHERE tenant_id = $1 AND project_id = $2
       ORDER BY due_date ASC NULLS LAST, created_at ASC
     `;
-    const paymentsRes = await pool.query(paymentsQuery, [tenantId, projectId]);
-    project.payment_milestones = paymentsRes.rows;
 
-    // Fetch project contacts
     const contactsQuery = `
       SELECT * FROM project_contacts
       WHERE tenant_id = $1 AND project_id = $2
       ORDER BY created_at ASC
     `;
-    const contactsRes = await pool.query(contactsQuery, [tenantId, projectId]);
-    project.contacts = contactsRes.rows;
 
-    // Fetch project measurements
     const measurementsQuery = `
       SELECT * FROM project_measurements
       WHERE tenant_id = $1 AND project_id = $2
       ORDER BY created_at ASC
     `;
-    const measurementsRes = await pool.query(measurementsQuery, [tenantId, projectId]);
-    project.measurements = measurementsRes.rows;
 
-    // Fetch project vendors
     const vendorsQuery = `
       SELECT * FROM project_vendors
       WHERE tenant_id = $1 AND project_id = $2
       ORDER BY created_at ASC
     `;
-    const vendorsRes = await pool.query(vendorsQuery, [tenantId, projectId]);
-    project.vendors = vendorsRes.rows;
 
-    // Fetch project consultants
     const consultantsQuery = `
       SELECT * FROM project_consultants
       WHERE tenant_id = $1 AND project_id = $2
       ORDER BY created_at ASC
     `;
-    const consultantsRes = await pool.query(consultantsQuery, [tenantId, projectId]);
-    project.consultants = consultantsRes.rows;
 
-    // Fetch project site team
     const siteTeamQuery = `
       SELECT pst.*, pv.vendor_name
       FROM project_site_team pst
@@ -267,20 +249,45 @@ class ProjectRepository {
       WHERE pst.tenant_id = $1 AND pst.project_id = $2
       ORDER BY pst.created_at ASC
     `;
-    const siteTeamRes = await pool.query(siteTeamQuery, [tenantId, projectId]);
-    project.site_team = siteTeamRes.rows;
 
-    // Fetch project booking details
-    const bookingRes = await pool.query(
-      `SELECT pb.*, 
-              u_des.name as designer_name,
-              u_conf.name as confirmed_by_name
-       FROM project_bookings pb
-       LEFT JOIN users u_des ON pb.assigned_designer_id = u_des.id AND u_des.tenant_id = pb.tenant_id
-       LEFT JOIN users u_conf ON pb.confirmed_by = u_conf.id AND u_conf.tenant_id = pb.tenant_id
-       WHERE pb.tenant_id = $1 AND pb.project_id = $2`,
-      [tenantId, projectId]
-    );
+    const bookingQuery = `
+      SELECT pb.*, 
+             u_des.name as designer_name,
+             u_conf.name as confirmed_by_name
+      FROM project_bookings pb
+      LEFT JOIN users u_des ON pb.assigned_designer_id = u_des.id AND u_des.tenant_id = pb.tenant_id
+      LEFT JOIN users u_conf ON pb.confirmed_by = u_conf.id AND u_conf.tenant_id = pb.tenant_id
+      WHERE pb.tenant_id = $1 AND pb.project_id = $2
+    `;
+
+    // Execute all relational child queries concurrently for maximum performance
+    const [
+      phasesRes,
+      paymentsRes,
+      contactsRes,
+      measurementsRes,
+      vendorsRes,
+      consultantsRes,
+      siteTeamRes,
+      bookingRes
+    ] = await Promise.all([
+      pool.query(phasesQuery, [tenantId, projectId]),
+      pool.query(paymentsQuery, [tenantId, projectId]),
+      pool.query(contactsQuery, [tenantId, projectId]),
+      pool.query(measurementsQuery, [tenantId, projectId]),
+      pool.query(vendorsQuery, [tenantId, projectId]),
+      pool.query(consultantsQuery, [tenantId, projectId]),
+      pool.query(siteTeamQuery, [tenantId, projectId]),
+      pool.query(bookingQuery, [tenantId, projectId])
+    ]);
+
+    project.phases = phasesRes.rows;
+    project.payment_milestones = paymentsRes.rows;
+    project.contacts = contactsRes.rows;
+    project.measurements = measurementsRes.rows;
+    project.vendors = vendorsRes.rows;
+    project.consultants = consultantsRes.rows;
+    project.site_team = siteTeamRes.rows;
     project.booking = bookingRes.rows[0] || null;
 
     return project;

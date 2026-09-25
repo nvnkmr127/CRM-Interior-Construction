@@ -5,18 +5,19 @@ import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import { createGlobalTask, updateGlobalTask, deleteGlobalTask } from '../../api/tasks';
 
-export default function LeadCalendar({ leads = [], onLeadClick }) {
+export default function LeadCalendar({ leads = [], users = [], onLeadClick }) {
   const toast = useToast();
   const [currentDate, setCurrentDate] = useState(new Date());
   const [tasks, setTasks] = useState([]);
   const [siteVisits, setSiteVisits] = useState([]);
   const [followups, setFollowups] = useState([]);
+  const [meetings, setMeetings] = useState([]);
   const [loadingAdditions, setLoadingAdditions] = useState(false);
-  const [sidebarTab, setSidebarTab] = useState('followups'); // 'followups', 'tasks', or 'visits'
+  const [sidebarTab, setSidebarTab] = useState('followups'); // 'followups', 'meetings', 'tasks', or 'visits'
   
   // Interactive Lead & Day Modals
   const [selectedLeadForModal, setSelectedLeadForModal] = useState(null);
-  const [leadModalTab, setLeadModalTab] = useState('all'); // 'all', 'followups', 'tasks', 'visits'
+  const [leadModalTab, setLeadModalTab] = useState('all'); // 'all', 'followups', 'meetings', 'tasks', 'visits'
   const [selectedDayForModal, setSelectedDayForModal] = useState(null);
 
   // Per-Lead Live Fetched Items & Loading State
@@ -24,8 +25,9 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
   const [leadSpecificFollowups, setLeadSpecificFollowups] = useState([]);
   const [leadSpecificTasks, setLeadSpecificTasks] = useState([]);
   const [leadSpecificVisits, setLeadSpecificVisits] = useState([]);
+  const [leadSpecificMeetings, setLeadSpecificMeetings] = useState([]);
   
-  // Inline Creation Form Type: null | 'followup' | 'task' | 'visit'
+  // Inline Creation Form Type: null | 'followup' | 'meeting' | 'task' | 'visit'
   const [activeFormType, setActiveFormType] = useState(null);
   const [submittingItem, setSubmittingItem] = useState(false);
 
@@ -33,19 +35,59 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
   const [newFollowupForm, setNewFollowupForm] = useState({ title: '', due_at: '', notes: '' });
   const [newTaskForm, setNewTaskForm] = useState({ title: '', due_date: '', priority: 'medium', description: '' });
   const [newVisitForm, setNewVisitForm] = useState({ scheduled_at: '', notes: '' });
+  const [newMeetingForm, setNewMeetingForm] = useState({
+    title: '',
+    meeting_type: 'Google Meet',
+    scheduled_at: '',
+    duration: '30',
+    meeting_host: '',
+    notes: '',
+    meeting_link: ''
+  });
 
   // Initial Calendar bulk fetch
   const fetchAdditions = async () => {
     setLoadingAdditions(true);
     try {
-      const [tasksRes, visitsRes, followupsRes] = await Promise.all([
+      const [tasksRes, visitsRes, followupsRes, meetingsRes] = await Promise.all([
         api.get('/tasks', { params: { limit: 200 } }).catch(() => ({ data: [] })),
         api.get('/site-visits').catch(() => ({ data: [] })),
-        api.get('/leads/followups/all').catch(() => ({ data: [] }))
+        api.get('/leads/followups/all').catch(() => ({ data: [] })),
+        api.get('/leads/meetings/all').catch(() => ({ data: [] }))
       ]);
       setTasks(tasksRes.data?.data || tasksRes.data || []);
       setSiteVisits(visitsRes.data?.data || visitsRes.data || []);
       setFollowups(followupsRes.data?.data || followupsRes.data || []);
+
+      const fetchedMeetings = meetingsRes.data?.data || meetingsRes.data || [];
+      const leadMeetings = (Array.isArray(leads) ? leads : [])
+        .filter(l => l.next_meeting_schedule)
+        .map(l => ({
+          id: l.next_meeting_id || `lead-mtg-${l.id}`,
+          lead_id: l.id,
+          lead_name: l.name,
+          title: l.next_meeting_title || 'Lead Consultation Meeting',
+          scheduled_at: l.next_meeting_schedule,
+          meeting_type: l.next_meeting_type || 'Google Meet',
+          meeting_link: l.next_meeting_link || '',
+          meeting_host: l.next_meeting_host || l.assignee_name || null,
+          duration: l.next_meeting_duration || 30,
+          notes: l.next_meeting_notes || '',
+          assignee_name: l.assignee_name,
+          stage_name: l.stage_name,
+          stage_color: l.stage_color,
+          outcome: null
+        }));
+
+      const meetingMap = new Map();
+      fetchedMeetings.forEach(m => meetingMap.set(String(m.id || `${m.lead_id}-${m.scheduled_at}`), m));
+      leadMeetings.forEach(m => {
+        const key = String(m.id || `${m.lead_id}-${m.scheduled_at}`);
+        if (!meetingMap.has(key)) {
+          meetingMap.set(key, m);
+        }
+      });
+      setMeetings(Array.from(meetingMap.values()));
     } catch (err) {
       console.error('Failed to fetch calendar additions:', err);
     } finally {
@@ -57,25 +99,84 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
     fetchAdditions();
   }, []);
 
+  // Sync meetings when leads prop updates
+  useEffect(() => {
+    if (!Array.isArray(leads) || leads.length === 0) return;
+    setMeetings(prev => {
+      const meetingMap = new Map();
+      prev.forEach(m => meetingMap.set(String(m.id || `${m.lead_id}-${m.scheduled_at}`), m));
+      leads.filter(l => l.next_meeting_schedule).forEach(l => {
+        const key = String(l.next_meeting_id || `lead-mtg-${l.id}`);
+        if (!meetingMap.has(key)) {
+          meetingMap.set(key, {
+            id: l.next_meeting_id || `lead-mtg-${l.id}`,
+            lead_id: l.id,
+            lead_name: l.name,
+            title: l.next_meeting_title || 'Lead Consultation Meeting',
+            scheduled_at: l.next_meeting_schedule,
+            meeting_type: l.next_meeting_type || 'Google Meet',
+            meeting_link: l.next_meeting_link || '',
+            meeting_host: l.next_meeting_host || l.assignee_name || null,
+            duration: l.next_meeting_duration || 30,
+            notes: l.next_meeting_notes || '',
+            assignee_name: l.assignee_name,
+            stage_name: l.stage_name,
+            stage_color: l.stage_color,
+            outcome: null
+          });
+        }
+      });
+      return Array.from(meetingMap.values());
+    });
+  }, [leads]);
+
   // Fetch live items when a specific lead is opened in modal
   const fetchLeadLiveItems = async (leadId) => {
     if (!leadId) return;
     setLoadingLeadItems(true);
     try {
-      const [fRes, tRes, vRes] = await Promise.all([
+      const [fRes, tRes, vRes, mRes] = await Promise.all([
         api.get(`/leads/${leadId}/followups`).catch(() => ({ data: { data: [] } })),
         api.get('/tasks', { params: { limit: 200 } }).catch(() => ({ data: { data: [] } })),
-        api.get(`/site-visits/lead/${leadId}`).catch(() => ({ data: { data: [] } }))
+        api.get(`/site-visits/lead/${leadId}`).catch(() => ({ data: { data: [] } })),
+        api.get(`/leads/${leadId}/activities`, { params: { type: 'meeting', limit: 100 } }).catch(() => ({ data: { data: [] } }))
       ]);
 
       const leadFollows = fRes.data?.data || fRes.data || [];
       const allTasks = tRes.data?.data || tRes.data || [];
       const leadTasksFiltered = allTasks.filter(t => t.lead_id === leadId || t.leadId === leadId);
       const leadVisitsFiltered = vRes.data?.data || vRes.data || [];
+      let leadMeetingsFiltered = (mRes.data?.data || mRes.data || []).map(m => ({
+        ...m,
+        meeting_type: m.metadata?.meeting_type || m.meeting_type || 'Google Meet',
+        meeting_link: m.metadata?.meeting_link || m.meeting_link || '',
+        meeting_host: m.metadata?.meeting_host || m.meeting_host || null,
+        duration: m.metadata?.duration || m.duration || 30
+      }));
+
+      const currentLead = leads.find(l => String(l.id) === String(leadId)) || selectedLeadForModal;
+      if (currentLead?.next_meeting_schedule) {
+        const exists = leadMeetingsFiltered.some(m => String(m.id) === String(currentLead.next_meeting_id));
+        if (!exists) {
+          leadMeetingsFiltered.unshift({
+            id: currentLead.next_meeting_id || `lead-mtg-${currentLead.id}`,
+            lead_id: currentLead.id,
+            title: currentLead.next_meeting_title || 'Lead Consultation Meeting',
+            scheduled_at: currentLead.next_meeting_schedule,
+            meeting_type: currentLead.next_meeting_type || 'Google Meet',
+            meeting_link: currentLead.next_meeting_link || '',
+            meeting_host: currentLead.next_meeting_host || currentLead.assignee_name || null,
+            duration: currentLead.next_meeting_duration || 30,
+            notes: currentLead.next_meeting_notes || '',
+            outcome: null
+          });
+        }
+      }
 
       setLeadSpecificFollowups(leadFollows);
       setLeadSpecificTasks(leadTasksFiltered);
       setLeadSpecificVisits(leadVisitsFiltered);
+      setLeadSpecificMeetings(leadMeetingsFiltered);
     } catch (err) {
       console.error('Failed to fetch lead specific schedule items:', err);
     } finally {
@@ -233,6 +334,20 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
     return map;
   }, [siteVisits]);
 
+  const meetingsByDate = useMemo(() => {
+    const map = {};
+    (Array.isArray(meetings) ? meetings : []).forEach(mtg => {
+      const dateStr = mtg.scheduled_at || mtg.schedule;
+      if (!dateStr) return;
+      const d = new Date(dateStr);
+      if (isNaN(d)) return;
+      const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+      if (!map[key]) map[key] = [];
+      map[key].push(mtg);
+    });
+    return map;
+  }, [meetings]);
+
   // Color helper based on score or stage
   const getLeadPillStyle = (lead) => {
     const score = lead.score;
@@ -288,9 +403,10 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
     let foundLead = typeof leadOrId === 'object' ? leadOrId : leads.find(l => l.id === leadOrId);
     if (!foundLead) {
       const matchingFollowup = followups.find(f => f.lead_id === leadOrId);
+      const matchingMeeting = meetings.find(m => m.lead_id === leadOrId || m.leadId === leadOrId);
       const matchingTask = tasks.find(t => t.lead_id === leadOrId || t.leadId === leadOrId);
       const matchingVisit = siteVisits.find(v => v.lead_id === leadOrId);
-      const name = matchingFollowup?.lead_name || matchingTask?.lead_name || matchingVisit?.lead_name || 'Lead Details';
+      const name = matchingFollowup?.lead_name || matchingMeeting?.lead_name || matchingTask?.lead_name || matchingVisit?.lead_name || 'Lead Details';
       foundLead = { id: leadOrId, name };
     }
     setSelectedLeadForModal(foundLead);
@@ -369,6 +485,104 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
       toast.success('Site visit removed');
     } catch (err) {
       toast.error('Failed to remove site visit');
+    }
+  };
+
+  // Toggle Meeting Completion / Outcome
+  const handleToggleMeetingOutcome = async (m, e) => {
+    if (e) e.stopPropagation();
+    if (!selectedLeadForModal?.id) return;
+    const isCompleted = m.outcome === 'completed' || m.outcome === 'concluded';
+    const newOutcome = isCompleted ? null : 'completed';
+    try {
+      await api.patch(`/leads/${selectedLeadForModal.id}/activities/${m.id}`, { outcome: newOutcome });
+      const updated = { ...m, outcome: newOutcome };
+      setMeetings(prev => prev.map(item => String(item.id) === String(m.id) ? updated : item));
+      setLeadSpecificMeetings(prev => prev.map(item => String(item.id) === String(m.id) ? updated : item));
+      toast.success(newOutcome ? 'Meeting marked completed' : 'Meeting marked scheduled');
+    } catch (err) {
+      toast.error('Failed to update meeting status');
+    }
+  };
+
+  // Delete Meeting
+  const handleDeleteMeeting = async (meetingId, e) => {
+    if (e) e.stopPropagation();
+    if (!selectedLeadForModal?.id) return;
+    try {
+      await api.delete(`/leads/${selectedLeadForModal.id}/activities/${meetingId}`);
+      setMeetings(prev => prev.filter(m => String(m.id) !== String(meetingId)));
+      setLeadSpecificMeetings(prev => prev.filter(m => String(m.id) !== String(meetingId)));
+      toast.success('Meeting deleted');
+    } catch (err) {
+      toast.error('Failed to delete meeting');
+    }
+  };
+
+  // Quick Add Meeting Submit
+  const handleQuickAddMeeting = async (e) => {
+    e.preventDefault();
+    if (!newMeetingForm.title || !newMeetingForm.scheduled_at || !selectedLeadForModal?.id) {
+      toast.error('Title and scheduled date/time are required');
+      return;
+    }
+    setSubmittingItem(true);
+    try {
+      const generatedLink = newMeetingForm.meeting_type === 'Google Meet' && !newMeetingForm.meeting_link
+        ? `https://meet.google.com/${Math.random().toString(36).substr(2, 3)}-${Math.random().toString(36).substr(2, 4)}-${Math.random().toString(36).substr(2, 3)}`
+        : newMeetingForm.meeting_link || '';
+
+      const scheduledAtIso = new Date(newMeetingForm.scheduled_at).toISOString();
+      const payload = {
+        type: 'meeting',
+        title: newMeetingForm.title,
+        notes: newMeetingForm.notes || `Scheduled meeting: ${newMeetingForm.title}`,
+        scheduledAt: scheduledAtIso,
+        metadata: {
+          meeting_type: newMeetingForm.meeting_type,
+          meeting_link: generatedLink,
+          meeting_host: newMeetingForm.meeting_host || null,
+          duration: parseInt(newMeetingForm.duration || '30', 10)
+        }
+      };
+
+      const res = await api.post(`/leads/${selectedLeadForModal.id}/activities`, payload);
+      const created = res.data?.data || res.data;
+      const newObj = {
+        ...created,
+        id: created?.id || `mtg-${Date.now()}`,
+        lead_id: selectedLeadForModal.id,
+        lead_name: selectedLeadForModal.name,
+        stage_name: selectedLeadForModal.stage_name,
+        stage_color: selectedLeadForModal.stage_color,
+        title: newMeetingForm.title,
+        scheduled_at: scheduledAtIso,
+        meeting_type: newMeetingForm.meeting_type,
+        meeting_link: generatedLink,
+        meeting_host: newMeetingForm.meeting_host,
+        duration: parseInt(newMeetingForm.duration || '30', 10),
+        notes: newMeetingForm.notes,
+        outcome: null
+      };
+
+      setMeetings(prev => [newObj, ...prev]);
+      setLeadSpecificMeetings(prev => [newObj, ...prev]);
+      setNewMeetingForm({
+        title: '',
+        meeting_type: 'Google Meet',
+        scheduled_at: '',
+        duration: '30',
+        meeting_host: '',
+        notes: '',
+        meeting_link: ''
+      });
+      setActiveFormType(null);
+      toast.success('Meeting scheduled successfully');
+    } catch (err) {
+      console.error('Failed to schedule meeting:', err);
+      toast.error('Failed to schedule meeting');
+    } finally {
+      setSubmittingItem(false);
     }
   };
 
@@ -474,6 +688,9 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
   };
 
   const pendingFollowups = useMemo(() => followups.filter(f => !f.is_done), [followups]);
+  const pendingMeetings = useMemo(() => meetings.filter(m => 
+    m.outcome !== 'completed' && m.outcome !== 'concluded' && m.outcome !== 'cancelled' && m.outcome !== 'deleted'
+  ), [meetings]);
   const pendingTasks = useMemo(() => tasks.filter(t => t.status !== 'done'), [tasks]);
   const pendingVisits = useMemo(() => siteVisits.filter(v => v.status !== 'completed' && v.status !== 'cancelled'), [siteVisits]);
 
@@ -482,6 +699,9 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
   // Lead Modal stats calculation
   const modalPendingFollowups = leadSpecificFollowups.filter(f => !f.is_done);
   const modalOverdueFollowups = leadSpecificFollowups.filter(f => !f.is_done && new Date(f.due_at) < now);
+  const modalUpcomingMeetings = leadSpecificMeetings.filter(m => 
+    m.outcome !== 'completed' && m.outcome !== 'concluded' && m.outcome !== 'cancelled' && m.outcome !== 'deleted'
+  );
   const modalPendingTasks = leadSpecificTasks.filter(t => t.status !== 'done');
   const modalPendingVisits = leadSpecificVisits.filter(v => v.status !== 'completed' && v.status !== 'cancelled');
 
@@ -521,6 +741,16 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
             }}
           >
             ⏰ {pendingFollowups.length} Follow-ups
+          </span>
+          <span 
+            className="text-xs px-2.5 py-1 rounded-full font-semibold" 
+            style={{ 
+              background: 'rgba(249, 115, 22, 0.1)', 
+              color: '#ea580c',
+              border: '1px solid rgba(249, 115, 22, 0.25)'
+            }}
+          >
+            📅 {pendingMeetings.length} Meetings
           </span>
         </div>
         
@@ -586,11 +816,12 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
               const dateKey = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
               const dayLeads = leadsByDate[dateKey] || [];
               const dayFollowups = followupsByDate[dateKey] || [];
+              const dayMeetings = meetingsByDate[dateKey] || [];
               const dayVisits = siteVisitsByDate[dateKey] || [];
               const dayTasks = tasksByDate[dateKey] || [];
               const isToday = new Date().toDateString() === date.toDateString();
 
-              const totalItems = dayLeads.length + dayFollowups.length + dayVisits.length + dayTasks.length;
+              const totalItems = dayLeads.length + dayFollowups.length + dayMeetings.length + dayVisits.length + dayTasks.length;
               let renderedCount = 0;
 
               return (
@@ -628,7 +859,7 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
                     </div>
                     {totalItems > 0 && (
                       <button
-                        onClick={() => setSelectedDayForModal({ dateKey, date, dayLeads, dayFollowups, dayVisits, dayTasks })}
+                        onClick={() => setSelectedDayForModal({ dateKey, date, dayLeads, dayFollowups, dayMeetings, dayVisits, dayTasks })}
                         className="text-[10px] font-bold text-gray-400 hover:text-orange-600 opacity-0 group-hover:opacity-100 transition-opacity"
                         title="View day schedule"
                       >
@@ -680,6 +911,31 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
                       );
                     })}
 
+                    {/* 3. Render Meetings */}
+                    {dayMeetings.slice(0, 1).map(mtg => {
+                      renderedCount++;
+                      const isCompleted = mtg.outcome === 'completed' || mtg.outcome === 'concluded';
+                      const isPast = !isCompleted && new Date(mtg.scheduled_at) < now;
+                      return (
+                        <div 
+                          key={`mtg-${mtg.id}`}
+                          onClick={() => (mtg.lead_id || mtg.leadId) && openLeadScheduleModal(mtg.lead_id || mtg.leadId)}
+                          className={`text-[10px] px-2 py-0.5 rounded-md cursor-pointer truncate transition-all duration-150 hover:translate-x-0.5 hover:shadow-xs flex items-center gap-1.5 ${
+                            isCompleted
+                              ? 'bg-gray-100 text-gray-400 line-through border border-gray-200'
+                              : isPast
+                                ? 'bg-orange-100/70 text-orange-950 border border-orange-300 font-semibold'
+                                : 'bg-orange-50 text-orange-900 border border-orange-200'
+                          }`}
+                          title={`Meeting: ${mtg.title || 'Meeting'} ${mtg.lead_name ? `(${mtg.lead_name})` : ''} - Click to view lead`}
+                        >
+                          <span className="shrink-0 text-[10px]">📅</span>
+                          <span className="font-medium truncate">{mtg.title || 'Meeting'}</span>
+                          {mtg.scheduled_at && <span className="text-[9px] text-orange-700/80 shrink-0 ml-auto">{formatTimeOnly(mtg.scheduled_at)}</span>}
+                        </div>
+                      );
+                    })}
+
                     {/* 3. Render Site Visits */}
                     {dayVisits.slice(0, 1).map(visit => {
                       renderedCount++;
@@ -715,7 +971,7 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
                     {/* Overflow More Items Indicator */}
                     {totalItems > renderedCount && (
                       <div 
-                        onClick={() => setSelectedDayForModal({ dateKey, date, dayLeads, dayFollowups, dayVisits, dayTasks })}
+                        onClick={() => setSelectedDayForModal({ dateKey, date, dayLeads, dayFollowups, dayMeetings, dayVisits, dayTasks })}
                         className="text-[9px] font-bold px-1 text-orange-600 hover:text-orange-700 hover:underline cursor-pointer flex items-center gap-0.5 mt-0.5"
                       >
                         +{totalItems - renderedCount} more items &rarr;
@@ -737,7 +993,7 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
             boxShadow: 'var(--shadow-sm)'
           }}
         >
-          {/* Sidebar 3-way tab header */}
+          {/* Sidebar 4-way tab header */}
           <div className="flex border-b pb-2 mb-4 gap-1" style={{ borderColor: 'var(--color-border)' }}>
             <button
               onClick={() => setSidebarTab('followups')}
@@ -749,6 +1005,17 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
               title="Scheduled follow-ups"
             >
               ⏰ Follow-ups ({pendingFollowups.length})
+            </button>
+            <button
+              onClick={() => setSidebarTab('meetings')}
+              className={`flex-1 text-center py-2 px-1 text-xs font-bold rounded-lg transition-all ${
+                sidebarTab === 'meetings'
+                  ? 'bg-orange-50 text-orange-900 shadow-xs border border-orange-200'
+                  : 'text-gray-500 hover:text-gray-800'
+              }`}
+              title="Scheduled meetings"
+            >
+              📅 Meetings ({pendingMeetings.length})
             </button>
             <button
               onClick={() => setSidebarTab('tasks')}
@@ -839,7 +1106,75 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
               )
             )}
 
-            {/* 2. TASKS TAB */}
+            {/* 2. MEETINGS TAB */}
+            {sidebarTab === 'meetings' && (
+              pendingMeetings.length === 0 ? (
+                <div className="text-center py-12 text-xs text-gray-400 italic">No upcoming meetings</div>
+              ) : (
+                pendingMeetings.map(mtg => {
+                  const isPast = new Date(mtg.scheduled_at) < now;
+                  return (
+                    <div
+                      key={mtg.id}
+                      onClick={() => (mtg.lead_id || mtg.leadId) && openLeadScheduleModal(mtg.lead_id || mtg.leadId)}
+                      className={`p-3 rounded-xl border transition-all duration-150 cursor-pointer flex flex-col gap-1.5 relative group hover:shadow-md ${
+                        isPast ? 'bg-orange-50/20 border-orange-200' : 'bg-white border-gray-100 shadow-xs'
+                      }`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <span className="font-semibold text-xs text-orange-950 line-clamp-2">
+                          {mtg.title || 'Consultation Meeting'}
+                        </span>
+                        <span className="text-[8px] px-1.5 py-0.5 rounded font-bold uppercase bg-orange-50 text-orange-700 border border-orange-200 shrink-0">
+                          {mtg.meeting_type || 'Google Meet'}
+                        </span>
+                      </div>
+
+                      {mtg.lead_name && (
+                        <div className="text-[11px] text-gray-600 flex items-center gap-1 font-medium">
+                          <span>👤</span>
+                          <span className="text-orange-700 font-semibold truncate hover:underline">{mtg.lead_name}</span>
+                          {mtg.stage_name && (
+                            <span className="text-[9px] px-1.5 py-0.2 rounded bg-gray-100 text-gray-500 font-normal">
+                              {mtg.stage_name}
+                            </span>
+                          )}
+                        </div>
+                      )}
+
+                      {mtg.notes && (
+                        <p className="text-[10px] text-gray-500 italic line-clamp-1">
+                          "{mtg.notes}"
+                        </p>
+                      )}
+
+                      <div className="flex justify-between items-center text-[9px] text-gray-400 mt-1 pt-1 border-t border-gray-50">
+                        <span>📅 {formatDateTime(mtg.scheduled_at)}</span>
+                        {mtg.meeting_host ? (
+                          <span className="truncate max-w-[90px]">Host: {mtg.meeting_host}</span>
+                        ) : mtg.assignee_name ? (
+                          <span className="truncate max-w-[90px]">👤 {mtg.assignee_name}</span>
+                        ) : null}
+                      </div>
+
+                      {mtg.meeting_link && (
+                        <a
+                          href={mtg.meeting_link}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="mt-1 text-[10px] font-bold text-blue-600 hover:text-blue-800 flex items-center gap-1 bg-blue-50/50 hover:bg-blue-50 px-2 py-1 rounded border border-blue-100 transition-colors"
+                        >
+                          <span>📹</span> Join Meeting Link &rarr;
+                        </a>
+                      )}
+                    </div>
+                  );
+                })
+              )
+            )}
+
+            {/* 3. TASKS TAB */}
             {sidebarTab === 'tasks' && (
               pendingTasks.length === 0 ? (
                 <div className="text-center py-12 text-xs text-gray-400 italic">No upcoming tasks</div>
@@ -1033,7 +1368,7 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
             </div>
 
             {/* 2. Interactive KPI Metrics Header Cards */}
-            <div className="grid grid-cols-3 gap-3 p-4 bg-gray-50/60 border-b border-gray-100">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3 p-4 bg-gray-50/60 border-b border-gray-100">
               {/* Followups Card */}
               <div 
                 onClick={() => setLeadModalTab('followups')}
@@ -1054,6 +1389,24 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
                       {modalOverdueFollowups.length} Overdue
                     </span>
                   )}
+                </div>
+              </div>
+
+              {/* Meetings Card */}
+              <div 
+                onClick={() => setLeadModalTab('meetings')}
+                className={`p-3 rounded-xl border cursor-pointer transition-all ${
+                  leadModalTab === 'meetings' 
+                    ? 'bg-orange-50 border-orange-300 ring-2 ring-orange-200 shadow-sm' 
+                    : 'bg-white border-gray-200 hover:border-orange-200 hover:shadow-xs'
+                }`}
+              >
+                <div className="text-[11px] font-bold text-orange-800 uppercase tracking-wide flex items-center justify-between">
+                  <span>📅 Meetings</span>
+                  <span className="text-xs bg-orange-100 text-orange-900 px-1.5 py-0.5 rounded font-black">{leadSpecificMeetings.length}</span>
+                </div>
+                <div className="flex items-center justify-between mt-1 text-xs font-semibold">
+                  <span className="text-gray-600">{modalUpcomingMeetings.length} scheduled</span>
                 </div>
               </div>
 
@@ -1102,14 +1455,14 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
             {/* 3. Action Toolbar & Filter Tabs */}
             <div className="px-6 py-3 border-b flex flex-wrap items-center justify-between gap-3 bg-white" style={{ borderColor: 'var(--color-border)' }}>
               {/* Filter Tabs */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   onClick={() => setLeadModalTab('all')}
                   className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
                     leadModalTab === 'all' ? 'bg-gray-900 text-white shadow-xs' : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
                   }`}
                 >
-                  All Activities ({leadSpecificFollowups.length + leadSpecificTasks.length + leadSpecificVisits.length})
+                  All Activities ({leadSpecificFollowups.length + leadSpecificMeetings.length + leadSpecificTasks.length + leadSpecificVisits.length})
                 </button>
                 <button
                   onClick={() => setLeadModalTab('followups')}
@@ -1118,6 +1471,14 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
                   }`}
                 >
                   ⏰ Follow-ups ({leadSpecificFollowups.length})
+                </button>
+                <button
+                  onClick={() => setLeadModalTab('meetings')}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all ${
+                    leadModalTab === 'meetings' ? 'bg-orange-600 text-white shadow-xs' : 'bg-orange-50 text-orange-800 hover:bg-orange-100'
+                  }`}
+                >
+                  📅 Meetings ({leadSpecificMeetings.length})
                 </button>
                 <button
                   onClick={() => setLeadModalTab('tasks')}
@@ -1138,7 +1499,7 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
               </div>
 
               {/* Action Buttons Group */}
-              <div className="flex items-center gap-1.5">
+              <div className="flex items-center gap-1.5 flex-wrap">
                 <button
                   onClick={() => setActiveFormType(activeFormType === 'followup' ? null : 'followup')}
                   className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1 ${
@@ -1148,6 +1509,16 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
                   }`}
                 >
                   <span>+</span> ⏰ Follow-up
+                </button>
+                <button
+                  onClick={() => setActiveFormType(activeFormType === 'meeting' ? null : 'meeting')}
+                  className={`px-2.5 py-1.5 rounded-lg text-xs font-bold border transition-all flex items-center gap-1 ${
+                    activeFormType === 'meeting'
+                      ? 'bg-orange-600 text-white border-orange-600 shadow-xs'
+                      : 'bg-orange-50 text-orange-900 border-orange-200 hover:bg-orange-100'
+                  }`}
+                >
+                  <span>+</span> 📅 Meeting
                 </button>
                 <button
                   onClick={() => setActiveFormType(activeFormType === 'task' ? null : 'task')}
@@ -1229,6 +1600,124 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
                     <Button type="button" variant="outline" size="sm" onClick={() => setActiveFormType(null)}>Cancel</Button>
                     <Button type="submit" variant="primary" size="sm" disabled={submittingItem}>
                       {submittingItem ? 'Saving...' : 'Save Follow-up'}
+                    </Button>
+                  </div>
+                </form>
+              )}
+
+              {/* Form: Add Meeting Form */}
+              {activeFormType === 'meeting' && (
+                <form onSubmit={handleQuickAddMeeting} className="p-4 rounded-2xl border border-orange-200 bg-orange-50/60 space-y-3 animate-fadeIn shadow-xs">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-orange-900 flex items-center gap-1.5">
+                      <span>📅</span> Schedule New Meeting
+                    </h4>
+                    <button 
+                      type="button" 
+                      onClick={() => setActiveFormType(null)}
+                      className="text-xs text-gray-500 hover:text-gray-800 font-semibold"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="md:col-span-2">
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">Meeting Title *</label>
+                      <input 
+                        type="text" 
+                        required
+                        placeholder="e.g. Design Presentation, Requirement Discovery"
+                        value={newMeetingForm.title}
+                        onChange={e => setNewMeetingForm(prev => ({ ...prev, title: e.target.value }))}
+                        className="w-full text-xs p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">Meeting Type</label>
+                      <select
+                        value={newMeetingForm.meeting_type}
+                        onChange={e => setNewMeetingForm(prev => ({ ...prev, meeting_type: e.target.value }))}
+                        className="w-full text-xs p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 bg-white"
+                      >
+                        <option value="Google Meet">Google Meet</option>
+                        <option value="In-Person Site Visit">In-Person Site Visit</option>
+                        <option value="Showroom Consultation">Showroom Consultation</option>
+                        <option value="Phone Call">Phone Call</option>
+                        <option value="WhatsApp Call">WhatsApp Call</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">Scheduled Date & Time *</label>
+                      <input 
+                        type="datetime-local" 
+                        required
+                        value={newMeetingForm.scheduled_at}
+                        onChange={e => setNewMeetingForm(prev => ({ ...prev, scheduled_at: e.target.value }))}
+                        className="w-full text-xs p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 bg-white"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">Duration</label>
+                      <select
+                        value={newMeetingForm.duration}
+                        onChange={e => setNewMeetingForm(prev => ({ ...prev, duration: e.target.value }))}
+                        className="w-full text-xs p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 bg-white"
+                      >
+                        <option value="15">15 minutes</option>
+                        <option value="30">30 minutes</option>
+                        <option value="45">45 minutes</option>
+                        <option value="60">1 hour</option>
+                        <option value="90">1.5 hours</option>
+                        <option value="120">2 hours</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">Host / Assignee</label>
+                      <select
+                        value={newMeetingForm.meeting_host}
+                        onChange={e => setNewMeetingForm(prev => ({ ...prev, meeting_host: e.target.value }))}
+                        className="w-full text-xs p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 bg-white"
+                      >
+                        <option value="">Select Host</option>
+                        {(users || []).map(u => (
+                          <option key={u.id} value={u.name}>{u.name}</option>
+                        ))}
+                      </select>
+                    </div>
+                  </div>
+
+                  {newMeetingForm.meeting_type === 'Google Meet' && (
+                    <div>
+                      <label className="block text-[11px] font-bold text-gray-700 mb-1">Video Call Link (Optional)</label>
+                      <input 
+                        type="url" 
+                        placeholder="https://meet.google.com/... (auto-generated if empty)"
+                        value={newMeetingForm.meeting_link}
+                        onChange={e => setNewMeetingForm(prev => ({ ...prev, meeting_link: e.target.value }))}
+                        className="w-full text-xs p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 bg-white"
+                      />
+                    </div>
+                  )}
+
+                  <div>
+                    <label className="block text-[11px] font-bold text-gray-700 mb-1">Agenda / Discussion Points (Optional)</label>
+                    <textarea 
+                      rows={2}
+                      placeholder="Outline topics, drawings to present, or customer questions..."
+                      value={newMeetingForm.notes}
+                      onChange={e => setNewMeetingForm(prev => ({ ...prev, notes: e.target.value }))}
+                      className="w-full text-xs p-2.5 rounded-lg border border-gray-300 focus:ring-2 focus:ring-orange-500 bg-white"
+                    />
+                  </div>
+
+                  <div className="flex justify-end gap-2 pt-1">
+                    <Button type="button" variant="outline" size="sm" onClick={() => setActiveFormType(null)}>Cancel</Button>
+                    <Button type="submit" variant="primary" size="sm" disabled={submittingItem}>
+                      {submittingItem ? 'Saving...' : 'Schedule Meeting'}
                     </Button>
                   </div>
                 </form>
@@ -1455,6 +1944,134 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
                                 <span>📅 Due: {formatDateTime(f.due_at)}</span>
                                 {f.assignee_name && <span>👤 {f.assignee_name}</span>}
                               </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* SECTION: MEETINGS */}
+              {(leadModalTab === 'all' || leadModalTab === 'meetings') && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="text-xs font-bold uppercase tracking-wider text-orange-900 flex items-center gap-1.5">
+                      <span>📅</span> Meetings ({leadSpecificMeetings.length})
+                    </h4>
+                    {leadSpecificMeetings.length > 0 && activeFormType !== 'meeting' && (
+                      <button 
+                        onClick={() => setActiveFormType('meeting')}
+                        className="text-xs text-orange-700 hover:text-orange-900 font-bold hover:underline"
+                      >
+                        + New Meeting
+                      </button>
+                    )}
+                  </div>
+
+                  {leadSpecificMeetings.length === 0 ? (
+                    <div className="p-6 rounded-2xl border border-dashed border-orange-200 text-center bg-orange-50/30 flex flex-col items-center justify-center gap-2">
+                      <div className="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center text-lg">📅</div>
+                      <div className="text-xs font-bold text-gray-800">No meetings scheduled for this lead yet</div>
+                      <p className="text-[11px] text-gray-500 max-w-xs">
+                        Schedule a virtual consultation, design presentation, or quotation walk-through.
+                      </p>
+                      <button
+                        onClick={() => setActiveFormType('meeting')}
+                        className="mt-2 px-3 py-1.5 bg-orange-600 hover:bg-orange-700 text-white rounded-lg text-xs font-bold shadow-xs transition-colors"
+                      >
+                        + Schedule First Meeting
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="space-y-2.5">
+                      {leadSpecificMeetings.map(m => {
+                        const isCompleted = m.outcome === 'completed' || m.outcome === 'concluded';
+                        const isPast = !isCompleted && new Date(m.scheduled_at) < now;
+                        return (
+                          <div 
+                            key={m.id}
+                            className={`p-3.5 rounded-2xl border flex items-start gap-3 transition-all ${
+                              isCompleted 
+                                ? 'bg-gray-50/70 border-gray-200' 
+                                : isPast 
+                                  ? 'bg-orange-50/30 border-orange-200 shadow-2xs' 
+                                  : 'bg-white border-orange-100 shadow-xs'
+                            }`}
+                          >
+                            <input 
+                              type="checkbox" 
+                              checked={isCompleted}
+                              onChange={(e) => handleToggleMeetingOutcome(m, e)}
+                              className="w-4 h-4 mt-0.5 rounded text-orange-600 focus:ring-orange-500 cursor-pointer shrink-0"
+                              title="Toggle completion"
+                            />
+                            
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center justify-between gap-2">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <span className={`text-sm font-bold ${isCompleted ? 'line-through text-gray-400' : 'text-gray-900'}`}>
+                                    {m.title || 'Scheduled Meeting'}
+                                  </span>
+                                  {m.meeting_type && (
+                                    <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-orange-50 text-orange-700 border border-orange-100">
+                                      {m.meeting_type}
+                                    </span>
+                                  )}
+                                </div>
+                                <div className="flex items-center gap-2">
+                                  {isCompleted ? (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-green-100 text-green-800">
+                                      Completed
+                                    </span>
+                                  ) : isPast ? (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-orange-100 text-orange-800 border border-orange-200">
+                                      Due
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] px-2 py-0.5 rounded-full font-bold uppercase bg-blue-100 text-blue-800">
+                                      Scheduled
+                                    </span>
+                                  )}
+
+                                  <button
+                                    onClick={(e) => handleDeleteMeeting(m.id, e)}
+                                    className="text-gray-400 hover:text-red-600 text-xs transition-colors p-1"
+                                    title="Delete meeting"
+                                  >
+                                    🗑️
+                                  </button>
+                                </div>
+                              </div>
+
+                              {m.notes && (
+                                <p className="text-xs text-gray-600 mt-1 bg-orange-50/60 p-2.5 rounded-xl border border-orange-100 italic">
+                                  "{m.notes}"
+                                </p>
+                              )}
+
+                              <div className="flex items-center justify-between text-[11px] text-gray-400 mt-2">
+                                <span>📅 {formatDateTime(m.scheduled_at)} {m.duration ? `(${m.duration} mins)` : ''}</span>
+                                {m.meeting_host ? (
+                                  <span>👤 Host: {m.meeting_host}</span>
+                                ) : m.assignee_name ? (
+                                  <span>👤 {m.assignee_name}</span>
+                                ) : null}
+                              </div>
+
+                              {m.meeting_link && (
+                                <div className="mt-2 pt-2 border-t border-orange-50">
+                                  <a
+                                    href={m.meeting_link}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600 hover:text-blue-800 bg-blue-50 px-2.5 py-1 rounded-lg border border-blue-200"
+                                  >
+                                    <span>📹</span> Join Meeting Link &rarr;
+                                  </a>
+                                </div>
+                              )}
                             </div>
                           </div>
                         );
@@ -1741,6 +2358,53 @@ export default function LeadCalendar({ leads = [], onLeadClick }) {
                         <span className="text-xs text-amber-700 font-bold">&rarr;</span>
                       </div>
                     ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Meetings */}
+              {selectedDayForModal.dayMeetings?.length > 0 && (
+                <div className="space-y-2">
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-orange-900">📅 Meetings ({selectedDayForModal.dayMeetings.length})</h4>
+                  <div className="space-y-2">
+                    {selectedDayForModal.dayMeetings.map(m => {
+                      const isCompleted = m.outcome === 'completed' || m.outcome === 'concluded';
+                      const isPast = !isCompleted && new Date(m.scheduled_at) < now;
+                      return (
+                        <div
+                          key={m.id}
+                          onClick={() => {
+                            setSelectedDayForModal(null);
+                            if (m.lead_id || m.leadId) openLeadScheduleModal(m.lead_id || m.leadId);
+                          }}
+                          className={`p-3 rounded-xl border cursor-pointer transition-all flex items-center justify-between ${
+                            isCompleted 
+                              ? 'border-gray-200 bg-gray-50/50 opacity-75' 
+                              : isPast 
+                                ? 'border-orange-300 bg-orange-100/50 hover:bg-orange-100' 
+                                : 'border-orange-200 bg-orange-50/40 hover:bg-orange-50'
+                          }`}
+                        >
+                          <div>
+                            <div className="flex items-center gap-2">
+                              <span className={`font-semibold text-xs ${isCompleted ? 'line-through text-gray-500' : 'text-orange-950'}`}>
+                                {m.title || 'Scheduled Meeting'}
+                              </span>
+                              {m.meeting_type && (
+                                <span className="text-[9px] px-1.5 py-0.5 rounded font-bold uppercase bg-orange-100 text-orange-800 border border-orange-200">
+                                  {m.meeting_type}
+                                </span>
+                              )}
+                            </div>
+                            <div className="text-[10px] text-orange-800/80 mt-0.5">
+                              👤 {m.lead_name || 'Lead'} • 📅 {formatTimeOnly(m.scheduled_at)} {m.duration ? `(${m.duration} mins)` : ''}
+                              {m.meeting_host ? ` • Host: ${m.meeting_host}` : ''}
+                            </div>
+                          </div>
+                          <span className="text-xs text-orange-700 font-bold">&rarr;</span>
+                        </div>
+                      );
+                    })}
                   </div>
                 </div>
               )}

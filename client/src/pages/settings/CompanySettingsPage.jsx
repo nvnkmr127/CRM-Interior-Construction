@@ -20,6 +20,7 @@ export default function CompanySettingsPage() {
 
   // Settings State
   const [companyName, setCompanyName] = useState('')
+  const [slug, setSlug] = useState('')
   const [logoUrl, setLogoUrl] = useState('')
   const [accentColour, setAccentColour] = useState('#4f46e5')
   const [description, setDescription] = useState('')
@@ -106,6 +107,7 @@ export default function CompanySettingsPage() {
       if (res.data?.success) {
         const data = res.data.data
         setCompanyName(data.companyName || '')
+        setSlug(data.slug || '')
         setLogoUrl(data.logo_url || data.logoUrl || '')
         setAccentColour(data.accent_colour || data.accentColour || '#4f46e5')
         setDescription(data.description || '')
@@ -134,6 +136,7 @@ export default function CompanySettingsPage() {
       try {
         const payload = {
           companyName,
+          slug: slug ? slug.trim().toLowerCase().replace(/[\s_]+/g, '-') : undefined,
           logo_url: logoUrl,
           logoUrl: logoUrl,
           accent_colour: accentColour,
@@ -149,6 +152,7 @@ export default function CompanySettingsPage() {
         if (res.data?.success) {
           toast.success('Company settings updated successfully!')
           
+          const updatedSlug = res.data?.data?.slug || slug || user?.tenant?.slug;
           // Update the global user context tenant state to reflect immediate updates
           if (user) {
             const updatedUser = {
@@ -156,6 +160,7 @@ export default function CompanySettingsPage() {
               tenant: {
                 ...user.tenant,
                 name: companyName,
+                slug: updatedSlug,
                 logoUrl: logoUrl,
                 logo_url: logoUrl,
                 accentColour: accentColour,
@@ -175,7 +180,7 @@ export default function CompanySettingsPage() {
           window.dispatchEvent(new Event('app:auth-change'))
         }
       } catch (err) {
-        toast.error('Failed to save company settings')
+        toast.error(err.response?.data?.message || 'Failed to save company settings')
       } finally {
         setSaving(false)
       }
@@ -210,6 +215,23 @@ export default function CompanySettingsPage() {
                 required 
                 placeholder="e.g. Acme Interior Designs"
               />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Workspace Slug (Login Handle)</label>
+              <input 
+                type="text" 
+                className={styles.input} 
+                value={slug} 
+                onChange={e => setSlug(e.target.value.toLowerCase().replace(/[\s_]+/g, '-'))} 
+                disabled={slug === 'demo'}
+                placeholder="e.g. acme-interiors"
+              />
+              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginTop: '4px' }}>
+                {slug === 'demo'
+                  ? 'The root platform workspace slug is locked.'
+                  : 'Used by your team to log in. Note: Changing this requires team members to use the new slug to log in.'}
+              </div>
             </div>
 
             <div className={styles.inputRow}>

@@ -1324,6 +1324,63 @@ export const setupMockInterceptor = (api) => {
               }
             }
           }
+          // MEETINGS / ALL
+          else if (url.includes('/meetings/all') || url.includes('/leads/meetings/all')) {
+            if (!mockDatabase.activities) mockDatabase.activities = [];
+            const mtgs = (mockDatabase.activities || [])
+              .filter(a => a.type === 'meeting' && a.scheduled_at)
+              .map(a => {
+                const lead = (mockDatabase.leads || []).find(l => String(l.id) === String(a.lead_id));
+                const stage = lead ? (mockDatabase.lead_stages || []).find(s => String(s.id) === String(lead.stage_id)) : null;
+                const user = lead ? (mockDatabase.users || []).find(u => String(u.id) === String(lead.assignee_id)) : null;
+                return {
+                  ...a,
+                  lead_name: lead ? lead.name : (a.lead_name || 'Lead'),
+                  lead_phone: lead ? lead.phone : '',
+                  stage_name: stage ? stage.name : '',
+                  stage_color: stage ? stage.color : '',
+                  assignee_name: user ? user.name : (a.assignee_name || 'Unassigned'),
+                  meeting_type: a.metadata?.meeting_type || 'Google Meet',
+                  meeting_link: a.metadata?.meeting_link || '',
+                  meeting_host: a.metadata?.meeting_host || user?.name || null,
+                  duration: a.metadata?.duration || 30
+                };
+              });
+
+            const existingIds = new Set(mtgs.map(m => String(m.id)));
+            (mockDatabase.leads || []).forEach(l => {
+              if (l.next_meeting_schedule && (!l.next_meeting_id || !existingIds.has(String(l.next_meeting_id)))) {
+                const stage = (mockDatabase.lead_stages || []).find(s => String(s.id) === String(l.stage_id));
+                const user = (mockDatabase.users || []).find(u => String(u.id) === String(l.assignee_id));
+                mtgs.push({
+                  id: l.next_meeting_id || `mock-lead-mtg-${l.id}`,
+                  lead_id: l.id,
+                  type: 'meeting',
+                  title: l.next_meeting_title || 'Lead Consultation Meeting',
+                  notes: l.next_meeting_notes || '',
+                  outcome: null,
+                  scheduled_at: l.next_meeting_schedule,
+                  metadata: {
+                    meeting_type: l.next_meeting_type || 'Google Meet',
+                    meeting_link: l.next_meeting_link || '',
+                    meeting_host: l.next_meeting_host || user?.name || null,
+                    duration: l.next_meeting_duration || 30
+                  },
+                  created_at: l.created_at || new Date().toISOString(),
+                  lead_name: l.name,
+                  lead_phone: l.phone || '',
+                  stage_name: stage ? stage.name : '',
+                  stage_color: stage ? stage.color : '',
+                  assignee_name: user ? user.name : 'Unassigned',
+                  meeting_type: l.next_meeting_type || 'Google Meet',
+                  meeting_link: l.next_meeting_link || '',
+                  meeting_host: l.next_meeting_host || user?.name || null,
+                  duration: l.next_meeting_duration || 30
+                });
+              }
+            });
+            responseData.data = mtgs;
+          }
           // LEADS
           else if (url.includes('/leads')) {
             if (url.includes('/leads/export')) {
@@ -2203,7 +2260,11 @@ export const setupMockInterceptor = (api) => {
 
                   // 3. Assignee filter
                   const assigneeId = getParam('assigneeId') || getParam('assignee_id');
-                  if (assigneeId) {
+                  if (assigneeId === 'assigned') {
+                    filtered = filtered.filter(l => !!l.assignee_id);
+                  } else if (assigneeId === 'unassigned') {
+                    filtered = filtered.filter(l => !l.assignee_id);
+                  } else if (assigneeId) {
                     filtered = filtered.filter(l => l.assignee_id === assigneeId);
                   }
 

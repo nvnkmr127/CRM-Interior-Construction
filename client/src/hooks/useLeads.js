@@ -3,16 +3,34 @@ import { useState, useEffect, useCallback } from 'react';
 import api from '../api/axios';
 import { getLeads, changeLeadStage, bulkChangeLeadStage, bulkDeleteLeads } from '../api/leads';
 
+const LEADS_CACHE_KEY = 'crm:leads_list_snapshot';
+const STAGES_CACHE_KEY = 'crm:lead_stages_snapshot';
+const STATS_CACHE_KEY = 'crm:lead_stats_snapshot';
+
+const getSessionData = (key) => {
+  try {
+    const val = sessionStorage.getItem(key);
+    return val ? JSON.parse(val) : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+let memoryCachedStages = null;
+let memoryCachedLeads = null;
+let memoryCachedTotal = 0;
+let memoryCachedStats = { total: 0, wonThisMonth: 0, avgScore: 0, convPct: 0 };
+
 export function useLeads(filters = {}) {
-  const [leads, setLeads] = useState([]);
-  const [stages, setStages] = useState([]);
-  const [total, setTotal] = useState(0);
-  const [stats, setStats] = useState({ total: 0, wonThisMonth: 0, avgScore: 0, convPct: 0 });
-  const [loading, setLoading] = useState(true);
+  const [leads, setLeads] = useState(() => memoryCachedLeads || getSessionData(LEADS_CACHE_KEY) || []);
+  const [stages, setStages] = useState(() => memoryCachedStages || getSessionData(STAGES_CACHE_KEY) || []);
+  const [total, setTotal] = useState(() => memoryCachedTotal || (getSessionData(LEADS_CACHE_KEY)?.length || 0));
+  const [stats, setStats] = useState(() => memoryCachedStats || getSessionData(STATS_CACHE_KEY) || { total: 0, wonThisMonth: 0, avgScore: 0, convPct: 0 });
+  const [loading, setLoading] = useState(() => !memoryCachedLeads && !getSessionData(LEADS_CACHE_KEY));
   const [error, setError] = useState(null);
 
   const fetchLeadsAndStages = useCallback(async () => {
-    setLoading(true);
+    if (!memoryCachedLeads && !getSessionData(LEADS_CACHE_KEY)) setLoading(true);
     setError(null);
     try {
       const params = { ...filters };
@@ -23,12 +41,14 @@ export function useLeads(filters = {}) {
 
       const [leadsRes, stagesRes, statsRes] = await Promise.all([
         getLeads(params),
-        api.get('/config/lead-stages').catch(() => ({ data: { data: [] } })),
+        memoryCachedStages ? Promise.resolve({ data: { success: true, data: memoryCachedStages } }) : api.get('/config/lead-stages').catch(() => ({ data: { data: [] } })),
         api.get('/leads/stats', { params }).catch(() => ({ data: { data: { total: 0, wonThisMonth: 0, avgScore: 0, convPct: 0 } } }))
       ]);
 
       if (stagesRes.data?.success) {
         setStages(stagesRes.data.data);
+        memoryCachedStages = stagesRes.data.data;
+        try { sessionStorage.setItem(STAGES_CACHE_KEY, JSON.stringify(stagesRes.data.data)); } catch (e) {}
       }
       const fetchedStages = stagesRes.data?.data || [];
 
@@ -38,9 +58,6 @@ export function useLeads(filters = {}) {
       if (leadsRes.success) {
         fetchedLeads = Array.isArray(leadsRes.data) ? leadsRes.data : Array.isArray(leadsRes.results) ? leadsRes.results : [];
         
-        // Inject mock data if no leads exist and no filters are applied
-        // REMOVED: User requested to fix unexpected leads appearing. We no longer inject hardcoded leads.
-
         let tempTotal = 0;
         if (!isMockData && leadsRes.pagination) {
           tempTotal = leadsRes.pagination.total || 0;
@@ -55,13 +72,21 @@ export function useLeads(filters = {}) {
         var leadsListTotal = tempTotal; // Defined globally inside the function
 
         setLeads(fetchedLeads);
+        if (!params.search && !params.stageId && !params.assigneeId && !params.source) {
+          memoryCachedLeads = fetchedLeads;
+          memoryCachedTotal = tempTotal;
+          try { sessionStorage.setItem(LEADS_CACHE_KEY, JSON.stringify(fetchedLeads)); } catch (e) {}
+        }
       }
       
       if (statsRes.data?.success) {
         if (isMockData) {
           setStats({ total: fetchedLeads.length, wonThisMonth: 1, avgScore: 72, convPct: 20 });
         } else {
-          setStats(statsRes.data.data || { total: fetchedLeads.length, wonThisMonth: 0, avgScore: 0, convPct: 0 });
+          const s = statsRes.data.data || { total: fetchedLeads.length, wonThisMonth: 0, avgScore: 0, convPct: 0 };
+          setStats(s);
+          memoryCachedStats = s;
+          try { sessionStorage.setItem(STATS_CACHE_KEY, JSON.stringify(s)); } catch (e) {}
         }
       } else {
         // If /leads/stats API fails (catch block returns statsRes.data without success=true)

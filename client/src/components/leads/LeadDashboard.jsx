@@ -12,8 +12,18 @@ export default function LeadDashboard({ leads, stages = [], loading, statusFilte
   const { user } = useAuth();
   const { hasPermission, isModuleEnabled, allowedModules } = usePermissions();
   const navigate = useNavigate();
-  const [stats, setStats] = useState(null);
-  const [statsLoading, setStatsLoading] = useState(true);
+
+  const cacheKeyStats = `crm:lead_dashboard_stats:${user?.id || 'default'}`;
+  const cacheKeyTasks = `crm:lead_dashboard_tasks:${user?.id || 'default'}`;
+
+  const [stats, setStats] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(cacheKeyStats);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return null;
+  });
+  const [statsLoading, setStatsLoading] = useState(!stats);
   const [showVisitsModal, setShowVisitsModal] = useState(false);
 
   const handleSiteVisitsTodayClick = () => {
@@ -30,22 +40,34 @@ export default function LeadDashboard({ leads, stages = [], loading, statusFilte
 
   useEffect(() => {
     dashboardApi.getStats()
-      .then(res => setStats(res))
+      .then(res => {
+        setStats(res);
+        try { sessionStorage.setItem(cacheKeyStats, JSON.stringify(res)); } catch (e) {}
+      })
       .catch(err => console.error(err))
       .finally(() => setStatsLoading(false));
-  }, []);
+  }, [cacheKeyStats]);
 
-  const [myTasks, setMyTasks] = useState([]);
-  const [activityLoading, setActivityLoading] = useState(true);
+  const [myTasks, setMyTasks] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(cacheKeyTasks);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return [];
+  });
+  const [activityLoading, setActivityLoading] = useState(false);
 
   useEffect(() => {
     dashboardApi.getMyTasks(7)
-      .then(res => setMyTasks(res))
+      .then(res => {
+        setMyTasks(res || []);
+        try { sessionStorage.setItem(cacheKeyTasks, JSON.stringify(res || [])); } catch (e) {}
+      })
       .catch(err => console.error(err))
       .finally(() => setActivityLoading(false));
-  }, []);
+  }, [cacheKeyTasks]);
 
-  if (loading || statsLoading || activityLoading) {
+  if (!stats && (loading || statsLoading)) {
     return <div className={styles.loading}>Loading Dashboard...</div>;
   }
 

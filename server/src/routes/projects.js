@@ -28,6 +28,8 @@ const { success, fail, paginate } = require('../utils/response');
 const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
+const { cacheResponse } = require('../middleware/cache');
+const { clearCachePrefix } = require('../utils/cache');
 const { applyTemplate } = require('../services/config/templateService');
 const { createProject } = require('../services/projects/createProject');
 const { updateProject } = require('../services/projects/updateProject');
@@ -440,6 +442,7 @@ router.post('/', authorize('projects:create'), validate(createProjectSchema), as
     const { filterAllowedFields } = require('../utils/fieldMasker');
     const safeProject = filterAllowedFields(project, 'projects', req.user.field_permissions);
 
+    clearCachePrefix(`cache:${req.tenantId}:`).catch(() => {});
     return success(res, safeProject, {}, 201);
   } catch (error) {
     logger.error('[Projects Router] Create error:', error);
@@ -468,7 +471,7 @@ const dataScope = require('../middleware/dataScope');
  *       200:
  *         description: A list of projects
  */
-router.get('/', authorize('projects:read'), dataScope('projects', 'pm_id', 'p'), async (req, res, next) => {
+router.get('/', authorize('projects:read'), dataScope('projects', 'pm_id', 'p'), cacheResponse(20), async (req, res, next) => {
   try {
     const { status, pmId, designerId, lead_id, leadId, search, page, limit, includeDeleted } = req.query;
     
@@ -706,14 +709,15 @@ router.delete('/:projectId/members/:userId', authorize('projects:manage_members'
 router.get('/:projectId/boq-variance', authorize('projects:read'), require('../controllers/boqVarianceController').getProjectBOQVarianceReport);
 
 // GET /api/projects/:id
-router.get('/:id', authorize('projects:read'), async (req, res, next) => {
+router.get('/:id', authorize('projects:read'), cacheResponse(30), async (req, res, next) => {
   try {
-    const project = await projectRepository.findProjectById(req.tenantId, req.params.id, true);
+    const [project, stats] = await Promise.all([
+      projectRepository.findProjectById(req.tenantId, req.params.id, true),
+      projectRepository.getProjectStats(req.tenantId, req.params.id)
+    ]);
     if (!project) {
       return fail(res, 'NOT_FOUND', 'Project not found', 404);
     }
-
-    const stats = await projectRepository.getProjectStats(req.tenantId, req.params.id);
     
     const { filterAllowedFields } = require('../utils/fieldMasker');
     const safeProject = filterAllowedFields({ ...project, stats }, 'projects', req.user.field_permissions);
@@ -755,6 +759,7 @@ router.patch('/:id', authorize('projects:update'), validate(updateProjectSchema)
     const { filterAllowedFields } = require('../utils/fieldMasker');
     const safeProject = filterAllowedFields(updatedProject, 'projects', req.user.field_permissions);
 
+    clearCachePrefix('/api/projects').catch(() => {});
     return success(res, safeProject);
   } catch (error) {
     if (error.code === 'BOOKING_REQUIRED') {
@@ -785,6 +790,7 @@ router.delete('/:id', async (req, res, next) => {
 
     // Perform soft deletion in database
     await projectRepository.softDeleteProject(tenantId, req.params.id, reason, userId);
+    clearCachePrefix('/api/projects').catch(() => {});
     return res.status(204).send();
   } catch (error) {
     console.error('[Projects Router] Delete error:', error);

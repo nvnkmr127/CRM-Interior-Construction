@@ -92,6 +92,9 @@ const getMeetingCountdown = (dateStr) => {
   return '⏳ Starting now';
 };
 
+let cachedDrawerUsers = null;
+let cachedDrawerCustomFields = null;
+
 export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, stages = [], initialTab = 'overview' }) {
   const { confirm } = useConfirm();
   const { user } = useAuth();
@@ -101,9 +104,32 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
   const isPlatformDeveloperAdmin = isSuperMasterDeveloper(user);
 
-  const [lead, setLead] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const getInitialLead = () => {
+    if (!leadId) return null;
+    try {
+      const saved = sessionStorage.getItem(`crm:lead:${leadId}`);
+      if (saved) return JSON.parse(saved);
+      const listSnap = sessionStorage.getItem('crm:leads_list_snapshot');
+      if (listSnap) {
+        const list = JSON.parse(listSnap);
+        const found = list.find(l => String(l.id) === String(leadId));
+        if (found) return found;
+      }
+    } catch (e) {}
+    return null;
+  };
+
+  const [prevLeadId, setPrevLeadId] = useState(leadId);
+  const [lead, setLead] = useState(getInitialLead);
+  const [loading, setLoading] = useState(!lead);
   const [activeTab, setActiveTab] = useState(initialTab); // overview, activity, tasks, followups, files
+
+  if (leadId !== prevLeadId) {
+    setPrevLeadId(leadId);
+    const initial = getInitialLead();
+    setLead(initial);
+    setLoading(!initial);
+  }
 
   useEffect(() => {
     if (isOpen && initialTab) {
@@ -215,19 +241,43 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
   useEffect(() => {
     if (isOpen && leadId) {
-      fetchLead();
-      setActiveTab('overview');
+      const initialData = getInitialLead();
+      if (initialData) {
+        setLead(initialData);
+        setLoading(false);
+      } else {
+        setLoading(true);
+      }
+      fetchLead(!initialData);
+      setActiveTab(initialTab || 'overview');
       setBuyingIntent(null);
       setMood(null);
-      api.get('/users?limit=50')
-        .then(res => { if (res.data.success) setUsers(res.data.data); })
-        .catch(err => console.error('Failed to load users list:', err));
-      api.get('/config/custom-fields?entity=lead')
-        .then(res => {
-          const list = res.data?.data || res.data || [];
-          setCustomFieldsConfig(list.filter(f => f.is_active));
-        })
-        .catch(err => console.error('Failed to load custom fields config:', err));
+
+      if (cachedDrawerUsers) {
+        setUsers(cachedDrawerUsers);
+      } else {
+        api.get('/users?limit=50')
+          .then(res => {
+            if (res.data?.success) {
+              setUsers(res.data.data);
+              cachedDrawerUsers = res.data.data;
+            }
+          })
+          .catch(err => console.error('Failed to load users list:', err));
+      }
+
+      if (cachedDrawerCustomFields) {
+        setCustomFieldsConfig(cachedDrawerCustomFields);
+      } else {
+        api.get('/config/custom-fields?entity=lead')
+          .then(res => {
+            const list = res.data?.data || res.data || [];
+            const active = list.filter(f => f.is_active);
+            setCustomFieldsConfig(active);
+            cachedDrawerCustomFields = active;
+          })
+          .catch(err => console.error('Failed to load custom fields config:', err));
+      }
     }
   }, [isOpen, leadId]);
 
@@ -379,7 +429,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
   };
 
   const fetchLead = async (showLoading = true) => {
-    if (showLoading) setLoading(true);
+    if (showLoading && !lead) setLoading(true);
     try {
       const res = await getLead(leadId);
       if (res.success) {
@@ -396,13 +446,16 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
           }
         }
         setLead(leadData);
+        try {
+          sessionStorage.setItem(`crm:lead:${leadId}`, JSON.stringify(leadData));
+        } catch (e) {}
         return leadData;
       }
     } catch (e) {
       console.error(e);
       toast.error('Failed to load lead details');
     } finally {
-      if (showLoading) setLoading(false);
+      setLoading(false);
     }
   };
 
@@ -1007,7 +1060,7 @@ export default function LeadDrawer({ leadId, isOpen, onClose, onLeadUpdated, sta
 
   return (
     <div id="lead-drawer-root" className="w-full h-full flex flex-col bg-white overflow-hidden relative">
-      {loading || !lead ? (
+      {!lead ? (
         <div className="p-6 flex items-center justify-center text-gray-500 h-full">Loading lead details...</div>
       ) : lead.deleted_at ? (
         renderDeletedLeadView()

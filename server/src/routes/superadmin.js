@@ -41,7 +41,7 @@ router.use(authorize(['superadmin', 'admin', 'settings:manage', '*']));
 async function isSuperMasterDeveloper(user) {
   if (!user) return false;
   if (user.is_master_developer === true) return true;
-  if (user.email === 'admin@demo.com') return true;
+  if (user.email === 'admin@demo.com' || user.email === 'digicloudify@gmail.com') return true;
   if (user.masterSession && user.masterSession.originalTenantId) return true;
 
   const uid = user.id || user.userId;
@@ -388,6 +388,7 @@ router.put('/tenants/:id/settings', enforceSuperMasterDeveloper, async (req, res
   const { id } = req.params;
   const {
     name,
+    slug,
     plan,
     max_users,
     admin_name,
@@ -417,8 +418,40 @@ router.put('/tenants/:id/settings', enforceSuperMasterDeveloper, async (req, res
   try {
     await client.query('BEGIN');
 
-    // 1. Get current config to merge branding details
-    const tenantRes = await client.query('SELECT config FROM tenants WHERE id = $1', [id]);
+    // 1. Get current tenant details to merge config and handle slug change
+    const tenantRes = await client.query('SELECT id, name, slug, config FROM tenants WHERE id = $1', [id]);
+    if (tenantRes.rows.length === 0) {
+      await client.query('ROLLBACK');
+      return fail(res, 'NOT_FOUND', 'Tenant not found', 404);
+    }
+
+    const currentSlug = tenantRes.rows[0].slug;
+    let targetSlug = currentSlug;
+
+    if (slug !== undefined && slug !== null && String(slug).trim().length > 0) {
+      const cleanSlug = String(slug).trim().toLowerCase().replace(/[\s_]+/g, '-');
+      if (cleanSlug.length < 2) {
+        await client.query('ROLLBACK');
+        return fail(res, 'INVALID_SLUG', 'Workspace slug must be at least 2 characters long.', 400);
+      }
+      if (!/^[a-z0-9-]+$/.test(cleanSlug)) {
+        await client.query('ROLLBACK');
+        return fail(res, 'INVALID_SLUG', 'Workspace slug may only contain lowercase letters, numbers, and hyphens.', 400);
+      }
+      if (currentSlug === 'demo' && cleanSlug !== 'demo') {
+        await client.query('ROLLBACK');
+        return fail(res, 'ROOT_SLUG_IMMUTABLE', 'The root demo workspace slug cannot be modified.', 400);
+      }
+      if (cleanSlug !== currentSlug) {
+        const slugCheck = await client.query('SELECT id FROM tenants WHERE slug = $1 AND id != $2 LIMIT 1', [cleanSlug, id]);
+        if (slugCheck.rows.length > 0) {
+          await client.query('ROLLBACK');
+          return fail(res, 'SLUG_TAKEN', 'This workspace slug is already taken by another workspace.', 400);
+        }
+        targetSlug = cleanSlug;
+      }
+    }
+
     let currentConfig = {};
     if (tenantRes.rows.length > 0) {
       const configStr = tenantRes.rows[0].config;
@@ -440,13 +473,23 @@ router.put('/tenants/:id/settings', enforceSuperMasterDeveloper, async (req, res
     await client.query(
       `UPDATE tenants 
        SET name = COALESCE($1, name),
-           plan = COALESCE($2, plan),
-           max_users = COALESCE($3, max_users),
-           config = $4,
+           slug = $2,
+           plan = COALESCE($3, plan),
+           max_users = COALESCE($4, max_users),
+           config = $5,
            updated_at = NOW()
-       WHERE id = $5`,
-      [name, plan, max_users !== undefined ? parseInt(max_users, 10) : null, JSON.stringify(updatedConfig), id]
+       WHERE id = $6`,
+      [name, targetSlug, plan, max_users !== undefined ? parseInt(max_users, 10) : null, JSON.stringify(updatedConfig), id]
     );
+
+    if (targetSlug !== currentSlug) {
+      await logAction(req.tenantId, req.user.id || req.user.userId, 'SUPERADMIN_UPDATE_TENANT_SLUG', `SuperAdmin updated workspace slug from "${currentSlug}" to "${targetSlug}" for tenant "${name || tenantRes.rows[0].name}"`, {
+        tenantId: id,
+        oldSlug: currentSlug,
+        newSlug: targetSlug,
+        severity: 'MEDIUM'
+      }).catch(() => {});
+    }
 
     // 3. Update tenant_security_settings table
     const { rowCount } = await client.query(

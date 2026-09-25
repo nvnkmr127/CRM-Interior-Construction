@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
+import { useAuth } from '../../store/authContext'
 import api from '../../api/axios'
 import { getLeaves, createLeave, deleteLeave } from '../../api/leaveApi'
 import { useToast } from '../../store/toastContext'
@@ -94,6 +95,7 @@ const EMPLOYMENT_TYPES = [
 ]
 
 export default function EmployeeProfilePage({ userId, onBack, onConfigureMock }) {
+  const { user: currentUser } = useAuth()
   const { confirm } = useConfirm()
   const params = useParams()
   const id = userId || params.id
@@ -884,7 +886,7 @@ export default function EmployeeProfilePage({ userId, onBack, onConfigureMock })
               </div>
               <div className={styles.infoFieldRow}>
                 <span className={styles.infoFieldLabel}>Work Location / Branch</span>
-                <span className={styles.infoFieldValue}>{profile.workLocation || 'Main Studio & HQ'}</span>
+                <span className={styles.infoFieldValue}>{profile.workLocation || (currentUser?.tenant?.name ? `${currentUser.tenant.name} (HQ)` : 'Headquarters')}</span>
               </div>
               <div className={styles.infoFieldRow}>
                 <span className={styles.infoFieldLabel}>Residential Address</span>

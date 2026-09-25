@@ -142,15 +142,12 @@ async function authenticate(req, res, next) {
         return res.status(401).json({ success: false, error: 'SESSION_TIMEOUT', message: 'Session expired due to inactivity.' });
       }
 
-      // Update last_active_at every 1 minute of activity to keep session active
+      // Update last_active_at every 1 minute of activity to keep session active (non-blocking)
       if (diffMinutes >= 1) {
-        try {
-          await pool.query('UPDATE sessions SET last_active_at = NOW() WHERE id = $1', [decoded.sessionId]);
-          session.last_active_at = new Date().toISOString();
-          await setCache(cacheKey, session, 300);
-        } catch (updateErr) {
-          console.warn('Failed to update session activity', updateErr);
-        }
+        pool.query('UPDATE sessions SET last_active_at = NOW() WHERE id = $1', [decoded.sessionId])
+          .catch(updateErr => console.warn('Failed to update session activity', updateErr.message));
+        session.last_active_at = new Date().toISOString();
+        setCache(cacheKey, session, 300).catch(() => {});
       }
 
       // V3: Risk-Based Authentication & Session Scoring
@@ -194,23 +191,30 @@ async function authenticate(req, res, next) {
     req.user.id = uid;
     req.user.userId = uid;
 
-    // Always auto-hydrate / sync permissions and role from DB to ensure real-time permission updates
+    // Cache user role and permissions in memory to eliminate redundant remote DB roundtrips on parallel requests
     try {
-      const userQuery = await pool.query(
-        `SELECT u.role_id, r.name as role_name, r.permissions as role_permissions 
-         FROM users u 
-         LEFT JOIN roles r ON u.role_id = r.id 
-         WHERE u.id = $1 LIMIT 1`,
-        [req.user.id]
-      );
+      const userPermsCacheKey = `user_role_perms:${req.user.id}`;
+      const { getCache, setCache } = require('../utils/cache');
+      let uRow = await getCache(userPermsCacheKey).catch(() => null);
+
+      if (!uRow) {
+        const userQuery = await pool.query(
+          `SELECT u.role_id, r.name as role_name, r.permissions as role_permissions 
+           FROM users u 
+           LEFT JOIN roles r ON u.role_id = r.id 
+           WHERE u.id = $1 LIMIT 1`,
+          [req.user.id]
+        );
+        uRow = userQuery.rows[0] || {};
+        await setCache(userPermsCacheKey, uRow, 300).catch(() => {});
+      }
       
       let dbPerms = [];
       let dbScopes = {};
       let dbFields = {};
       let rName = req.user.role || '';
 
-      if (userQuery.rows.length > 0) {
-        const uRow = userQuery.rows[0];
+      if (uRow && (uRow.role_name || uRow.role_id || uRow.role_permissions)) {
         if (uRow.role_name) rName = uRow.role_name;
         if (!rName && uRow.role_id) rName = 'Team Member';
         

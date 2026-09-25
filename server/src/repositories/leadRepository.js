@@ -226,66 +226,73 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
   const values = [tenantId];
   let paramIndex = 2;
   
+  let filterSql = '';
   if (stageId) {
-    query += ` AND l.stage_id = $${paramIndex++}`;
+    filterSql += ` AND l.stage_id = $${paramIndex++}`;
     values.push(stageId);
   }
 
   if (status === 'active') {
-    query += ` AND (l.status IS NULL OR LOWER(l.status) NOT IN ('parked', 'converted', 'won'))`;
+    filterSql += ` AND (l.status IS NULL OR LOWER(l.status) NOT IN ('parked', 'converted', 'won'))`;
   } else if (status === 'parked') {
-    query += ` AND LOWER(l.status) = 'parked'`;
+    filterSql += ` AND LOWER(l.status) = 'parked'`;
   } else if (status === 'converted') {
-    query += ` AND LOWER(l.status) IN ('converted', 'won')`;
+    filterSql += ` AND LOWER(l.status) IN ('converted', 'won')`;
   } else if (status) {
-    query += ` AND l.status = $${paramIndex++}`;
+    filterSql += ` AND l.status = $${paramIndex++}`;
     values.push(status);
   }
   
   if (assigneeId === 'assigned' || assignedOnly === 'true' || assignedOnly === true) {
-    query += ` AND l.assignee_id IS NOT NULL`;
+    filterSql += ` AND l.assignee_id IS NOT NULL`;
   } else if (assigneeId === 'unassigned') {
-    query += ` AND l.assignee_id IS NULL`;
+    filterSql += ` AND l.assignee_id IS NULL`;
   } else if (assigneeId) {
-    query += ` AND l.assignee_id = $${paramIndex++}`;
+    filterSql += ` AND l.assignee_id = $${paramIndex++}`;
     values.push(assigneeId);
   }
   
   if (source) {
-    query += ` AND l.source = $${paramIndex++}`;
+    filterSql += ` AND l.source = $${paramIndex++}`;
     values.push(source);
   }
   
   if (search) {
-    query += ` AND (l.name ILIKE $${paramIndex} OR l.email ILIKE $${paramIndex} OR l.phone ILIKE $${paramIndex})`;
+    filterSql += ` AND (l.name ILIKE $${paramIndex} OR l.email ILIKE $${paramIndex} OR l.phone ILIKE $${paramIndex})`;
     values.push(`%${search}%`);
     paramIndex++;
   }
 
   if (createdFrom) {
-    query += ` AND l.created_at >= $${paramIndex++}`;
+    filterSql += ` AND l.created_at >= $${paramIndex++}`;
     values.push(createdFrom);
   }
   if (createdTo) {
-    query += ` AND l.created_at <= $${paramIndex++}`;
+    filterSql += ` AND l.created_at <= $${paramIndex++}`;
     values.push(createdTo);
   }
   if (scoreMin !== undefined && scoreMin !== null && scoreMin !== '') {
-    query += ` AND l.score >= $${paramIndex++}`;
+    filterSql += ` AND l.score >= $${paramIndex++}`;
     values.push(parseInt(scoreMin, 10));
   }
   if (scoreMax !== undefined && scoreMax !== null && scoreMax !== '') {
-    query += ` AND l.score <= $${paramIndex++}`;
+    filterSql += ` AND l.score <= $${paramIndex++}`;
     values.push(parseInt(scoreMax, 10));
   }
   if (intent && intent !== 'all') {
-    query += ` AND ai.buying_intent = $${paramIndex++}`;
+    filterSql += ` AND ai.buying_intent = $${paramIndex++}`;
     values.push(intent);
   }
 
-  const countQuery = `SELECT COUNT(DISTINCT id) FROM (${query}) AS count_q`;
-  const countResult = await pool.query(countQuery, values);
-  const total = parseInt(countResult.rows[0].count, 10);
+  query += filterSql;
+
+  const countQuery = `
+    SELECT COUNT(l.id)
+    FROM leads l
+    ${(intent && intent !== 'all') ? 'LEFT JOIN LATERAL (SELECT * FROM lead_ai_insights WHERE lead_id = l.id LIMIT 1) ai ON true' : ''}
+    WHERE l.tenant_id = $1 AND ${deletedCondition} AND (${scopeFilter}) ${filterSql}
+  `;
+  const countValues = [...values];
   
   let orderField = 'l.created_at';
   if (sortBy === 'score') orderField = 'l.score';
@@ -297,9 +304,6 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
   }
 
   if (cursor) {
-    // Basic cursor implementation: assuming sort order is descending ID (or ascending ID)
-    // For a robust implementation, cursor should encode the sort column value and the ID.
-    // Here we use a simple id-based cursor.
     if (orderDirection === 'ASC') {
       query += ` AND l.id > $${paramIndex++}`;
     } else {
@@ -317,7 +321,11 @@ async function findLeads(tenantId, { stageId, assigneeId, search, source, sortBy
     values.push(limit, offset);
   }
   
-  const result = await pool.query(query, values);
+  const [countResult, result] = await Promise.all([
+    pool.query(countQuery, countValues),
+    pool.query(query, values)
+  ]);
+  const total = parseInt(countResult.rows[0]?.count || 0, 10);
   
   return {
     data: result.rows,

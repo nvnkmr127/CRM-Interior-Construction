@@ -954,8 +954,15 @@ export default function ProjectDetail() {
     }
   }, [activeTab]);
   
-  const [project, setProject] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const cacheKey = `crm:proj:${projectId}`;
+  const [project, setProject] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem(cacheKey);
+      if (saved) return JSON.parse(saved);
+    } catch (e) {}
+    return null;
+  });
+  const [loading, setLoading] = useState(!project);
   const [isEditing, setIsEditing] = useState(false);
   const [editingSection, setEditingSection] = useState('all');
   const [isReopenModalOpen, setIsReopenModalOpen] = useState(false);
@@ -1056,16 +1063,30 @@ export default function ProjectDetail() {
   const reloadProject = () => {
     if (!projectId) return;
     getProject(projectId)
-      .then(res => setProject(res.data?.data || res.data || null))
+      .then(res => {
+        const data = res.data?.data || res.data || null;
+        setProject(data);
+        if (data) {
+          try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+        }
+      })
       .catch(() => setProject(null));
   };
 
   useEffect(() => {
     if (!projectId) return;
-    setLoading(true);
+    if (!project) setLoading(true);
     getProject(projectId)
-      .then(res => setProject(res.data?.data || res.data || null))
-      .catch(() => setProject(null))
+      .then(res => {
+        const data = res.data?.data || res.data || null;
+        setProject(data);
+        if (data) {
+          try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
+        }
+      })
+      .catch(() => {
+        if (!project) setProject(null);
+      })
       .finally(() => setLoading(false));
   }, [projectId]);
 

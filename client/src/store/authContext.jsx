@@ -80,8 +80,20 @@ export const updateMockTeamCredentials = (data) => {
 };
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(true);
+  const [user, setUser] = useState(() => {
+    try {
+      if (localStorage.getItem('isAuthenticated')) {
+        const cached = localStorage.getItem('cachedUser');
+        if (cached) return JSON.parse(cached);
+      }
+    } catch (e) {}
+    return null;
+  });
+  const [loading, setLoading] = useState(() => {
+    if (!localStorage.getItem('isAuthenticated')) return false;
+    if (localStorage.getItem('cachedUser')) return false;
+    return true;
+  });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -172,12 +184,17 @@ export function AuthProvider({ children }) {
       try {
         const response = await api.get('/auth/me');
         if (response.data.success) {
-          setUser(response.data.data.user);
+          const freshUser = response.data.data.user;
+          setUser(freshUser);
+          try {
+            localStorage.setItem('cachedUser', JSON.stringify(freshUser));
+          } catch (e) {}
           if (response.data.data.accessToken) {
             api.defaults.headers.common['Authorization'] = `Bearer ${response.data.data.accessToken}`;
           }
         } else {
           localStorage.removeItem('isAuthenticated');
+          localStorage.removeItem('cachedUser');
           delete api.defaults.headers.common['Authorization'];
           setUser(null);
         }
@@ -186,6 +203,7 @@ export function AuthProvider({ children }) {
         // Don't wipe session on network errors or 5xx server errors
         if (error.response && error.response.status >= 400 && error.response.status < 500) {
           localStorage.removeItem('isAuthenticated');
+          localStorage.removeItem('cachedUser');
           delete api.defaults.headers.common['Authorization'];
           setUser(null);
         }
@@ -448,16 +466,21 @@ export function AuthProvider({ children }) {
           localStorage.setItem('refreshToken', payload.refreshToken);
         }
         localStorage.setItem('isAuthenticated', 'true');
-        try {
-          const meResponse = await api.get('/auth/me');
-          if (meResponse.data.success) {
-            setUser(meResponse.data.data.user);
-          } else {
-            setUser(payload.user);
-          }
-        } catch (meError) {
+        if (payload.user) {
           setUser(payload.user);
+          try {
+            localStorage.setItem('cachedUser', JSON.stringify(payload.user));
+          } catch (e) {}
         }
+        // Background verify /auth/me without blocking login completion
+        api.get('/auth/me').then(meResponse => {
+          if (meResponse.data?.success) {
+            setUser(meResponse.data.data.user);
+            try {
+              localStorage.setItem('cachedUser', JSON.stringify(meResponse.data.data.user));
+            } catch (e) {}
+          }
+        }).catch(() => {});
         return { success: true, payload };
       }
       return { success: false, message: 'Unknown login error' };
@@ -478,6 +501,7 @@ export function AuthProvider({ children }) {
     if (false) {
       localStorage.removeItem('mockSession');
       localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('cachedUser');
       delete api.defaults.headers.common['Authorization'];
       setUser(null);
       window.dispatchEvent(new Event('app:auth-change'));
@@ -495,6 +519,7 @@ export function AuthProvider({ children }) {
       localStorage.removeItem('accessToken');
       localStorage.removeItem('refreshToken');
       localStorage.removeItem('isAuthenticated');
+      localStorage.removeItem('cachedUser');
       localStorage.removeItem('mockSession');
       delete api.defaults.headers.common['Authorization'];
       setUser(null);

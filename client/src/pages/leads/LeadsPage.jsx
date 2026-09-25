@@ -22,6 +22,8 @@ import { PLAN_DEFAULTS } from '../../constants/permissions';
 import { isSuperMasterDeveloper } from '../../utils/isSuperMasterDeveloper';
 import styles from './LeadsPage.module.css';
 
+let cachedUsersList = null;
+
 export default function LeadsPage() {
   const toast = useToast();
   const { user } = useAuth();
@@ -245,17 +247,21 @@ export default function LeadsPage() {
     }
   };
 
-  const [users, setUsers] = useState([]);
+  const [users, setUsers] = useState(() => cachedUsersList || []);
   useEffect(() => {
-    import('../../api/axios').then(({ default: api }) => {
-      api.get('/users?limit=50')
-        .then(res => { if (res.data && res.data.success) setUsers(res.data.data); })
-        .catch(err => console.error('Failed to load users list:', err));
-    });
+    if (cachedUsersList) return;
+    api.get('/users?limit=50')
+      .then(res => {
+        if (res.data && res.data.success) {
+          setUsers(res.data.data);
+          cachedUsersList = res.data.data;
+        }
+      })
+      .catch(err => console.error('Failed to load users list:', err));
   }, []);
 
   const filters = useMemo(() => {
-    const f = { page, limit: (view === 'calendar' || view === 'kanban' || view === 'map' || view === 'dashboard') ? 200 : limit };
+    const f = { page, limit: (view === 'calendar' || view === 'kanban' || view === 'map') ? 200 : (view === 'dashboard' ? 50 : limit) };
     if (debouncedSearch.trim()) f.search = debouncedSearch.trim();
     if (sourceFilter && sourceFilter !== 'All Sources') f.source = sourceFilter;
     if (assigneeFilter) f.assigneeId = assigneeFilter;
@@ -552,7 +558,7 @@ export default function LeadsPage() {
           </ErrorBoundary>
         ) : view === 'calendar' && !loading ? (
           <ErrorBoundary>
-            <LeadCalendar leads={filteredLeads} onLeadClick={setSelectedLeadId} />
+            <LeadCalendar leads={filteredLeads} users={users} onLeadClick={setSelectedLeadId} />
           </ErrorBoundary>
         ) : (
           <LeadTable 

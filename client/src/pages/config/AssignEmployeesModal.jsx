@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Modal, Button, Avatar, Input } from '../../components/ui'
 import { orgApi } from '../../api/org'
 import { useToast } from '../../store/toastContext'
@@ -8,6 +8,13 @@ export default function AssignEmployeesModal({ isOpen, onClose, entityType, enti
   const [loading, setLoading] = useState(false)
   const [selectedUserIds, setSelectedUserIds] = useState(new Set())
   const [search, setSearch] = useState('')
+
+  useEffect(() => {
+    if (isOpen) {
+      setSelectedUserIds(new Set())
+      setSearch('')
+    }
+  }, [isOpen, entityId])
 
   // Filter users based on search
   const filteredUsers = useMemo(() => {
@@ -45,7 +52,7 @@ export default function AssignEmployeesModal({ isOpen, onClose, entityType, enti
       onAssignSuccess()
       onClose()
     } catch (err) {
-      toast.error(err.response?.data?.message || 'Failed to assign users')
+      toast.error(err.response?.data?.error?.message || err.response?.data?.message || 'Failed to assign users')
     } finally {
       setLoading(false)
     }

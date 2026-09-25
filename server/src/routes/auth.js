@@ -10,6 +10,7 @@ const authenticate = require('../middleware/authenticate');
 const { success, fail } = require('../utils/response');
 const { ROLE_DEFAULTS, getRoleConfig } = require('../constants/roleDefaults');
 const { PLAN_DEFAULTS } = require('../constants/permissions');
+const { cacheResponse } = require('../middleware/cache');
 
 const router = express.Router();
 
@@ -253,12 +254,14 @@ router.get('/me', async (req, res, next) => {
     const query = `
       SELECT 
         u.id, u.name, u.email, u.status, u.avatar_url, u.created_at, u.profile_data,
+        u.department_id, d.name as department_name,
         r.id as role_id, r.name as role_name, r.permissions as role_permissions,
         t.id as tenant_id, t.name as tenant_name, t.slug as tenant_slug, t.plan as tenant_plan,
         t.config as tenant_config, t.is_active as tenant_is_active
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN tenants t ON u.tenant_id = t.id
+      LEFT JOIN departments d ON u.department_id = d.id
       WHERE u.id = $1
       LIMIT 1
     `;
@@ -334,7 +337,10 @@ router.get('/me', async (req, res, next) => {
       created_at: row.created_at,
       phone: profile.phone || '',
       designation: profile.designation || '',
-      is_master_developer: (decoded && decoded.is_master_developer === true) || (row.tenant_slug === 'demo' || row.email === 'admin@demo.com'),
+      department_id: row.department_id || null,
+      department_name: row.department_name || null,
+      profile_data: profile,
+      is_master_developer: (decoded && decoded.is_master_developer === true) || (row.tenant_slug === 'demo' || row.email === 'admin@demo.com' || row.email === 'digicloudify@gmail.com'),
       masterSession: (decoded && decoded.masterSession) ? decoded.masterSession : null,
       role: {
         id: row.role_id || 'superadmin',
@@ -370,7 +376,7 @@ router.get('/me', async (req, res, next) => {
   }
 });
 
-router.get('/sidebar-config', authenticate, async (req, res, next) => {
+router.get('/sidebar-config', authenticate, cacheResponse(300), async (req, res, next) => {
   try {
     const tenantRes = await pool.query('SELECT plan FROM tenants WHERE id = $1', [req.tenantId]);
     const tenantPlan = (tenantRes.rows[0]?.plan || 'starter').toLowerCase();
@@ -415,10 +421,11 @@ router.patch('/me', authenticate, async (req, res, next) => {
     const isSuperAdmin = roleName.toLowerCase() === 'superadmin' || 
                          req.user.is_master_developer === true || 
                          req.user.email === 'admin@demo.com' ||
+                         req.user.email === 'digicloudify@gmail.com' ||
                          Boolean(req.user.masterSession);
     const currentProfileData = userQuery.rows[0].profile_data || {};
 
-    const { name, avatar_url, email, phone, designation } = req.body;
+    const { name, avatar_url, email, phone, designation, department_id, workLocation } = req.body;
 
     const updates = [];
     const params = [userId, tenantId];
@@ -430,6 +437,10 @@ router.patch('/me', authenticate, async (req, res, next) => {
     if (avatar_url !== undefined) {
       params.push(avatar_url);
       updates.push(`avatar_url = $${params.length}`);
+    }
+    if (department_id !== undefined) {
+      params.push(department_id || null);
+      updates.push(`department_id = $${params.length}`);
     }
     if (email && isSuperAdmin) {
       const cleanEmail = email.trim().toLowerCase();
@@ -451,6 +462,10 @@ router.patch('/me', authenticate, async (req, res, next) => {
     }
     if (designation !== undefined) {
       currentProfileData.designation = designation;
+      profileUpdated = true;
+    }
+    if (workLocation !== undefined) {
+      currentProfileData.workLocation = workLocation;
       profileUpdated = true;
     }
 
@@ -478,12 +493,14 @@ router.patch('/me', authenticate, async (req, res, next) => {
     const fullQuery = await pool.query(`
       SELECT 
         u.id, u.name, u.email, u.status, u.avatar_url, u.created_at, u.profile_data,
+        u.department_id, d.name as department_name,
         r.id as role_id, r.name as role_name, r.permissions as role_permissions,
         t.id as tenant_id, t.name as tenant_name, t.slug as tenant_slug, t.plan as tenant_plan,
         t.config as tenant_config
       FROM users u
       LEFT JOIN roles r ON u.role_id = r.id
       LEFT JOIN tenants t ON u.tenant_id = t.id
+      LEFT JOIN departments d ON u.department_id = d.id
       WHERE u.id = $1
       LIMIT 1
     `, [userId]);
@@ -515,7 +532,10 @@ router.patch('/me', authenticate, async (req, res, next) => {
       created_at: updatedRow.created_at,
       phone: finalProfile.phone || '',
       designation: finalProfile.designation || '',
-      is_master_developer: req.user.is_master_developer === true || updatedRow.tenant_slug === 'demo' || updatedRow.email === 'admin@demo.com',
+      department_id: updatedRow.department_id || null,
+      department_name: updatedRow.department_name || null,
+      profile_data: finalProfile,
+      is_master_developer: req.user.is_master_developer === true || updatedRow.tenant_slug === 'demo' || updatedRow.email === 'admin@demo.com' || updatedRow.email === 'digicloudify@gmail.com',
       masterSession: req.user.masterSession || null,
       tenant: updatedRow.tenant_id ? {
         id: updatedRow.tenant_id,

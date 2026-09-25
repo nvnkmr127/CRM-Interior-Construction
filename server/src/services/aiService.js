@@ -112,7 +112,28 @@ async function summarizeActivity(text) {
  */
 async function draftCommunication(lead, channel, instructions) {
   const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) return `Hello ${lead.name},\n\n[AI disabled - Please configure GEMINI_API_KEY]\n\nBest,`;
+  const leadName = lead?.name || 'Customer';
+  const scope = lead?.scope || lead?.property_type || 'interior design';
+  const promptInstruction = instructions ? sanitizePrompt(instructions.trim()) : '';
+
+  if (!apiKey) {
+    if (channel === 'whatsapp') {
+      if (promptInstruction) {
+        return `Hi ${leadName}! Regarding your ${scope} project: ${promptInstruction}. Let us know if you have any questions!`;
+      }
+      return `Hi ${leadName}! Thank you for connecting with us regarding your ${scope} project. Our design team has curated some exclusive ideas tailored to your space. Would you be free for a brief chat today or tomorrow?`;
+    }
+    if (channel === 'email') {
+      if (promptInstruction) {
+        return `Dear ${leadName},\n\nThank you for getting in touch with us regarding your ${scope} project.\n\n${promptInstruction}\n\nPlease let us know if you need any additional details or if you would like to schedule a consultation with our design team.\n\nWarm regards,\nDesign & Client Relations Team`;
+      }
+      return `Dear ${leadName},\n\nThank you for considering us for your ${scope} project.\n\nWe would love to understand your vision, aesthetic preferences, and budget to tailor an ideal interior concept for your space. Would you be available for a brief discovery call this week?\n\nWarm regards,\nDesign & Client Relations Team`;
+    }
+    if (channel === 'sms') {
+      return `Hi ${leadName}, thank you for your interest in our interior design services. ${promptInstruction || 'We are excited to help design your space. Let us know a good time to connect!'}`;
+    }
+    return `Hello ${leadName},\n\n${promptInstruction || 'Following up on your interior project inquiry.'}\n\nBest regards,`;
+  }
 
   const ai = new GoogleGenAI({ apiKey });
   const prompt = `
@@ -121,7 +142,7 @@ async function draftCommunication(lead, channel, instructions) {
     
     Lead Name: ${lead.name}
     Lead Scope: ${lead.scope || 'Interior Design'}
-    Instructions from User: ${sanitizePrompt(instructions || 'Write a polite follow-up message asking for a good time to connect.')}
+    Instructions from User: ${promptInstruction || 'Write a polite follow-up message asking for a good time to connect.'}
     
     Keep the tone professional and warm. For WhatsApp, keep it brief and conversational. For email, use a proper structure.
     Output ONLY the draft text. Do not output markdown, preambles, or postambles.

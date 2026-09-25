@@ -2,6 +2,7 @@ const express = require('express');
 const authenticate = require('../middleware/authenticate');
 const { success, fail } = require('../utils/response');
 const pool = require('../config/db');
+const { cacheResponse } = require('../middleware/cache');
 
 const router = express.Router();
 
@@ -27,7 +28,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-router.get('/unread-count', async (req, res) => {
+router.get('/unread-count', cacheResponse(30), async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.user.id;
 

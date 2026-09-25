@@ -15,9 +15,7 @@ import CommandPalette from './components/ui/CommandPalette'
 import { initAutomationScheduler } from './store/useTaskAutomationStore'
 import { initGovernanceListeners } from './store/useTaskGovernanceStore'
 
-// Initialize Zustand stores' background jobs
-initAutomationScheduler()
-initGovernanceListeners()
+// Background store jobs will be initialized inside App useEffect
 
 // Lazy-load ALL pages
 const Login          = lazy(() => import('./pages/auth/Login'))
@@ -97,6 +95,11 @@ function DefaultRouteRedirect() {
 }
 
 export default function App() {
+  useEffect(() => {
+    initAutomationScheduler();
+    initGovernanceListeners();
+  }, []);
+
   return (
     <BrowserRouter>
       <AuthProvider>
@@ -110,6 +113,7 @@ export default function App() {
                 <Routes>
                   <Route path='/login' element={<Login />} />
                   <Route path='/register' element={<Register />} />
+                  <Route path='/signup' element={<Navigate to='/register' replace />} />
                   <Route path='/forbidden' element={<Forbidden />} />
                   <Route path='/forms/:slug' element={<PublicLeadFormPage />} />
                   <Route path='/portal/*' element={<PortalApp />} />
