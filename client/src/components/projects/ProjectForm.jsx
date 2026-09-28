@@ -1,13 +1,15 @@
 /* eslint-disable react-hooks/set-state-in-effect */
 import { useState, useEffect } from 'react'
 import styles from './ProjectForm.module.css'
-import { Modal, Input, Select, Button } from '../ui'
+import { Modal, Input, Select, Button, Badge } from '../ui'
+import { useTaskNotifications } from '../../store/TaskNotificationContext'
 import { useToast } from '../../store/toastContext'
 import { createProject, updateProject } from '../../api/projects'
 import api from '../../api/axios'
 import { useS3Upload } from '../../hooks/useS3Upload'
 import { useFieldPermissions } from '../../hooks/useFieldPermissions'
 import { fetchProjectTypes, DEFAULT_PROJECT_TYPES } from '../../constants/projectTypes'
+import { fetchPaymentTemplates, DEFAULT_PAYMENT_TEMPLATES, formatTemplatePercentages } from '../../constants/paymentTemplates'
 
 export default function ProjectForm({ project, onSave, onClose, isOpen, editSection = 'all' }) {
   const showAll = editSection === 'all';
@@ -21,13 +23,29 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
   const { uploadContract, uploading, progress } = useS3Upload()
   const { isHidden, isReadOnly } = useFieldPermissions('projects')
   const [contractFile, setContractFile] = useState(null)
+  const { addNotification } = useTaskNotifications()
+  const [floorPlanFile, setFloorPlanFile] = useState(null)
+  const [checklist, setChecklist] = useState({
+    booking_received: false,
+    contract_signed: false,
+    floor_plan: false,
+    site_address_confirmed: false,
+    scope_finalized: true
+  })
+  const [notifyRules, setNotifyRules] = useState({
+    notify_pm: true,
+    notify_crm: true,
+    notify_finance: true
+  })
   const [isProjectTypeEditable, setIsProjectTypeEditable] = useState(!project)
   const [projectTypes, setProjectTypes] = useState(DEFAULT_PROJECT_TYPES)
+  const [paymentTemplates, setPaymentTemplates] = useState(DEFAULT_PAYMENT_TEMPLATES)
 
   useEffect(() => {
     if (isOpen) {
       setIsProjectTypeEditable(!project)
       fetchProjectTypes().then(types => setProjectTypes(types))
+      fetchPaymentTemplates().then(tpls => setPaymentTemplates(tpls))
     }
   }, [isOpen, project])
   
@@ -307,6 +325,16 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
       setErrors({})
     } else if (isOpen) {
       // Reset form on open if creating new
+      setFloorPlanFile(null);
+      setContractFile(null);
+      setNotifyRules({ notify_pm: true, notify_crm: true, notify_finance: true });
+      setChecklist({
+        booking_received: false,
+        contract_signed: false,
+        floor_plan: false,
+        site_address_confirmed: false,
+        scope_finalized: true
+      });
       setFormData({
         projectType: '', clientName: '', clientPhone: '', clientEmail: '',
         siteAddress: '', projectName: '', pm: '', designer: '', contractValue: '',
@@ -337,44 +365,128 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
     }
   }, [project, isOpen])
 
-  const validate = () => {
-    const newErrors = {}
-    if (!formData.projectType) newErrors.projectType = 'Project type is required'
-    if (!formData.projectName || formData.projectName.length < 3) newErrors.projectName = 'Project name must be at least 3 chars'
-    if (project) {
-      if (!formData.clientName || formData.clientName.length < 2) newErrors.clientName = 'Valid client name required'
-      if (formData.clientPhone && formData.clientPhone.replace(/\D/g, '').length < 10) newErrors.clientPhone = 'Valid 10-digit phone required'
-      if (formData.clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.clientEmail)) newErrors.clientEmail = 'Valid email required'
-      if (formData.spousePhone && formData.spousePhone.replace(/\D/g, '').length < 10) newErrors.spousePhone = 'Valid 10-digit phone required'
-      if (formData.spouseEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.spouseEmail)) newErrors.spouseEmail = 'Valid email required'
+  // Auto-sync checklist statuses for new projects
+  useEffect(() => {
+    if (!project) {
+      setChecklist(prev => ({
+        ...prev,
+        booking_received: Boolean(Number(formData.bookingAmount) > 0),
+        contract_signed: Boolean(contractFile),
+        floor_plan: Boolean(floorPlanFile),
+        scope_finalized: prev.scope_finalized || Boolean(formData.projectType || formData.projectName || formData.contractValue),
+        site_address_confirmed: Boolean(formData.street || formData.city || formData.siteAddress || formData.buildingName)
+      }));
     }
-    if (!project && !contractFile) newErrors.contractFile = 'Signed contract document is required'
+  }, [formData.bookingAmount, contractFile, floorPlanFile, formData.street, formData.city, formData.siteAddress, formData.buildingName, formData.projectType, formData.projectName, formData.contractValue, project]);
+
+  const getFirstMilestonePercentage = (terms) => {
+    if (!terms) return 0;
+    const selectedTpl = paymentTemplates.find(t => t.id === terms || t.name === terms);
+    if (selectedTpl && Array.isArray(selectedTpl.milestones) && selectedTpl.milestones.length > 0) {
+      return Number(selectedTpl.milestones[0].percentage) || 0;
+    }
+    const parts = String(terms).split('_').map(Number);
+    if (parts.length > 0 && !isNaN(parts[0])) {
+      return parts[0];
+    }
+    return 0;
+  };
+
+  const handlePaymentTermsChange = (terms) => {
+    let advance = formData.bookingAmount;
+    const contractVal = parseFloat(formData.contractValue) || 0;
+    if (terms && contractVal > 0) {
+      const firstPct = getFirstMilestonePercentage(terms);
+      if (firstPct > 0) {
+        advance = Math.round(contractVal * (firstPct / 100));
+      }
+    }
+    setFormData(prev => ({
+      ...prev,
+      paymentTerms: terms,
+      bookingAmount: advance
+    }));
+  };
+
+  const handleContractValueChange = (val) => {
+    let advance = formData.bookingAmount;
+    const contractVal = parseFloat(val) || 0;
+    const activeTerms = formData.paymentTerms || paymentTemplates[0]?.id;
+    if (activeTerms && contractVal > 0) {
+      const firstPct = getFirstMilestonePercentage(activeTerms);
+      if (firstPct > 0) {
+        advance = Math.round(contractVal * (firstPct / 100));
+      }
+    }
+    setFormData(prev => ({
+      ...prev,
+      contractValue: val,
+      bookingAmount: advance,
+      paymentTerms: prev.paymentTerms || activeTerms || ''
+    }));
+  };
+
+  const validate = () => {
+    const newErrors = {};
+    if (!formData.projectType) newErrors.projectType = 'Project type is required';
+    if (!formData.projectName || formData.projectName.trim().length < 3) newErrors.projectName = 'Project name must be at least 3 characters';
+    if (!formData.clientName || formData.clientName.trim().length < 2) newErrors.clientName = 'Client name is required';
+    if (formData.clientPhone && formData.clientPhone.replace(/\D/g, '').length < 10) newErrors.clientPhone = 'Valid 10-digit phone required';
+    if (formData.clientEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.clientEmail)) newErrors.clientEmail = 'Valid email required';
+    if (formData.contractValue && Number(formData.contractValue) < 0) newErrors.contractValue = 'Contract value cannot be negative';
+    if (formData.startDate && formData.targetDate && new Date(formData.targetDate) < new Date(formData.startDate)) {
+      newErrors.targetDate = 'Target date cannot be earlier than start date';
+    }
+    if (!project && !contractFile) newErrors.contractFile = 'Signed contract document is required';
+
+    if (project) {
+      if (formData.spousePhone && formData.spousePhone.replace(/\D/g, '').length < 10) newErrors.spousePhone = 'Valid 10-digit phone required';
+      if (formData.spouseEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.spouseEmail)) newErrors.spouseEmail = 'Valid email required';
+    }
     
-    setErrors(newErrors)
-    return Object.keys(newErrors).length === 0
-  }
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) {
+      toast.error('Please fill in all required fields');
+      return false;
+    }
+    return true;
+  };
 
   const handleSubmit = async () => {
     if (!validate()) return;
     try {
       let contractFields = {}
       if (!project) {
-        const uploadedFile = await uploadContract({ file: contractFile })
-        contractFields = {
-          contract_file_key: uploadedFile.storageKey,
-          contract_file_name: uploadedFile.fileName,
-          contract_file_size: uploadedFile.fileSize,
-          contract_file_mime: uploadedFile.mimeType
+        if (contractFile) {
+          const uploadedContract = await uploadContract({ file: contractFile })
+          contractFields = {
+            ...contractFields,
+            contract_file_key: uploadedContract.storageKey,
+            contract_file_name: uploadedContract.fileName,
+            contract_file_size: uploadedContract.fileSize,
+            contract_file_mime: uploadedContract.mimeType
+          }
+        }
+        if (floorPlanFile) {
+          const uploadedFloorPlan = await uploadContract({ file: floorPlanFile })
+          contractFields = {
+            ...contractFields,
+            floor_plan_file_key: uploadedFloorPlan.storageKey,
+            floor_plan_file_name: uploadedFloorPlan.fileName,
+            floor_plan_file_size: uploadedFloorPlan.fileSize,
+            floor_plan_file_mime: uploadedFloorPlan.mimeType
+          }
         }
       }
 
       const payload = {
         name: formData.projectName,
         type: formData.projectType,
+        project_type: formData.projectType,
         client_name: formData.clientName || formData.projectName || 'TBD',
         client_phone: formData.clientPhone || null,
         client_email: formData.clientEmail || null,
-        site_address: formData.siteAddress,
+        site_address: formData.siteAddress || [formData.flatNumber, formData.floor ? `Floor ${formData.floor}` : '', formData.buildingName, formData.street, formData.landmark, formData.city, formData.pincode].filter(Boolean).join(', ') || null,
         pm_id: formData.pm || null,
         designer_id: formData.designer || null,
         pm_hours_allocated: formData.pm ? (formData.pmHoursAllocated ? Number(formData.pmHoursAllocated) : 10) : null,
@@ -387,7 +499,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
         agreement_signed_by: formData.agreementSignedBy || null,
         agreement_signed_at: formData.agreementSignedAt || null,
         agreement_signature_method: formData.agreementSignatureMethod || null,
-        payment_terms: formData.paymentTerms || null,
+        payment_terms: formData.paymentTerms || (!project && paymentTemplates[0]?.id ? paymentTemplates[0].id : null),
         flat_number: formData.flatNumber || null,
         floor: formData.floor || null,
         building_name: formData.buildingName || null,
@@ -448,6 +560,12 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
         site_supervisor_id: formData.siteSupervisor || null,
         crm_executive_id: formData.crmExecutive || null,
         procurement_officer_id: formData.procurementOfficer || null,
+        custom_fields: {
+          ...checklist,
+          pre_conversion_checklist: checklist,
+          advance_amount: formData.bookingAmount || null,
+          payment_terms: formData.paymentTerms || (!project && paymentTemplates[0]?.id ? paymentTemplates[0].id : null)
+        },
         ...contractFields
       }
       if (project) {
@@ -484,6 +602,17 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
     }
   }
 
+  const paymentTermsOptions = paymentTemplates.map(t => ({
+    value: t.id,
+    label: formatTemplatePercentages(t)
+  }));
+  if (formData.paymentTerms && !paymentTermsOptions.some(o => o.value === formData.paymentTerms)) {
+    paymentTermsOptions.push({
+      value: formData.paymentTerms,
+      label: formData.paymentTerms.replace(/_/g, ' - ')
+    });
+  }
+
   return (
     <Modal
       isOpen={isOpen}
@@ -493,11 +622,15 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
       footer={
         <>
           <Button variant="ghost" onClick={onClose}>Cancel</Button>
-          <Button variant="primary" onClick={handleSubmit}>{project ? 'Save Changes' : 'Create Project'}</Button>
+          <Button variant="primary" onClick={handleSubmit} disabled={uploading}>
+            {uploading ? `Uploading (${progress}%)...` : (project ? 'Save Changes' : 'Create Project')}
+          </Button>
         </>
       }
     >
-      {showProjectDetails && (
+      {project ? (
+        <>
+        {showProjectDetails && (
         <>
       <div className={styles.sectionTitle} style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '12px'}}>
         Project Type
@@ -1804,13 +1937,11 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           <Select 
             label="Payment Terms" 
             options={[
-              {value:'',label:'Select Terms'}, 
-              {value:'10_40_40_10',label:'10% - 40% - 40% - 10%'}, 
-              {value:'30_30_30_10',label:'30% - 30% - 30% - 10%'}, 
-              {value:'50_50',label:'50% - 50%'}
+              { value: '', label: 'Select Terms' }, 
+              ...paymentTermsOptions
             ]}
             value={formData.paymentTerms}
-            onChange={v => setFormData({...formData, paymentTerms: v})}
+            onChange={handlePaymentTermsChange}
           />
         </div>
 
@@ -1832,27 +1963,438 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
         )}
         </>
         )}
+        </>
+      ) : (
+        <>
+          {/* Project Type */}
+          <div className={styles.sectionTitle} style={{ marginTop: 0 }}>Project Type *</div>
+          <div className={styles.typeSelector}>
+            {projectTypes.map(type => (
+              <div 
+                key={type.id} 
+                className={`${styles.typeCard} ${formData.projectType === type.id ? styles.selected : ''}`}
+                onClick={() => {
+                  setFormData({ ...formData, projectType: type.id });
+                  if (errors.projectType) setErrors({ ...errors, projectType: null });
+                }}
+              >
+                <div className={styles.typeIcon}>{type.icon}</div>
+                <div className={styles.typeLabel}>{type.label}</div>
+              </div>
+            ))}
+          </div>
+          {errors.projectType && <div className={styles.errorMsg}>{errors.projectType}</div>}
 
-        {showAll && !project && (
-          <div className={styles.fullWidth} style={{ marginTop: 16 }}>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">Signed Contract Document *</label>
-            <div className="flex items-center gap-4">
+          {/* Client & Project Basics */}
+          <div className={styles.sectionTitle}>Client & Project Basics</div>
+          <div className={styles.grid}>
+            <div>
+              <Input 
+                label="Client Name *" 
+                placeholder="e.g. Rahul Sharma"
+                value={formData.clientName} 
+                onChange={e => {
+                  const val = e.target.value;
+                  const newFormData = { ...formData, clientName: val };
+                  if (clientDetailsMap[val]) {
+                    const { phone, email } = clientDetailsMap[val];
+                    if (phone && !newFormData.clientPhone) newFormData.clientPhone = phone;
+                    if (email && !newFormData.clientEmail) newFormData.clientEmail = email;
+                  }
+                  if (!newFormData.projectName || newFormData.projectName.endsWith("'s Project")) {
+                    newFormData.projectName = val ? `${val}'s Project` : '';
+                  }
+                  setFormData(newFormData);
+                  if (errors.clientName) setErrors({ ...errors, clientName: null });
+                }} 
+                error={errors.clientName}
+                list="newProjectClientsList"
+              />
+              <datalist id="newProjectClientsList">
+                {clientNames.map(name => (
+                  <option key={name} value={name} />
+                ))}
+              </datalist>
+            </div>
+
+            <div>
+              <Input 
+                label="Client Phone" 
+                placeholder="e.g. 98765 43210" 
+                value={formData.clientPhone} 
+                onChange={e => {
+                  setFormData({ ...formData, clientPhone: e.target.value });
+                  if (errors.clientPhone) setErrors({ ...errors, clientPhone: null });
+                }}
+                error={errors.clientPhone}
+              />
+            </div>
+
+            <div>
+              <Input 
+                label="Client Email" 
+                type="email" 
+                placeholder="e.g. rahul.sharma@example.com"
+                value={formData.clientEmail} 
+                onChange={e => {
+                  setFormData({ ...formData, clientEmail: e.target.value });
+                  if (errors.clientEmail) setErrors({ ...errors, clientEmail: null });
+                }}
+                error={errors.clientEmail}
+              />
+            </div>
+
+            <div>
+              <Input 
+                label="Project Name *" 
+                placeholder="e.g. Sharma 3BHK - Banjara Hills"
+                value={formData.projectName} 
+                onChange={e => {
+                  setFormData({ ...formData, projectName: e.target.value });
+                  if (errors.projectName) setErrors({ ...errors, projectName: null });
+                }} 
+                error={errors.projectName}
+              />
+            </div>
+
+            <div>
+              <Select 
+                label="Project Manager" 
+                options={[
+                  { value: '', label: 'Select Project Manager' },
+                  ...teamMembers
+                    .filter(u => u.role_name === 'Project Manager' || u.role === 'pm' || u.role === 'project_manager')
+                    .map(u => ({ value: u.id, label: u.name }))
+                ]}
+                value={formData.pm}
+                onChange={v => setFormData({ ...formData, pm: v })}
+              />
+            </div>
+
+            <div>
+              <Select 
+                label="Designer" 
+                options={[
+                  { value: '', label: 'Select Lead Designer' },
+                  ...teamMembers
+                    .filter(u => u.role_name === 'Designer' || u.role === 'designer')
+                    .map(u => ({ value: u.id, label: u.name }))
+                ]}
+                value={formData.designer}
+                onChange={v => setFormData({ ...formData, designer: v })}
+              />
+            </div>
+          </div>
+
+          {/* Financials & Timeline */}
+          <div className={styles.sectionTitle}>Financials & Timeline</div>
+          <div className={styles.grid}>
+            <div>
+              <Input 
+                type="number"
+                label="Contract Value (₹) *" 
+                placeholder="e.g. 1500000"
+                value={formData.contractValue} 
+                onChange={e => handleContractValueChange(e.target.value)}
+                error={errors.contractValue}
+              />
+            </div>
+
+            <div>
+              <Select 
+                label="Payment Terms" 
+                options={paymentTermsOptions}
+                value={formData.paymentTerms || (paymentTemplates[0]?.id || '')}
+                onChange={handlePaymentTermsChange}
+              />
+            </div>
+
+            <div>
+              <Input 
+                type="number"
+                label="Booking Advance (₹)" 
+                placeholder="e.g. 150000"
+                value={formData.bookingAmount} 
+                onChange={e => {
+                  const val = e.target.value;
+                  setFormData({ ...formData, bookingAmount: val });
+                  setChecklist(prev => ({ ...prev, booking_received: Number(val) > 0 }));
+                }}
+                error={errors.bookingAmount}
+              />
+            </div>
+
+            <div className={styles.datesGrid}>
+              <Input 
+                type="date"
+                label="Start Date" 
+                value={formData.startDate} 
+                onChange={e => setFormData({ ...formData, startDate: e.target.value })}
+              />
+              <Input 
+                type="date"
+                label="Target Handover Date *" 
+                value={formData.targetDate} 
+                onChange={e => {
+                  setFormData({ ...formData, targetDate: e.target.value });
+                  if (errors.targetDate) setErrors({ ...errors, targetDate: null });
+                }}
+                error={errors.targetDate}
+              />
+            </div>
+          </div>
+
+          {/* Site Address */}
+          <div className={styles.sectionTitle}>Site Address</div>
+          <div className={styles.grid}>
+            <div>
+              <Input 
+                label="Flat / Unit Number" 
+                placeholder="e.g. Flat 402, Tower B" 
+                value={formData.flatNumber} 
+                onChange={e => setFormData({ ...formData, flatNumber: e.target.value })} 
+              />
+            </div>
+            <div>
+              <Input 
+                label="Building / Society Name" 
+                placeholder="e.g. Prestige Lakeside Habitat" 
+                value={formData.buildingName} 
+                onChange={e => setFormData({ ...formData, buildingName: e.target.value })} 
+              />
+            </div>
+            <div className={styles.fullWidth}>
+              <Input 
+                label="Street / Locality" 
+                placeholder="e.g. Varthur Road, Whitefield" 
+                value={formData.street} 
+                onChange={e => setFormData({ ...formData, street: e.target.value })} 
+              />
+            </div>
+            <div>
+              <Input 
+                label="City" 
+                placeholder="e.g. Bengaluru" 
+                value={formData.city} 
+                onChange={e => setFormData({ ...formData, city: e.target.value })} 
+              />
+            </div>
+            <div>
+              <Input 
+                label="Pincode" 
+                placeholder="e.g. 560087" 
+                value={formData.pincode} 
+                onChange={e => setFormData({ ...formData, pincode: e.target.value })} 
+              />
+            </div>
+          </div>
+
+          {/* Pre-Kickoff 5-Point Verification Checklist */}
+          <div className={styles.sectionTitle}>Pre-Kickoff 5-Point Verification Checklist</div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '8px', marginBottom: '16px' }}>
+            {/* Item 1: Booking Received */}
+            <div 
+              className={`${styles.checklistItem} ${checklist.booking_received ? styles.checklistChecked : ''}`}
+              onClick={() => setChecklist(prev => ({ ...prev, booking_received: !prev.booking_received }))}
+            >
+              <div className={styles.checklistLeft}>
+                <input 
+                  type="checkbox" 
+                  checked={checklist.booking_received || false}
+                  onChange={() => {}}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <div>
+                  <div className={styles.checklistLabel}>1. Booking received</div>
+                  <span className={`${styles.checklistBadge} ${Number(formData.bookingAmount) > 0 ? styles.badgeAuto : styles.badgeManual}`}>
+                    {Number(formData.bookingAmount) > 0 ? `₹${Number(formData.bookingAmount).toLocaleString()}` : 'Manual'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Item 2: Contract Signed */}
+            <div 
+              className={`${styles.checklistItem} ${checklist.contract_signed ? styles.checklistChecked : ''}`}
+              onClick={() => setChecklist(prev => ({ ...prev, contract_signed: !prev.contract_signed }))}
+            >
+              <div className={styles.checklistLeft}>
+                <input 
+                  type="checkbox" 
+                  checked={checklist.contract_signed || false}
+                  onChange={() => {}}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <div>
+                  <div className={styles.checklistLabel}>2. Contract signed</div>
+                  <span className={`${styles.checklistBadge} ${contractFile ? styles.badgeAuto : styles.badgeManual}`}>
+                    {contractFile ? '✓ Attached' : 'Pending'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Item 3: Floor Plan */}
+            <div 
+              className={`${styles.checklistItem} ${checklist.floor_plan ? styles.checklistChecked : ''}`}
+              onClick={() => setChecklist(prev => ({ ...prev, floor_plan: !prev.floor_plan }))}
+            >
+              <div className={styles.checklistLeft}>
+                <input 
+                  type="checkbox" 
+                  checked={checklist.floor_plan || false}
+                  onChange={() => {}}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <div>
+                  <div className={styles.checklistLabel}>3. Floor plan</div>
+                  <span className={`${styles.checklistBadge} ${floorPlanFile ? styles.badgeAuto : styles.badgeManual}`}>
+                    {floorPlanFile ? '✓ Attached' : 'Optional'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Item 4: Site Address Confirmed */}
+            <div 
+              className={`${styles.checklistItem} ${checklist.site_address_confirmed ? styles.checklistChecked : ''}`}
+              onClick={() => setChecklist(prev => ({ ...prev, site_address_confirmed: !prev.site_address_confirmed }))}
+            >
+              <div className={styles.checklistLeft}>
+                <input 
+                  type="checkbox" 
+                  checked={checklist.site_address_confirmed || false}
+                  onChange={() => {}}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <div>
+                  <div className={styles.checklistLabel}>4. Address confirmed</div>
+                  <span className={`${styles.checklistBadge} ${(formData.street || formData.city || formData.buildingName) ? styles.badgeAuto : styles.badgeManual}`}>
+                    {(formData.street || formData.city || formData.buildingName) ? '✓ Verified' : 'Manual'}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* Item 5: Scope Finalized */}
+            <div 
+              className={`${styles.checklistItem} ${checklist.scope_finalized ? styles.checklistChecked : ''}`}
+              onClick={() => setChecklist(prev => ({ ...prev, scope_finalized: !prev.scope_finalized }))}
+            >
+              <div className={styles.checklistLeft}>
+                <input 
+                  type="checkbox" 
+                  checked={checklist.scope_finalized || false}
+                  onChange={() => {}}
+                  style={{ width: 16, height: 16, cursor: 'pointer' }}
+                />
+                <div>
+                  <div className={styles.checklistLabel}>5. Scope finalized</div>
+                  <span className={`${styles.checklistBadge} ${checklist.scope_finalized ? styles.badgeAuto : styles.badgeManual}`}>
+                    {checklist.scope_finalized ? '✓ Confirmed' : 'Pending'}
+                  </span>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          {/* Project Attachments */}
+          <div className={styles.sectionTitle}>Project Attachments</div>
+          <div className={styles.grid}>
+            <div>
+              <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
+                Signed Contract Document (PDF/Image) *
+              </label>
               <input 
                 type="file" 
                 accept=".pdf,.png,.jpg,.jpeg" 
-                onChange={e => setContractFile(e.target.files[0] || null)}
-                className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-md file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 cursor-pointer"
+                onChange={e => {
+                  const file = e.target.files[0] || null;
+                  setContractFile(file);
+                  if (file && errors.contractFile) setErrors({ ...errors, contractFile: null });
+                }}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  fontSize: '12px',
+                  padding: '8px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-bg)',
+                  cursor: 'pointer'
+                }}
               />
-              {uploading && (
-                <span className="text-xs text-blue-600 font-medium whitespace-nowrap">Uploading ({progress}%)...</span>
+              {contractFile && (
+                <p style={{ fontSize: '11px', color: 'var(--color-success)', marginTop: '4px', fontWeight: 500 }}>
+                  ✓ Selected: {contractFile.name} ({(contractFile.size / 1024).toFixed(1)} KB)
+                </p>
+              )}
+              {errors.contractFile && <div className={styles.errorMsg}>{errors.contractFile}</div>}
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text)', marginBottom: '6px' }}>
+                Floor Plan / Layout Drawing (Optional)
+              </label>
+              <input 
+                type="file" 
+                accept=".pdf,.png,.jpg,.jpeg,.dwg" 
+                onChange={e => setFloorPlanFile(e.target.files[0] || null)}
+                style={{
+                  display: 'block',
+                  width: '100%',
+                  fontSize: '12px',
+                  padding: '8px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)',
+                  background: 'var(--color-bg)',
+                  cursor: 'pointer'
+                }}
+              />
+              {floorPlanFile && (
+                <p style={{ fontSize: '11px', color: 'var(--color-success)', marginTop: '4px', fontWeight: 500 }}>
+                  ✓ Selected: {floorPlanFile.name} ({(floorPlanFile.size / 1024).toFixed(1)} KB)
+                </p>
               )}
             </div>
-            {errors.contractFile && <div className={styles.errorMsg} style={{ marginTop: 4 }}>{errors.contractFile}</div>}
-            {contractFile && (
-              <p className="text-xs text-gray-500 mt-1">Selected file: <span className="font-semibold text-gray-700">{contractFile.name}</span> ({(contractFile.size / 1024).toFixed(1)} KB)</p>
-            )}
           </div>
-        )}
+
+          {/* Handover Notifications */}
+          <div className={styles.sectionTitle}>Handover Notifications</div>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: '20px', marginTop: '6px', marginBottom: '8px' }}>
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: 500 }}>
+              <input 
+                type="checkbox" 
+                checked={notifyRules.notify_pm} 
+                onChange={e => setNotifyRules(prev => ({ ...prev, notify_pm: e.target.checked }))}
+                style={{ width: 16, height: 16, cursor: 'pointer' }}
+              />
+              Notify Project Manager
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: 500 }}>
+              <input 
+                type="checkbox" 
+                checked={notifyRules.notify_crm} 
+                onChange={e => setNotifyRules(prev => ({ ...prev, notify_crm: e.target.checked }))}
+                style={{ width: 16, height: 16, cursor: 'pointer' }}
+              />
+              Notify CRM Executive
+            </label>
+
+            <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: 'var(--text-xs)', fontWeight: 500 }}>
+              <input 
+                type="checkbox" 
+                checked={notifyRules.notify_finance} 
+                onChange={e => setNotifyRules(prev => ({ ...prev, notify_finance: e.target.checked }))}
+                style={{ width: 16, height: 16, cursor: 'pointer' }}
+              />
+              Notify Finance
+            </label>
+          </div>
+        </>
+      )}
     </Modal>
+
   )
 }

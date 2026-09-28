@@ -54,6 +54,7 @@ export const PAGE_PERMISSIONS_SCHEMA = {
     { id: 'Factory Production', label: 'Factory Production' },
     { id: 'Coordination', label: 'Coordination' },
     { id: 'Phases', label: 'Phases' },
+    { id: 'Phases & Schedule', label: 'Phases & Schedule' },
     { id: 'Gantt Chart', label: 'Gantt Chart' },
     { id: 'Work Activities', label: 'Work Activities' },
     { id: 'Room Progress', label: 'Room Progress' },

@@ -118,7 +118,17 @@ async function convertToProject({ tenantId, userId, leadId, bodyData }) {
     contacts: bodyData.contacts || [],
     measurements: bodyData.measurements || [],
     vendors: bodyData.vendors || [],
-    consultants: bodyData.consultants || []
+    consultants: bodyData.consultants || [],
+    custom_fields: {
+      booking_received: Boolean(bodyData.booking_received || advanceAmount > 0),
+      floor_plan: Boolean(bodyData.floor_plan),
+      scope_finalized: Boolean(bodyData.scope_finalized),
+      contract_signed: Boolean(bodyData.contract_signed || bodyData.contract_file_key),
+      site_address_confirmed: Boolean(bodyData.site_address_confirmed || bodyData.street || bodyData.city || bodyData.site_address),
+      advance_amount: advanceAmount,
+      payment_terms: paymentTerms,
+      ...(bodyData.custom_fields || {})
+    }
   };
 
   const isValidUUID = (id) => typeof id === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);

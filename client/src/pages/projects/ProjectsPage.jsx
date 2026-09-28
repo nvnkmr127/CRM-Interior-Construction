@@ -253,8 +253,11 @@ export default function ProjectsPage() {
       if (extraFilter === 'sort_progress') {
         return (a.progress || 0) - (b.progress || 0);
       }
-      // Default: sort by target date ascending
-      return new Date(a.target_date || a.targetDate || 0) - new Date(b.target_date || b.targetDate || 0);
+      if (extraFilter === 'sort_deadline') {
+        return new Date(a.target_date || a.targetDate || 0) - new Date(b.target_date || b.targetDate || 0);
+      }
+      // Default: sort by latest created project first (created_at DESC)
+      return new Date(b.created_at || b.createdAt || 0) - new Date(a.created_at || a.createdAt || 0);
     });
 
   return (

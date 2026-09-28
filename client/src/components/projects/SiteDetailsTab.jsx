@@ -31,8 +31,18 @@ export default function SiteDetailsTab({ project, onRefresh }) {
   const handleSave = async () => {
     try {
       setSaving(true);
+      const computedAddress = formData.siteAddress || [
+        formData.flatNumber,
+        formData.floor ? `Floor ${formData.floor}` : '',
+        formData.buildingName,
+        formData.street,
+        formData.landmark,
+        formData.city,
+        formData.pincode
+      ].filter(Boolean).join(', ');
+
       const payload = {
-        site_address: formData.siteAddress || null,
+        site_address: computedAddress || null,
         flat_number: formData.flatNumber || null,
         floor: formData.floor || null,
         building_name: formData.buildingName || null,
@@ -55,8 +65,41 @@ export default function SiteDetailsTab({ project, onRefresh }) {
     }
   };
 
+  const hasCoordinates = Boolean(project.latitude && project.longitude);
+  const displayAddress = project.site_address || [project.flat_number, project.building_name, project.street, project.city, project.pincode].filter(Boolean).join(', ');
+  const mapQuery = hasCoordinates
+    ? `${project.latitude},${project.longitude}`
+    : encodeURIComponent(displayAddress);
+
   const fields = [
-    { label: 'Site Address', value: project.site_address || '—' },
+    { 
+      label: 'Site Address', 
+      value: displayAddress ? (
+        <span style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+          <span>{displayAddress}</span>
+          <a
+            href={`https://www.google.com/maps/search/?api=1&query=${mapQuery}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: '4px',
+              padding: '2px 8px',
+              fontSize: '11px',
+              fontWeight: 600,
+              borderRadius: '4px',
+              background: 'var(--color-primary-bg, #e0f2fe)',
+              color: 'var(--color-primary, #0284c7)',
+              textDecoration: 'none'
+            }}
+            title="Navigate on Google Maps"
+          >
+            🗺️ Navigate
+          </a>
+        </span>
+      ) : '—' 
+    },
     { label: 'Flat / Unit No', value: project.flat_number || '—' },
     { label: 'Floor', value: project.floor || '—' },
     { label: 'Building Name', value: project.building_name || '—' },
@@ -64,7 +107,7 @@ export default function SiteDetailsTab({ project, onRefresh }) {
     { label: 'Landmark', value: project.landmark || '—' },
     { label: 'City', value: project.city || '—' },
     { label: 'Pincode', value: project.pincode || '—' },
-    { label: 'GPS Coordinates', value: project.latitude && project.longitude ? `${project.latitude}, ${project.longitude}` : '—' },
+    { label: 'GPS Coordinates', value: hasCoordinates ? `${project.latitude}, ${project.longitude}` : '—' },
     { label: 'Renovation Scope', value: project.renovation_scope ? project.renovation_scope.replace(/_/g, ' ') : '—' },
   ];
 
@@ -107,9 +150,39 @@ export default function SiteDetailsTab({ project, onRefresh }) {
           <Input label="Landmark" value={formData.landmark} onChange={e => setFormData({...formData, landmark: e.target.value})} />
           <Input label="City" value={formData.city} onChange={e => setFormData({...formData, city: e.target.value})} />
           <Input label="Pincode" value={formData.pincode} onChange={e => setFormData({...formData, pincode: e.target.value})} />
-          <Input label="Latitude" value={formData.latitude} onChange={e => setFormData({...formData, latitude: e.target.value})} />
-          <Input label="Longitude" value={formData.longitude} onChange={e => setFormData({...formData, longitude: e.target.value})} />
-          <Input label="Renovation Scope" value={formData.renovationScope} onChange={e => setFormData({...formData, renovationScope: e.target.value})} />
+          <div style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr auto', gap: '16px', alignItems: 'end' }}>
+            <Input label="Latitude" placeholder="e.g. 17.5249" value={formData.latitude} onChange={e => setFormData({...formData, latitude: e.target.value})} />
+            <Input label="Longitude" placeholder="e.g. 78.4891" value={formData.longitude} onChange={e => setFormData({...formData, longitude: e.target.value})} />
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                if (!navigator.geolocation) {
+                  toast.error('Geolocation is not supported by your browser');
+                  return;
+                }
+                navigator.geolocation.getCurrentPosition(
+                  pos => {
+                    setFormData(prev => ({
+                      ...prev,
+                      latitude: pos.coords.latitude.toFixed(6),
+                      longitude: pos.coords.longitude.toFixed(6)
+                    }));
+                    toast.success('Current site GPS location retrieved!');
+                  },
+                  err => {
+                    toast.error('Failed to get location: ' + err.message);
+                  }
+                );
+              }}
+              style={{ height: '38px', padding: '0 12px', whiteSpace: 'nowrap' }}
+            >
+              📍 Get Location
+            </Button>
+          </div>
+          <div style={{ gridColumn: 'span 2' }}>
+            <Input label="Renovation Scope" value={formData.renovationScope} onChange={e => setFormData({...formData, renovationScope: e.target.value})} />
+          </div>
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
           <Button variant="outline" onClick={() => setIsEditing(false)} disabled={saving}>Cancel</Button>

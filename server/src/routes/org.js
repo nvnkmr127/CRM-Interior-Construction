@@ -10,21 +10,22 @@ router.use(authenticate);
 
 // Helpers
 const checkCircularReference = async (tenantId, userId, newManagerId) => {
+  if (!newManagerId) return false;
   if (userId === newManagerId) return true; // Direct circular
 
-  // Recursive query to check if the new manager reports to the current user anywhere up the chain
+  // Recursive query with cycle guard to check if the new manager reports to the current user anywhere up the chain
   const query = `
     WITH RECURSIVE org_tree AS (
-      SELECT id, manager_id
+      SELECT id, manager_id, ARRAY[id]::uuid[] AS path
       FROM users
       WHERE id = $1 AND tenant_id = $2
       
       UNION ALL
       
-      SELECT u.id, u.manager_id
+      SELECT u.id, u.manager_id, ot.path || u.id
       FROM users u
       INNER JOIN org_tree ot ON u.id = ot.manager_id
-      WHERE u.tenant_id = $2
+      WHERE u.tenant_id = $2 AND NOT (u.id = ANY(ot.path))
     )
     SELECT id FROM org_tree WHERE id = $3;
   `;
@@ -41,11 +42,29 @@ const checkCircularReference = async (tenantId, userId, newManagerId) => {
 router.get('/hierarchy', async (req, res) => {
   const tenantId = req.tenantId;
   try {
+    // 1. Auto-cleanup: Super Admin / Owner must never report to anyone
+    await pool.query(`
+      UPDATE users 
+      SET manager_id = NULL 
+      WHERE tenant_id = $1 
+        AND role_id IN (SELECT id FROM roles WHERE LOWER(name) IN ('superadmin', 'super admin', 'owner', 'super_admin'))
+        AND manager_id IS NOT NULL
+    `, [tenantId]);
+
+    // 2. Fetch hierarchy with Super Admin guaranteed as apex root
     const { rows } = await pool.query(`
       SELECT
-        u.id, u.name, u.email, u.avatar_url, u.status, u.manager_id, u.department_id, u.branch_id,
+        u.id, u.name, u.email, u.avatar_url, u.status,
+        CASE 
+          WHEN LOWER(COALESCE(r.name, '')) IN ('superadmin', 'super admin', 'owner', 'super_admin') THEN NULL 
+          ELSE u.manager_id 
+        END as manager_id,
+        u.department_id, u.branch_id,
         r.name as role_name,
-        m.name as manager_name,
+        CASE 
+          WHEN LOWER(COALESCE(r.name, '')) IN ('superadmin', 'super admin', 'owner', 'super_admin') THEN NULL 
+          ELSE m.name 
+        END as manager_name,
         d.name as department_name,
         b.name as branch_name
       FROM users u
@@ -54,7 +73,9 @@ router.get('/hierarchy', async (req, res) => {
       LEFT JOIN departments d ON d.id = u.department_id
       LEFT JOIN branches b ON b.id = u.branch_id
       WHERE u.tenant_id = $1 AND u.deleted_at IS NULL
-      ORDER BY u.name ASC
+      ORDER BY 
+        CASE WHEN LOWER(COALESCE(r.name, '')) IN ('superadmin', 'super admin', 'owner', 'super_admin') THEN 0 ELSE 1 END,
+        u.name ASC
     `, [tenantId]);
     return success(res, rows);
   } catch (error) {
@@ -66,10 +87,32 @@ router.get('/hierarchy', async (req, res) => {
 router.patch('/users/:id', authorize('users:manage'), async (req, res) => {
   const tenantId = req.tenantId;
   const userId = req.params.id;
-  const { manager_id, department_id, branch_id } = req.body;
+  let { manager_id, department_id, branch_id } = req.body;
+
+  // Sanitize empty strings to null for UUID columns
+  if (manager_id === '') manager_id = null;
+  if (department_id === '') department_id = null;
+  if (branch_id === '') branch_id = null;
 
   try {
     if (manager_id) {
+      if (manager_id === userId) {
+        return fail(res, 'VALIDATION_ERROR', 'A user cannot report to themselves', 400);
+      }
+
+      // Check if target user is Super Admin / Owner
+      const { rows: targetRoleRows } = await pool.query(`
+        SELECT LOWER(COALESCE(r.name, '')) as role_name 
+        FROM users u 
+        LEFT JOIN roles r ON r.id = u.role_id 
+        WHERE u.id = $1 AND u.tenant_id = $2
+      `, [userId, tenantId]);
+      
+      const targetRole = targetRoleRows[0]?.role_name || '';
+      if (['superadmin', 'super admin', 'owner', 'super_admin'].includes(targetRole)) {
+        return fail(res, 'VALIDATION_ERROR', 'Super Admin / Owner is the top organizational authority and cannot report to any employee.', 400);
+      }
+
       const isCircular = await checkCircularReference(tenantId, userId, manager_id);
       if (isCircular) {
         return fail(res, 'VALIDATION_ERROR', 'Circular reporting detected. This change would create an infinite loop.', 400);
@@ -108,7 +151,8 @@ router.patch('/users/:id', authorize('users:manage'), async (req, res) => {
     logAction({ tenantId, userId: actorUserId, action: 'org.user_updated', entity: 'user', entityId: userId });
     return success(res, rows[0]);
   } catch (error) {
-    return fail(res, 'INTERNAL_ERROR', 'Failed to update user organization data', 500);
+    console.error('[org.patchUser] Error:', error);
+    return fail(res, 'INTERNAL_ERROR', error.message || 'Failed to update user organization data', 500);
   }
 });
 

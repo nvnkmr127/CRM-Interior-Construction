@@ -4,7 +4,7 @@ class ProjectRepository {
   async createProject(tenantId, data, dbClient = pool) {
     const {
       lead_id, client_name, client_phone, client_email,
-      name, project_type, pm_id, designer_id,
+      name, project_type = data.type, pm_id, designer_id,
       contract_value, booking_amount = 0, status = 'active', start_date, target_date,
       site_address, custom_fields = {}, created_by,
       agreement_signed_by, agreement_signed_at, agreement_signature_method,
@@ -86,7 +86,7 @@ class ProjectRepository {
       toUUID(tenantId), toUUID(lead_id), client_name, client_phone || null, client_email || null,
       name, project_type || null, toUUID(pm_id), toUUID(designer_id),
       contract_value !== undefined && contract_value !== null && !isNaN(Number(contract_value)) ? Number(contract_value) : null, booking_amount, status, start_date || null, target_date || null,
-      site_address || null, custom_fields, toUUID(created_by),
+      site_address || null, typeof custom_fields === 'object' && custom_fields !== null ? JSON.stringify(custom_fields) : (custom_fields || '{}'), toUUID(created_by),
       agreement_signed_by || null, agreement_signed_at || null, agreement_signature_method || null,
       payment_terms || null,
       flat_number || null,
@@ -260,6 +260,13 @@ class ProjectRepository {
       WHERE pb.tenant_id = $1 AND pb.project_id = $2
     `;
 
+    const documentsQuery = `
+      SELECT id, name, doc_type, status, storage_key, created_at
+      FROM documents
+      WHERE tenant_id = $1 AND project_id = $2 AND deleted_at IS NULL
+      ORDER BY created_at DESC
+    `;
+
     // Execute all relational child queries concurrently for maximum performance
     const [
       phasesRes,
@@ -269,7 +276,8 @@ class ProjectRepository {
       vendorsRes,
       consultantsRes,
       siteTeamRes,
-      bookingRes
+      bookingRes,
+      documentsRes
     ] = await Promise.all([
       pool.query(phasesQuery, [tenantId, projectId]),
       pool.query(paymentsQuery, [tenantId, projectId]),
@@ -278,7 +286,8 @@ class ProjectRepository {
       pool.query(vendorsQuery, [tenantId, projectId]),
       pool.query(consultantsQuery, [tenantId, projectId]),
       pool.query(siteTeamQuery, [tenantId, projectId]),
-      pool.query(bookingQuery, [tenantId, projectId])
+      pool.query(bookingQuery, [tenantId, projectId]),
+      pool.query(documentsQuery, [tenantId, projectId])
     ]);
 
     project.phases = phasesRes.rows;
@@ -289,6 +298,17 @@ class ProjectRepository {
     project.consultants = consultantsRes.rows;
     project.site_team = siteTeamRes.rows;
     project.booking = bookingRes.rows[0] || null;
+    project.documents = documentsRes.rows;
+    project.type = project.project_type || project.type;
+
+    const contractDoc = project.documents.find(d => d.doc_type === 'contract');
+    if (contractDoc && !project.contract_file_key) {
+      project.contract_file_key = contractDoc.storage_key;
+    }
+    const floorPlanDoc = project.documents.find(d => d.doc_type === 'drawing' || d.doc_type === 'floor_plan');
+    if (floorPlanDoc && !project.floor_plan_url) {
+      project.floor_plan_url = floorPlanDoc.storage_key;
+    }
 
     return project;
   }

@@ -4,6 +4,7 @@ import { useNavigate } from 'react-router-dom';
 import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import styles from './FinancialSettings.module.css';
+import { DEFAULT_PAYMENT_TEMPLATES } from '../../constants/paymentTemplates';
 
 export default function FinancialSettings() {
   const navigate = useNavigate();
@@ -29,41 +30,7 @@ export default function FinancialSettings() {
     ]
   });
 
-  const defaultPaymentTemplates = [
-    {
-      id: 'tpl-5month-20',
-      name: '5-Month Equal Installment Plan (20% x 5)',
-      description: '5 equal monthly payments of 20% across 5 consecutive project months.',
-      milestones: [
-        { name: 'Month 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 },
-        { name: 'Month 2 - Design Finalization', percentage: 20, stage: 'Design', offsetDays: 30 },
-        { name: 'Month 3 - Factory Production Start', percentage: 20, stage: 'Production', offsetDays: 60 },
-        { name: 'Month 4 - Site Installation', percentage: 20, stage: 'Installation', offsetDays: 90 },
-        { name: 'Month 5 - Final Handover', percentage: 20, stage: 'Handover', offsetDays: 120 }
-      ]
-    },
-    {
-      id: 'tpl-3stage-20-50-30',
-      name: 'Standard 3-Stage Milestone (20% - 50% - 30%)',
-      description: '20% booking advance, 50% material dispatch, 30% final handover.',
-      milestones: [
-        { name: 'Stage 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 },
-        { name: 'Stage 2 - Material Dispatch', percentage: 50, stage: 'Material Dispatch', offsetDays: 30 },
-        { name: 'Stage 3 - Final Handover', percentage: 30, stage: 'Handover', offsetDays: 60 }
-      ]
-    },
-    {
-      id: 'tpl-4stage-10-40-40-10',
-      name: 'Commercial Construction 4-Stage (10% - 40% - 40% - 10%)',
-      description: '10% sign-up, 40% structure, 40% finishing, 10% retention handover.',
-      milestones: [
-        { name: 'Token Advance', percentage: 10, stage: 'Token', offsetDays: 0 },
-        { name: 'Civil & Structure Work', percentage: 40, stage: 'Structure', offsetDays: 30 },
-        { name: 'Interior Finishing', percentage: 40, stage: 'Finishing', offsetDays: 75 },
-        { name: 'Handover & Retention', percentage: 10, stage: 'Retention', offsetDays: 105 }
-      ]
-    }
-  ];
+  const defaultPaymentTemplates = DEFAULT_PAYMENT_TEMPLATES;
 
   const [settings, setSettings] = useState({
     // Financial Approval Thresholds (INR)

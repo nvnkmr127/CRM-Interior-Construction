@@ -23,6 +23,10 @@ const TYPE_META = {
 
 const NORMALIZE_TYPE = {
   drawing:                  'Drawing',
+  floor_plan:               'Drawing',
+  'floor plan':             'Drawing',
+  layout_drawing:           'Drawing',
+  'layout drawing':         'Drawing',
   boq:                      'BOQ',
   render:                   'Render',
   contract:                 'Contract',

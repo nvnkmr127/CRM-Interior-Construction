@@ -11,7 +11,11 @@ async function createProject({ tenantId, userId, data }) {
     contract_file_key, 
     contract_file_name, 
     contract_file_size, 
-    contract_file_mime, 
+    contract_file_mime,
+    floor_plan_file_key,
+    floor_plan_file_name,
+    floor_plan_file_size,
+    floor_plan_file_mime, 
     contacts,
     measurements,
     vendors,
@@ -277,9 +281,87 @@ async function createProject({ tenantId, userId, data }) {
       );
     }
 
+    // Create floor plan document record if key is present
+    if (floor_plan_file_key) {
+      const toUUID = (val) => (typeof val === 'string' && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(val) ? val : null);
+      await client.query(
+        `INSERT INTO documents (
+          tenant_id, project_id, name, doc_type, version, storage_key, file_size_bytes, mime_type, uploaded_by, status
+        ) VALUES ($1, $2, $3, $4, 1, $5, $6, $7, $8, 'approved')`,
+        [
+          tenantId,
+          project.id,
+          floor_plan_file_name || 'Floor Plan / Layout Drawing',
+          'drawing',
+          floor_plan_file_key,
+          floor_plan_file_size || null,
+          floor_plan_file_mime || null,
+          toUUID(userId)
+        ]
+      );
+    }
+
     // 1.5. If payment_terms are set, generate the structured payment milestone schedule
     if (project.payment_terms && project.contract_value && Number(project.contract_value) > 0) {
       const contractVal = Number(project.contract_value);
+      // Check tenant payment templates and defaults
+      const defaultPaymentTemplates = [
+        {
+          id: 'tpl-5month-20',
+          name: '5-Month Equal Installment Plan (20% x 5)',
+          milestones: [
+            { name: 'Month 1 - Booking Advance', percentage: 20 },
+            { name: 'Month 2 - Design Finalization', percentage: 20 },
+            { name: 'Month 3 - Factory Production Start', percentage: 20 },
+            { name: 'Month 4 - Site Installation', percentage: 20 },
+            { name: 'Month 5 - Final Handover', percentage: 20 }
+          ]
+        },
+        {
+          id: 'tpl-3stage-20-50-30',
+          name: 'Standard 3-Stage Milestone (20% - 50% - 30%)',
+          milestones: [
+            { name: 'Stage 1 - Booking Advance', percentage: 20 },
+            { name: 'Stage 2 - Material Dispatch', percentage: 50 },
+            { name: 'Stage 3 - Final Handover', percentage: 30 }
+          ]
+        },
+        {
+          id: 'tpl-4stage-10-40-40-10',
+          name: 'Commercial Construction 4-Stage (10% - 40% - 40% - 10%)',
+          milestones: [
+            { name: 'Token Advance', percentage: 10 },
+            { name: 'Civil & Structure Work', percentage: 40 },
+            { name: 'Interior Finishing', percentage: 40 },
+            { name: 'Handover & Retention', percentage: 10 }
+          ]
+        }
+      ];
+
+      let tenantPaymentTemplates = [];
+      try {
+        const tenantRes = await client.query('SELECT config FROM tenants WHERE id = $1', [tenantId]);
+        if (tenantRes.rows.length > 0 && tenantRes.rows[0].config) {
+          const cfg = typeof tenantRes.rows[0].config === 'string' ? JSON.parse(tenantRes.rows[0].config) : tenantRes.rows[0].config;
+          if (Array.isArray(cfg?.payment_templates)) {
+            tenantPaymentTemplates = cfg.payment_templates;
+          }
+        }
+      } catch (err) {
+        logger.warn('Failed to load tenant payment templates in createProject', err);
+      }
+
+      const allTemplates = [...tenantPaymentTemplates, ...defaultPaymentTemplates];
+      const matchedTpl = allTemplates.find(t => t.id === project.payment_terms || t.name === project.payment_terms);
+
+      let milestoneDefinitions = null;
+      if (matchedTpl && Array.isArray(matchedTpl.milestones) && matchedTpl.milestones.length > 0) {
+        milestoneDefinitions = matchedTpl.milestones.map(m => ({
+          name: m.name || m.stage || 'Milestone',
+          pct: Number(m.percentage)
+        }));
+      }
+
       const templates = {
         '10_40_40_10': [
           { name: 'Booking Advance', pct: 10 },
@@ -299,7 +381,9 @@ async function createProject({ tenantId, userId, data }) {
         ]
       };
 
-      let milestoneDefinitions = templates[project.payment_terms];
+      if (!milestoneDefinitions) {
+        milestoneDefinitions = templates[project.payment_terms];
+      }
       if (!milestoneDefinitions) {
         const parts = project.payment_terms.split('_').map(Number);
         const total = parts.reduce((a, b) => a + b, 0);

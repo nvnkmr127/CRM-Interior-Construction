@@ -1,7 +1,20 @@
+.orgTreeWrapper {
+  width: 100%;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding-bottom: 24px;
+  -webkit-overflow-scrolling: touch;
+}
+
 .orgTree {
-  display: flex;
+  display: inline-flex;
   justify-content: center;
-  padding: 20px;
+  align-items: flex-start;
+  min-width: 100%;
+  width: max-content;
+  padding: 24px 32px 48px 32px;
+  gap: 32px;
+  box-sizing: border-box;
 }
 
 .orgNodeContainer {
@@ -9,7 +22,8 @@
   flex-direction: column;
   align-items: center;
   position: relative;
-  padding: 20px 5px 0 5px;
+  padding: 20px 10px 0 10px;
+  flex: 0 0 auto;
 }
 
 .orgNodeContainer::before {
@@ -19,7 +33,7 @@
   left: 50%;
   width: 1px;
   height: 20px;
-  background-color: #cbd5e1;
+  background-color: var(--color-border-strong, #cbd5e1);
 }
 
 /* Remove top line for root nodes */
@@ -28,8 +42,7 @@
 }
 .orgTree > .orgNodeContainer {
   padding-top: 0;
-  flex: 1 1 280px;
-  max-width: 400px;
+  flex: 0 0 auto;
 }
 
 .orgChildren {
@@ -38,6 +51,7 @@
   position: relative;
   padding-top: 20px;
   margin-top: 20px;
+  width: 100%;
 }
 
 .orgChildren::before {
@@ -47,31 +61,137 @@
   left: 50%;
   width: 1px;
   height: 20px;
-  background-color: #cbd5e1;
+  background-color: var(--color-border-strong, #cbd5e1);
 }
 
 /* Horizontal line connecting children */
-.orgChildren .orgNodeContainer::after {
+.orgChildren > .orgNodeContainer::after {
   content: '';
   position: absolute;
   top: 0;
   width: 100%;
   height: 1px;
-  background-color: #cbd5e1;
+  background-color: var(--color-border-strong, #cbd5e1);
 }
 
 /* First child right half line */
-.orgChildren .orgNodeContainer:first-child::after {
+.orgChildren > .orgNodeContainer:first-child::after {
   left: 50%;
   width: 50%;
 }
 
 /* Last child left half line */
-.orgChildren .orgNodeContainer:last-child::after {
+.orgChildren > .orgNodeContainer:last-child::after {
   left: 0;
   width: 50%;
   /* if only one child, no horizontal line needed */
 }
-.orgChildren .orgNodeContainer:only-child::after {
+.orgChildren > .orgNodeContainer:only-child::after {
   display: none;
+}
+
+/* Enhanced Search Bar Styles */
+.searchBarContainer {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background-color: var(--color-surface);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg, 10px);
+  padding: 8px 14px;
+  width: 100%;
+  max-width: 360px;
+  box-shadow: var(--shadow-sm);
+  transition: all var(--transition-fast);
+}
+
+.searchBarContainer:focus-within {
+  border-color: var(--color-accent);
+  box-shadow: 0 0 0 3px rgba(224, 90, 58, 0.15);
+}
+
+.searchBarIcon {
+  color: var(--color-text-muted);
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  transition: color var(--transition-fast);
+}
+
+.searchBarContainer:focus-within .searchBarIcon {
+  color: var(--color-accent);
+}
+
+.searchBarInput {
+  flex: 1;
+  background: transparent;
+  border: none;
+  outline: none;
+  font-size: var(--text-sm);
+  color: var(--color-text);
+  min-width: 0;
+}
+
+.searchBarInput::placeholder {
+  color: var(--color-text-muted);
+}
+
+.searchBadge {
+  font-size: 11px;
+  font-weight: 600;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  background: var(--color-accent-light, rgba(224, 90, 58, 0.12));
+  color: var(--color-accent);
+  white-space: nowrap;
+  flex-shrink: 0;
+}
+
+.searchClearBtn {
+  background: none;
+  border: none;
+  cursor: pointer;
+  color: var(--color-text-muted);
+  padding: 2px 4px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 4px;
+  transition: all var(--transition-fast);
+  flex-shrink: 0;
+}
+
+.searchClearBtn:hover {
+  color: var(--color-text);
+  background-color: var(--color-bg);
+}
+
+.emptySearchState {
+  text-align: center;
+  padding: 60px 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+}
+
+.emptySearchIcon {
+  font-size: 36px;
+  margin-bottom: 12px;
+  opacity: 0.8;
+}
+
+.emptySearchTitle {
+  font-size: var(--text-base);
+  font-weight: 600;
+  color: var(--color-text);
+  margin: 0;
+}
+
+.emptySearchDesc {
+  font-size: var(--text-sm);
+  color: var(--color-text-secondary);
+  margin-top: 4px;
+  max-width: 400px;
 }

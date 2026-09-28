@@ -7,6 +7,7 @@ import styles from './ProjectDetail.module.css';
 import { getProject, deleteProject, updateProject, archiveProject } from '../../api/projects';
 import { getProjectCoverages } from '../../api/leaveApi';
 import { useAuth } from '../../store/authContext';
+import { useToast } from '../../store/toastContext';
 import ProjectForm from '../../components/projects/ProjectForm';
 import ReopenProjectModal from '../../components/projects/ReopenProjectModal';
 import CancelProjectModal from '../../components/projects/CancelProjectModal';
@@ -15,6 +16,7 @@ import ResumeProjectModal from '../../components/projects/ResumeProjectModal';
 import ArchiveProjectModal from '../../components/projects/ArchiveProjectModal';
 import DeleteProjectModal from '../../components/projects/DeleteProjectModal';
 import { useConfirm } from '../../store/confirmContext';
+import { PAYMENT_TEMPLATE_NAMES } from '../../constants/paymentTemplates';
 
 // Lazy load tabs
 const PhaseTimeline = React.lazy(() => import('../../components/projects/PhaseTimeline'));
@@ -281,6 +283,7 @@ function daysRemaining(targetDate) {
 
 const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit }) {
   const { user } = useAuth();
+  const toast = useToast();
   const baseTargetDate = project.target_date ? new Date(project.target_date) : null;
   const timelineImpact = project.stats?.approvedTimelineImpactDays || 0;
   const revisedTargetDate = baseTargetDate && timelineImpact > 0 ? new Date(baseTargetDate.getTime() + timelineImpact * 24 * 60 * 60 * 1000) : null;
@@ -292,6 +295,9 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
     currentResourceName: ''
   });
   const [projectCoverages, setProjectCoverages] = useState([]);
+  const [showPastCoverages, setShowPastCoverages] = useState(false);
+  const [savingChecklistKey, setSavingChecklistKey] = useState(null);
+  const [isEditingChecklist, setIsEditingChecklist] = useState(false);
 
   useEffect(() => {
     if (!project?.id) return;
@@ -300,8 +306,155 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
       .catch(() => setProjectCoverages([]));
   }, [project?.id]);
 
+  const activeCoverages = React.useMemo(() => {
+    return (projectCoverages || []).filter(cov => {
+      if (!cov.end_date) return true;
+      const end = new Date(cov.end_date);
+      end.setHours(23, 59, 59, 999);
+      return end.getTime() >= Date.now();
+    });
+  }, [projectCoverages]);
+
+  const pastCoverages = React.useMemo(() => {
+    return (projectCoverages || []).filter(cov => {
+      if (!cov.end_date) return false;
+      const end = new Date(cov.end_date);
+      end.setHours(23, 59, 59, 999);
+      return end.getTime() < Date.now();
+    });
+  }, [projectCoverages]);
+
   // custom_fields may hold advance_amount, payment_terms, etc from conversion form
-  const cf = project.custom_fields || {};
+  const parsedCf = React.useMemo(() => {
+    if (!project?.custom_fields) return {};
+    if (typeof project.custom_fields === 'string') {
+      try {
+        return JSON.parse(project.custom_fields);
+      } catch {
+        return {};
+      }
+    }
+    return project.custom_fields;
+  }, [project?.custom_fields]);
+
+  const [checklistState, setChecklistState] = useState(parsedCf);
+
+  useEffect(() => {
+    setChecklistState(parsedCf);
+  }, [parsedCf]);
+
+  const cf = checklistState;
+
+  const CHECKLIST_ITEMS = React.useMemo(() => [
+    {
+      key: 'booking_received',
+      label: 'Booking amount received',
+      detect: (proj, currentCf) =>
+        Number(proj.stats?.collectedPayment || 0) > 0 ||
+        Number(proj.booking_amount || 0) > 0 ||
+        Number(currentCf.advance_amount || 0) > 0 ||
+        Number(currentCf.booking_received || 0) > 0 ||
+        proj.status === 'active' ||
+        proj.status === 'in_progress',
+    },
+    {
+      key: 'floor_plan',
+      label: 'Floor plan attached',
+      detect: (proj, currentCf) =>
+        Boolean(
+          proj.floor_plan_url ||
+          proj.floor_plan_file_key ||
+          currentCf.floor_plan ||
+          currentCf.floor_plan_url ||
+          currentCf.has_floor_plan ||
+          currentCf.pre_conversion_checklist?.floor_plan ||
+          (Array.isArray(proj.documents) && proj.documents.some(d => (d.doc_type === 'drawing' || d.doc_type === 'floor_plan') && !d.deleted_at))
+        ),
+    },
+    {
+      key: 'scope_finalized',
+      label: 'Scope finalized',
+      detect: (proj, currentCf) =>
+        Boolean(
+          proj.is_scope_locked ||
+          proj.scope_finalized ||
+          proj.type ||
+          proj.project_type ||
+          currentCf.scope_finalized ||
+          currentCf.pre_conversion_checklist?.scope_finalized
+        ),
+    },
+    {
+      key: 'contract_signed',
+      label: 'Signed contract attached',
+      detect: (proj, currentCf) =>
+        Boolean(
+          proj.contract_file_key ||
+          proj.agreement_signed_at ||
+          proj.agreement_signed_by ||
+          proj.signed_contract_url ||
+          currentCf.contract_signed ||
+          currentCf.pre_conversion_checklist?.contract_signed ||
+          (Array.isArray(proj.documents) && proj.documents.some(d => d.doc_type === 'contract' && !d.deleted_at))
+        ),
+    },
+    {
+      key: 'site_address_confirmed',
+      label: 'Site address confirmed',
+      detect: (proj, currentCf) =>
+        Boolean(
+          (proj.site_address && proj.site_address.trim().length > 0) ||
+          proj.latitude ||
+          currentCf.site_address ||
+          currentCf.site_address_confirmed ||
+          currentCf.pre_conversion_checklist?.site_address_confirmed ||
+          proj.street ||
+          proj.city
+        ),
+    },
+  ], []);
+
+  const isItemChecked = React.useCallback((item) => {
+    const val = checklistState[item.key] !== undefined && checklistState[item.key] !== null
+      ? checklistState[item.key]
+      : checklistState.pre_conversion_checklist?.[item.key];
+    if (val !== undefined && val !== null) {
+      return val === true || val === 'true';
+    }
+    return item.detect(project, checklistState);
+  }, [checklistState, project]);
+
+  const handleToggleChecklistItem = async (item) => {
+    if (!isEditingChecklist || savingChecklistKey) return;
+    const currentStatus = isItemChecked(item);
+    const nextStatus = !currentStatus;
+    const nextCustomFields = {
+      ...checklistState,
+      [item.key]: nextStatus,
+      pre_conversion_checklist: {
+        ...(checklistState.pre_conversion_checklist || {}),
+        [item.key]: nextStatus,
+      }
+    };
+
+    // Optimistic UI update
+    setChecklistState(nextCustomFields);
+    setSavingChecklistKey(item.key);
+
+    try {
+      await updateProject(project.id, {
+        custom_fields: nextCustomFields,
+      });
+      toast.success(`"${item.label}" marked as ${nextStatus ? 'verified ✓' : 'pending ✗'}.`);
+      if (onRefresh) onRefresh();
+    } catch (err) {
+      console.error('Failed to update checklist item:', err);
+      toast.error('Failed to save checklist state. Please try again.');
+      setChecklistState(parsedCf);
+    } finally {
+      setSavingChecklistKey(null);
+    }
+  };
 
   const fields = React.useMemo(() => [
     { label: 'Project Type',    value: (project.type || project.project_type) ? (project.type || project.project_type).replace(/_/g, ' ') : '—' },
@@ -317,7 +470,7 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
     { label: 'Scope Reductions (Change Orders)', value: formatValue(project.stats?.reductionsTotal || 0) },
     { label: 'Net Contract Value', value: formatValue(project.stats?.netContractValue || project.contract_value) },
     { label: 'Booking Amount',  value: project.booking_amount ? formatValue(project.booking_amount) : (cf.advance_amount ? formatValue(cf.advance_amount) : '—') },
-    { label: 'Payment Terms',   value: project.payment_terms ? project.payment_terms.replace(/_/g, ' – ') : (cf.payment_terms ? cf.payment_terms.replace(/_/g, ' – ') : '—') },
+    { label: 'Payment Terms',   value: (project.payment_terms && PAYMENT_TEMPLATE_NAMES[project.payment_terms]) || (project.payment_terms ? project.payment_terms.replace(/_/g, ' – ') : (cf.payment_terms ? (PAYMENT_TEMPLATE_NAMES[cf.payment_terms] || cf.payment_terms.replace(/_/g, ' – ')) : '—')) },
     { label: 'Status',          value: project.status ? project.status.replace(/_/g, ' ') : '—' },
   ], [project, timelineImpact, revisedTargetDate, cf]);
 
@@ -515,18 +668,20 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
               }}>
                 {(member.name || '?').charAt(0)}
               </div>
-              <div>
-                <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                  {member.name}
-                  {(() => {
-                    const cov = (projectCoverages || []).find(c => String(c.on_leave_user_id) === String(member.id));
-                    if (!cov) return null;
-                    return (
-                      <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-accent, #3b82f6)', background: 'var(--color-accent-bg, #eff6ff)', padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px' }}>
-                        🤝 Covered by {cov.covering_user_name}
-                      </span>
-                    );
-                  })()}
+              <div style={{ flex: 1, minWidth: 0 }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
+                  <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
+                    <span>{member.name}</span>
+                    {(() => {
+                      const cov = activeCoverages.find(c => String(c.on_leave_user_id) === String(member.id));
+                      if (!cov) return null;
+                      return (
+                        <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-accent, #3b82f6)', background: 'var(--color-accent-bg, #eff6ff)', padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
+                          🤝 Covered by {cov.covering_user_name}
+                        </span>
+                      );
+                    })()}
+                  </div>
                   {member.key && (
                     <button
                       onClick={() => setHandoverState({
@@ -543,7 +698,8 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
                         fontWeight: 600,
                         cursor: 'pointer',
                         padding: '2px 6px',
-                        borderRadius: '4px'
+                        borderRadius: '4px',
+                        marginLeft: 'auto'
                       }}
                       title={`Replace ${member.role}`}
                     >
@@ -551,7 +707,7 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
                     </button>
                   )}
                 </div>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{member.role}</div>
+                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '2px' }}>{member.role}</div>
               </div>
             </div>
           ))}
@@ -559,7 +715,7 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
       </div>
 
       {/* Active Colleague Handover & Coverage Banner */}
-      {projectCoverages && projectCoverages.length > 0 && (
+      {activeCoverages.length > 0 && (
         <div style={{
           background: 'var(--color-surface, #ffffff)',
           borderRadius: 'var(--radius-lg, 12px)',
@@ -574,11 +730,11 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
               <span style={{ fontSize: '11px', background: '#dcfce7', color: '#15803d', padding: '2px 8px', borderRadius: '999px', fontWeight: 600 }}>Active Delegation</span>
             </div>
             <span style={{ fontSize: '11px', color: 'var(--color-text-muted, #9ca3af)', fontWeight: 500 }}>
-              {projectCoverages.length} {projectCoverages.length === 1 ? 'delegation' : 'delegations'}
+              {activeCoverages.length} {activeCoverages.length === 1 ? 'delegation' : 'delegations'}
             </span>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-            {projectCoverages.map(cov => {
+            {activeCoverages.map(cov => {
               const isCovering = String(user?.id) === String(cov.covering_user_id);
               return (
                 <div key={cov.id} style={{ fontSize: 'var(--text-sm, 13px)', color: 'var(--color-text-secondary, #4b5563)', background: isCovering ? 'var(--color-accent-bg, #eff6ff)' : 'var(--color-surface-2, #f9fafb)', padding: '12px 14px', borderRadius: '8px', border: `1px solid ${isCovering ? 'var(--color-accent, #bfdbfe)' : 'var(--color-border, #e5e7eb)'}` }}>
@@ -607,42 +763,195 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
         </div>
       )}
 
-      {/* Pre-Conversion Checklist — only shown for converted leads */}
-      {project.lead_id && (
-        <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-            Pre-Conversion Checklist
+      {/* Completed / Past Delegations History (Collapsible) */}
+      {pastCoverages.length > 0 && (
+        <div style={{
+          background: 'var(--color-surface, #ffffff)',
+          borderRadius: 'var(--radius-lg, 12px)',
+          border: '1px solid var(--color-border, #e5e1d8)',
+          padding: '12px 18px',
+          boxShadow: 'var(--shadow-sm, 0 1px 2px rgba(0,0,0,0.03))'
+        }}>
+          <div 
+            onClick={() => setShowPastCoverages(!showPastCoverages)}
+            style={{ 
+              display: 'flex', 
+              alignItems: 'center', 
+              justifyContent: 'space-between', 
+              cursor: 'pointer',
+              userSelect: 'none'
+            }}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', fontSize: '13px', fontWeight: 600, color: 'var(--color-text-secondary, #6b7280)' }}>
+              <span>📜 Completed Coverage History ({pastCoverages.length})</span>
+            </div>
+            <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', fontWeight: 500 }}>
+              {showPastCoverages ? '▲ Hide History' : '▼ View History'}
+            </span>
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
-            {[
-              { key: 'booking_received',      label: 'Booking amount received' },
-              { key: 'floor_plan',            label: 'Floor plan attached' },
-              { key: 'scope_finalized',       label: 'Scope finalized' },
-              { key: 'contract_signed',       label: 'Signed contract attached' },
-              { key: 'site_address_confirmed',label: 'Site address confirmed' },
-            ].map((item, i) => {
-              const checked = cf[item.key] === true || cf[item.key] === 'true';
+
+          {showPastCoverages && (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginTop: '12px', paddingTop: '10px', borderTop: '1px solid var(--color-border, #e5e7eb)' }}>
+              {pastCoverages.map(cov => (
+                <div key={cov.id} style={{ fontSize: '12px', color: 'var(--color-text-muted, #6b7280)', background: 'var(--color-surface-2, #f9fafb)', padding: '10px 12px', borderRadius: '6px', border: '1px solid var(--color-border, #e5e7eb)', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '6px' }}>
+                  <div>
+                    <strong>{cov.covering_user_name}</strong> covered for <strong>{cov.on_leave_user_name}</strong> ({cov.on_leave_role || 'Team Member'})
+                    <span style={{ marginLeft: '8px', fontSize: '11px' }}>
+                      ({new Date(cov.start_date).toLocaleDateString()} – {new Date(cov.end_date).toLocaleDateString()})
+                    </span>
+                  </div>
+                  <span style={{ fontSize: '10px', background: '#f3f4f6', color: '#6b7280', padding: '2px 6px', borderRadius: '4px', fontWeight: 600 }}>
+                    Expired / Completed
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Pre-Conversion Checklist — only shown for converted leads or if checklist exists */}
+      {(project.lead_id || CHECKLIST_ITEMS.some(isItemChecked)) && (
+        <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
+          <div style={{
+            padding: '12px 20px',
+            borderBottom: '1px solid var(--color-border)',
+            display: 'flex',
+            justifyContent: 'space-between',
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: '10px'
+          }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
+                Pre-Conversion Checklist
+              </span>
+              <span style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                padding: '2px 8px',
+                borderRadius: '999px',
+                background: CHECKLIST_ITEMS.filter(isItemChecked).length === CHECKLIST_ITEMS.length
+                  ? 'var(--color-success-bg, #dcfce7)'
+                  : 'var(--color-surface-2, #f3f4f6)',
+                color: CHECKLIST_ITEMS.filter(isItemChecked).length === CHECKLIST_ITEMS.length
+                  ? 'var(--color-success, #16a34a)'
+                  : 'var(--color-text-secondary, #4b5563)',
+                border: '1px solid var(--color-border)'
+              }}>
+                {CHECKLIST_ITEMS.filter(isItemChecked).length} / {CHECKLIST_ITEMS.length} Verified
+              </span>
+            </div>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+              {isEditingChecklist ? (
+                <>
+                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-accent, #3b82f6)', fontWeight: 500 }}>
+                    Click items to check or uncheck
+                  </span>
+                  <Button variant="primary" size="sm" onClick={() => setIsEditingChecklist(false)}>
+                    ✓ Done
+                  </Button>
+                </>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => setIsEditingChecklist(true)}>
+                  ✏️ Edit
+                </Button>
+              )}
+            </div>
+          </div>
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
+            gap: '1px',
+            background: 'var(--color-border)',
+            overflowX: 'auto'
+          }}>
+            {CHECKLIST_ITEMS.map((item) => {
+              const checked = isItemChecked(item);
+              const isSaving = savingChecklistKey === item.key;
               return (
-                <div key={item.key} style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 10,
-                  padding: '12px 20px',
-                  borderBottom: i < 4 ? '1px solid var(--color-border)' : 'none',
-                  borderRight: (i % 2 === 0) ? '1px solid var(--color-border)' : 'none',
-                }}>
+                <div
+                  key={item.key}
+                  role={isEditingChecklist ? "button" : undefined}
+                  tabIndex={isEditingChecklist ? 0 : undefined}
+                  onClick={() => {
+                    if (isEditingChecklist) {
+                      handleToggleChecklistItem(item);
+                    }
+                  }}
+                  onKeyDown={(e) => {
+                    if (isEditingChecklist && (e.key === 'Enter' || e.key === ' ')) {
+                      e.preventDefault();
+                      handleToggleChecklistItem(item);
+                    }
+                  }}
+                  title={isEditingChecklist ? `Click to mark as ${checked ? 'pending' : 'verified'}` : item.hint}
+                  style={{
+                    background: 'var(--color-surface)',
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: 9,
+                    padding: '10px 12px',
+                    cursor: isEditingChecklist ? (isSaving ? 'wait' : 'pointer') : 'default',
+                    userSelect: 'none',
+                    transition: isEditingChecklist ? 'background var(--transition-fast, 0.15s ease)' : 'none',
+                    opacity: isSaving ? 0.7 : 1,
+                    minWidth: 0,
+                  }}
+                  onMouseEnter={(e) => {
+                    if (isEditingChecklist) {
+                      e.currentTarget.style.background = 'var(--color-surface-hover, #f8fafc)';
+                    }
+                  }}
+                  onMouseLeave={(e) => {
+                    if (isEditingChecklist) {
+                      e.currentTarget.style.background = 'var(--color-surface)';
+                    }
+                  }}
+                >
                   <span style={{
-                    width: 22, height: 22, borderRadius: '50%',
-                    display: 'flex', alignItems: 'center', justifyContent: 'center',
-                    background: checked ? 'var(--color-success-bg)' : 'var(--color-danger-bg)',
-                    color: checked ? 'var(--color-success)' : 'var(--color-danger)',
-                    fontWeight: 700, fontSize: 13, flexShrink: 0,
+                    width: 20,
+                    height: 20,
+                    borderRadius: '50%',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: checked ? 'var(--color-success-bg, #dcfce7)' : 'var(--color-danger-bg, #fee2e2)',
+                    color: checked ? 'var(--color-success, #16a34a)' : 'var(--color-danger, #dc2626)',
+                    border: `1.5px solid ${checked ? 'var(--color-success, #16a34a)' : 'var(--color-danger, #dc2626)'}`,
+                    fontWeight: 700,
+                    fontSize: 11,
+                    flexShrink: 0,
+                    boxShadow: 'var(--shadow-sm)'
                   }}>
-                    {checked ? '✓' : '✗'}
+                    {isSaving ? '⏳' : (checked ? '✓' : '✗')}
                   </span>
-                  <span style={{ fontSize: 'var(--text-sm)', color: checked ? 'var(--color-text)' : 'var(--color-text-secondary)' }}>
-                    {item.label}
-                  </span>
+                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
+                    <span style={{
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: checked ? 'var(--color-text)' : 'var(--color-text-secondary)',
+                      lineHeight: 1.25,
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }} title={item.label}>
+                      {item.label}
+                    </span>
+                    <span style={{
+                      fontSize: '10px',
+                      color: checked ? 'var(--color-success, #16a34a)' : 'var(--color-text-muted)',
+                      fontWeight: 500,
+                      marginTop: '2px',
+                      whiteSpace: 'nowrap',
+                      overflow: 'hidden',
+                      textOverflow: 'ellipsis'
+                    }}>
+                      {isEditingChecklist
+                        ? (checked ? '✓ Verified • Toggle' : '✗ Pending • Toggle')
+                        : (checked ? '✓ Verified' : '✗ Pending')}
+                    </span>
+                  </div>
                 </div>
               );
             })}
@@ -1470,32 +1779,34 @@ export default function ProjectDetail() {
           {(project.start_date || project.target_date) && (
             <div className={styles.metaItem}>📅 {formatDate(project.start_date)} → {formatDate(project.target_date)}</div>
           )}
-          {project.site_address && (
+          {(project.site_address || (project.latitude && project.longitude) || project.street) && (
             <div className={styles.metaItem} style={{ display: 'flex', alignItems: 'center', flexWrap: 'wrap', gap: '6px' }}>
-              📍 {project.site_address}
-              {project.latitude && project.longitude && (
-                <a 
-                  href={`https://www.google.com/maps/search/?api=1&query=${project.latitude},${project.longitude}`} 
-                  target="_blank" 
-                  rel="noopener noreferrer"
-                  style={{
-                    display: 'inline-flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    marginLeft: '8px',
-                    padding: '2px 8px',
-                    fontSize: '11px',
-                    fontWeight: 600,
-                    borderRadius: '4px',
-                    background: 'var(--color-primary-bg, #e0f2fe)',
-                    color: 'var(--color-primary, #0284c7)',
-                    textDecoration: 'none'
-                  }}
-                  title="Navigate on Google Maps"
-                >
-                  🗺️ Navigate
-                </a>
-              )}
+              📍 {project.site_address || [project.flat_number, project.building_name, project.street, project.city].filter(Boolean).join(', ')}
+              <a 
+                href={`https://www.google.com/maps/search/?api=1&query=${
+                  project.latitude && project.longitude
+                    ? `${project.latitude},${project.longitude}`
+                    : encodeURIComponent(project.site_address || [project.flat_number, project.building_name, project.street, project.landmark, project.city, project.pincode].filter(Boolean).join(', '))
+                }`} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '4px',
+                  marginLeft: '8px',
+                  padding: '2px 8px',
+                  fontSize: '11px',
+                  fontWeight: 600,
+                  borderRadius: '4px',
+                  background: 'var(--color-primary-bg, #e0f2fe)',
+                  color: 'var(--color-primary, #0284c7)',
+                  textDecoration: 'none'
+                }}
+                title="Navigate on Google Maps"
+              >
+                🗺️ Navigate
+              </a>
             </div>
           )}
         </div>
@@ -1539,7 +1850,6 @@ export default function ProjectDetail() {
           {[
             // 1. Initiation & Setup
             { id: 'Overview', icon: '📝', label: 'Overview' },
-            { id: 'Phases & Schedule', icon: '⏱️', label: 'Phases & Schedule' },
             { id: 'Client Profile', icon: '👤', label: 'Client Profile' },
             { id: 'Site Details', icon: '📍', label: 'Site Details' },
             { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },
