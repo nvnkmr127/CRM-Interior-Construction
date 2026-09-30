@@ -9,13 +9,13 @@ import api from '../../api/axios'
 import { useS3Upload } from '../../hooks/useS3Upload'
 import { useFieldPermissions } from '../../hooks/useFieldPermissions'
 import { fetchProjectTypes, DEFAULT_PROJECT_TYPES } from '../../constants/projectTypes'
-import { fetchPaymentTemplates, DEFAULT_PAYMENT_TEMPLATES, formatTemplatePercentages } from '../../constants/paymentTemplates'
+import { fetchPaymentTemplates, DEFAULT_PAYMENT_TEMPLATES, formatTemplatePercentages, formatTemplateLabel } from '../../constants/paymentTemplates'
 
 export default function ProjectForm({ project, onSave, onClose, isOpen, editSection = 'all' }) {
   const showAll = editSection === 'all';
   const showProjectDetails = showAll || editSection === 'details';
-  const showClient = showAll || editSection === 'client' || editSection === 'details';
-  const showContacts = showAll || editSection === 'contacts' || editSection === 'details';
+  const showClient = showAll || editSection === 'client';
+  const showContacts = showAll || editSection === 'contacts';
   const showTeam = showAll || editSection === 'team';
   const showRevisions = showAll || editSection === 'revisions';
 
@@ -604,12 +604,19 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
 
   const paymentTermsOptions = paymentTemplates.map(t => ({
     value: t.id,
-    label: formatTemplatePercentages(t)
+    label: formatTemplateLabel(t)
   }));
   if (formData.paymentTerms && !paymentTermsOptions.some(o => o.value === formData.paymentTerms)) {
+    const legacyMap = {
+      '10_40_40_10': 'Commercial Construction 4-Stage (10% - 40% - 40% - 10%)',
+      '20_50_30': 'Standard 3-Stage Milestone (20% - 50% - 30%)',
+      '20_20_20_20_20': '5-Month Equal Installment Plan (20% x 5)',
+      '30_30_30_10': '30% - 30% - 30% - 10%',
+      '50_50': '50% - 50%'
+    };
     paymentTermsOptions.push({
       value: formData.paymentTerms,
-      label: formData.paymentTerms.replace(/_/g, ' - ')
+      label: legacyMap[formData.paymentTerms] || formData.paymentTerms.replace(/_/g, ' - ')
     });
   }
 
@@ -922,10 +929,31 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
             </div>
           )}
 
+        {/* Site Details (City & Builder) */}
+        {showProjectDetails && (
+          <div className={styles.fullWidth} style={{ marginTop: 24, marginBottom: 16 }}>
+            <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Location & Builder</div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
+              <Input 
+                label="City" 
+                placeholder="e.g. Hyderabad"
+                value={formData.city} 
+                onChange={e => setFormData({...formData, city: e.target.value})} 
+              />
+              <Input 
+                label="Builder Name" 
+                placeholder="e.g. Prestige Group"
+                value={formData.builderName} 
+                onChange={e => setFormData({...formData, builderName: e.target.value})} 
+              />
+            </div>
+          </div>
+        )}
+
         {/* Structured address fields */}
         {showAll && (
           <div className={styles.fullWidth}>
-            <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Site Address Details</div>
+            <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Detailed Site Address</div>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '16px', marginBottom: '16px' }}>
             <Input 
               label="Flat / Unit No" 
@@ -960,13 +988,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
               onChange={e => setFormData({...formData, landmark: e.target.value})} 
             />
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', marginBottom: '16px' }}>
-            <Input 
-              label="City" 
-              placeholder="e.g. Hyderabad"
-              value={formData.city} 
-              onChange={e => setFormData({...formData, city: e.target.value})} 
-            />
+          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px', marginBottom: '16px' }}>
             <Input 
               label="Pincode" 
               placeholder="e.g. 500034"
@@ -1023,15 +1045,18 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
 
         {/* Project Classification & Nature */}
         {showProjectDetails && (
-          <div className={styles.fullWidth} style={{ marginTop: 8 }}>
+          <div className={styles.fullWidth} style={{ marginTop: 24 }}>
             <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Classification & Nature</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
             <Select 
               label="Project Category" 
+              editable
+              placeholder="Select or enter category..."
               options={[
-                { value: '', label: 'Select Category' },
                 { value: 'residential', label: 'Residential' },
                 { value: 'commercial', label: 'Commercial' },
+                { value: 'hospitality', label: 'Hospitality' },
+                { value: 'retail', label: 'Retail' },
                 { value: 'other', label: 'Other' }
               ]}
               value={formData.projectCategory}
@@ -1039,11 +1064,14 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
             />
             <Select 
               label="Project Sub-Category" 
+              editable
+              placeholder="Select or enter sub-category..."
               options={[
-                { value: '', label: 'Select Sub-Category' },
                 { value: 'apartment', label: 'Apartment' },
                 { value: 'villa', label: 'Villa' },
                 { value: 'independent_house', label: 'Independent House' },
+                { value: 'penthouse', label: 'Penthouse' },
+                { value: 'duplex', label: 'Duplex' },
                 { value: 'office', label: 'Office' },
                 { value: 'retail', label: 'Retail' },
                 { value: 'hospitality', label: 'Hospitality' },
@@ -1052,22 +1080,28 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
               value={formData.projectSubCategory}
               onChange={v => setFormData({...formData, projectSubCategory: v})}
             />
-            <Select 
-              label="Ownership Type" 
-              options={[
-                { value: '', label: 'Select Ownership' },
-                { value: 'owned', label: 'Owned' },
-                { value: 'rented', label: 'Rented' }
-              ]}
-              value={formData.propertyType}
-              onChange={v => setFormData({...formData, propertyType: v})}
-            />
+            {showAll && (
+              <Select 
+                label="Ownership Type" 
+                editable
+                placeholder="Select or enter ownership..."
+                options={[
+                  { value: 'owned', label: 'Owned' },
+                  { value: 'rented', label: 'Rented' },
+                  { value: 'leased', label: 'Leased' }
+                ]}
+                value={formData.propertyType}
+                onChange={v => setFormData({...formData, propertyType: v})}
+              />
+            )}
           </div>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
-            <Select 
+          {showAll && (
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px' }}>
+              <Select 
               label="Property Age" 
+              editable
+              placeholder="Select or enter property age..."
               options={[
-                { value: '', label: 'Select Property Age' },
                 { value: 'new', label: 'New / Under Construction' },
                 { value: '1-5_years', label: '1 - 5 Years' },
                 { value: '5-10_years', label: '5 - 10 Years' },
@@ -1078,8 +1112,9 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
             />
             <Select 
               label="Renovation Scope" 
+              editable
+              placeholder="Select or enter renovation scope..."
               options={[
-                { value: '', label: 'Select Renovation Scope' },
                 { value: 'full', label: 'Full Renovation' },
                 { value: 'partial', label: 'Partial Renovation' },
                 { value: 'none', label: 'New Handover Fit-out (None)' }
@@ -1089,8 +1124,9 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
             />
             <Select 
               label="Market Segment" 
+              editable
+              placeholder="Select or enter segment..."
               options={[
-                { value: '', label: 'Select Segment' },
                 { value: 'budget', label: 'Budget' },
                 { value: 'standard', label: 'Standard' },
                 { value: 'premium', label: 'Premium' },
@@ -1100,6 +1136,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
               onChange={v => setFormData({...formData, segment: v})}
             />
           </div>
+          )}
             </div>
           )}
 
@@ -1254,7 +1291,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           )}
 
         {/* Project Stakeholders */}
-        {(showTeam || showContacts) && (
+        {showContacts && (
           <div className={styles.fullWidth} style={{ marginTop: 8 }}>
             <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Stakeholders & Contacts</div>
           
@@ -1796,32 +1833,35 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           )}
 
         {showProjectDetails && (
-          <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+          <div className={styles.fullWidth} style={{ marginTop: 24 }}>
+            <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Financial Details</div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+              {!isHidden('budget') && (
+              <div>
+                <Input 
+                  label="Contract Value (₹)" 
+                  type="number"
+                  placeholder="e.g. 500000"
+                  value={formData.contractValue} 
+                  onChange={e => setFormData({...formData, contractValue: e.target.value})} 
+                  error={errors.contractValue}
+                  disabled={isReadOnly('budget')}
+                />
+              </div>
+            )}
             {!isHidden('budget') && (
-            <div>
+              <div>
               <Input 
-                label="Contract Value (₹)" 
+                label="Booking Amount (₹)" 
                 type="number"
-                placeholder="e.g. 500000"
-                value={formData.contractValue} 
-                onChange={e => setFormData({...formData, contractValue: e.target.value})} 
-                error={errors.contractValue}
-                disabled={isReadOnly('budget')}
+                placeholder="e.g. 50000"
+                value={formData.bookingAmount} 
+                onChange={e => setFormData({...formData, bookingAmount: e.target.value})} 
+                disabled={!!project || isReadOnly('budget')}
               />
+              </div>
+            )}
             </div>
-          )}
-          {!isHidden('budget') && (
-            <div>
-            <Input 
-              label="Booking Amount (₹)" 
-              type="number"
-              placeholder="e.g. 50000"
-              value={formData.bookingAmount} 
-              onChange={e => setFormData({...formData, bookingAmount: e.target.value})} 
-              disabled={!!project || isReadOnly('budget')}
-            />
-            </div>
-          )}
           </div>
         )}
 
@@ -1886,22 +1926,25 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
 
         {showProjectDetails && (
           <>
-            <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-              <div className={styles.datesGrid} style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
-            <Input 
-              label="Start Date" 
-              type="date"
-              value={formData.startDate} 
-              onChange={e => setFormData({...formData, startDate: e.target.value})} 
-            />
-            <Input 
-              label="Target Date" 
-              type="date"
-              value={formData.targetDate} 
-              onChange={e => setFormData({...formData, targetDate: e.target.value})} 
-            />
-          </div>
-        </div>
+            <div className={styles.fullWidth} style={{ marginTop: 24 }}>
+              <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Schedule & Timeline</div>
+              <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                <div className={styles.datesGrid} style={{ gridColumn: 'span 2', display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
+                  <Input 
+                    label="Start Date" 
+                    type="date"
+                    value={formData.startDate} 
+                    onChange={e => setFormData({...formData, startDate: e.target.value})} 
+                  />
+                  <Input 
+                    label="Target Date" 
+                    type="date"
+                    value={formData.targetDate} 
+                    onChange={e => setFormData({...formData, targetDate: e.target.value})} 
+                  />
+                </div>
+              </div>
+            </div>
 
         {showAll && (
           <div className={styles.fullWidth} style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '24px' }}>

@@ -613,6 +613,34 @@ router.post('/:id/approve', async (req, res, next) => {
             tenantId
           ]
         );
+
+        // Auto-activate project if this was a booking/advance milestone
+        const mRow = await client.query(
+          'SELECT project_id, name, amount, paid_amount FROM payment_milestones WHERE id = $1 AND tenant_id = $2',
+          [milestoneId, tenantId]
+        );
+        if (mRow.rows.length > 0) {
+          const mData = mRow.rows[0];
+          const isBooking = /booking|advance|token/i.test(mData.name || '') || /booking|advance/i.test(approval.target_number || '');
+          if (isBooking) {
+            const pRow = await client.query(
+              'SELECT id, status FROM projects WHERE id = $1 AND tenant_id = $2',
+              [mData.project_id, tenantId]
+            );
+            if (pRow.rows.length > 0 && ['pending_booking', 'pending_payment'].includes(pRow.rows[0].status)) {
+              await client.query(
+                `UPDATE projects 
+                 SET status = 'active', 
+                     booking_amount = COALESCE(NULLIF(booking_amount, 0), $1), 
+                     updated_at = NOW() 
+                 WHERE id = $2 AND tenant_id = $3`,
+                [mData.paid_amount || mData.amount || 0, mData.project_id, tenantId]
+              );
+              const { clearCachePrefix } = require('../utils/cache');
+              clearCachePrefix(mData.project_id).catch(() => {});
+            }
+          }
+        }
       }
     } 
     else if (approval.transaction_type === 'discount') {

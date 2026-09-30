@@ -17,6 +17,12 @@ async function enforceProjectAccess(req, res, next, id) {
       return res.status(401).json({ success: false, error: 'UNAUTHORIZED', message: 'Tenant context missing' });
     }
 
+    // Ensure id is a valid UUID format before querying
+    const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(id);
+    if (!isUuid) {
+      return res.status(404).json({ success: false, error: 'NOT_FOUND', message: 'Project not found' });
+    }
+
     // Verify the project exists in this tenant
     const { rows: projRows } = await pool.query(
       'SELECT 1 FROM projects WHERE id = $1 AND tenant_id = $2',

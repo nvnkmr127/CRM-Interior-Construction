@@ -1,5 +1,5 @@
-import { NAV_ITEMS } from './navigation'
-import { isSuperMasterDeveloper } from '../utils/isSuperMasterDeveloper'
+import { NAV_ITEMS } from './navigation.js'
+import { isSuperMasterDeveloper } from '../utils/isSuperMasterDeveloper.js'
 
 export const PERMISSION_MODULES = [
   { id: 'leads', label: 'Leads' },
@@ -56,15 +56,20 @@ const MODULE_DEFAULT_GROUPS = {
 export const getDynamicPermissionModules = () => {
   const modulesMap = new Map();
 
-  // 1. Process NAV_ITEMS dynamically - extract every active tab & sub-tab present in the main sidebar
+  // Process NAV_ITEMS dynamically - extract every active tab & sub-tab present in the main sidebar
   if (NAV_ITEMS && Array.isArray(NAV_ITEMS)) {
     NAV_ITEMS.forEach(group => {
+      // Exclude developer-only groups from general role permission manager
+      if (group.developerOnly || group.group === 'DEVELOPER TOOLS') return;
+
       const groupName = group.group || 'WORKSPACE';
       if (group.items && Array.isArray(group.items)) {
         group.items.forEach(item => {
+          if (item.developerOnly) return;
+
           if (item.subItems && Array.isArray(item.subItems) && item.subItems.length > 0) {
             item.subItems.forEach(sub => {
-              if (sub.id) {
+              if (sub.id && !sub.developerOnly) {
                 const parentPrefix = item.label && !sub.label.toLowerCase().includes(item.label.toLowerCase()) ? `${item.label} ` : '';
                 modulesMap.set(sub.id, {
                   id: sub.id,
@@ -86,24 +91,6 @@ export const getDynamicPermissionModules = () => {
       }
     });
   }
-
-  // 2. Include core permission modules only if they correspond to active sidebar modules/tabs
-  const abstractParentIds = new Set(['analytics', 'leads', 'team-management']);
-  PERMISSION_MODULES.forEach(m => {
-    if (!modulesMap.has(m.id) && !abstractParentIds.has(m.id)) {
-      const isMappedToActiveTab = NAV_ITEMS.some(g => 
-        (g.items || []).some(it => 
-          it.id === m.id || 
-          (Array.isArray(it.module) ? it.module.includes(m.id) : it.module === m.id) ||
-          (it.subItems || []).some(sub => sub.id === m.id || (Array.isArray(sub.module) ? sub.module.includes(m.id) : sub.module === m.id))
-        )
-      );
-      if (isMappedToActiveTab) {
-        const defaultGrp = MODULE_DEFAULT_GROUPS[m.id] || 'WORKSPACE';
-        modulesMap.set(m.id, { ...m, group: defaultGrp });
-      }
-    }
-  });
 
   return Array.from(modulesMap.values());
 };
@@ -346,6 +333,19 @@ export const isTabPermitted = (item, user, planTabs = null) => {
   // 2. Universal Team Member Portal Bypass: Leave Management must be present in every team member portal by default
   if (item.id === 'absences') return true;
 
+  const modules = Array.isArray(user?.role?.enabled_modules)
+    ? user.role.enabled_modules
+    : (Array.isArray(user?.enabled_modules)
+      ? user.enabled_modules
+      : (Array.isArray(user?.role?.modules) ? user.role.modules : []));
+
+  const isTabExplicitlyRoleGranted = item.id && (
+    modules.includes(item.id) || 
+    perms.includes(item.id) || 
+    perms.includes(`${item.id}:view`) ||
+    (item.subItems && Array.isArray(item.subItems) && item.subItems.some(sub => modules.includes(sub.id) || perms.includes(sub.id) || perms.includes(`${sub.id}:view`)))
+  );
+
   // 3. Subscription Plan filtering for all client accounts (including workspace admins)
   const tenantPlan = (user?.tenant?.plan || 'starter').toLowerCase();
   const effectivePlanTabs = (planTabs && Array.isArray(planTabs) && planTabs.length > 0)
@@ -354,7 +354,7 @@ export const isTabPermitted = (item, user, planTabs = null) => {
       ? user.sidebarConfig.planTabs
       : (PLAN_DEFAULTS[tenantPlan] || PLAN_DEFAULTS.starter));
 
-  if (effectivePlanTabs && Array.isArray(effectivePlanTabs)) {
+  if (effectivePlanTabs && Array.isArray(effectivePlanTabs) && !isTabExplicitlyRoleGranted) {
     if (item.id && !effectivePlanTabs.includes(item.id)) {
       if (item.subItems && Array.isArray(item.subItems)) {
         const hasSubInPlan = item.subItems.some(sub => effectivePlanTabs.includes(sub.id));
@@ -368,8 +368,6 @@ export const isTabPermitted = (item, user, planTabs = null) => {
   // 4. Workspace administrator has access to all permitted tabs within this workspace's plan
   if (isWorkspaceAdmin) return true;
 
-  const modules = user?.role?.enabled_modules || [];
-
   // 5. Admin-only tabs are allowed if explicitly granted in role permissions/modules
   if (item.adminOnly) {
     const isExplicitlyGranted = modules.includes(item.id) || perms.includes(item.id) || perms.includes(`${item.id}:view`);
@@ -379,52 +377,70 @@ export const isTabPermitted = (item, user, planTabs = null) => {
   const hasWildcard = perms.includes('*') || perms.includes('*:*');
   if (hasWildcard) return true;
 
-  // 6. Module & Action Permission check
-  let isPermitted = false;
+  // 6. Parent dropdown items with subItems (Leads, Analytics, Team Management)
+  // Must only be visible if at least one child sub-item is permitted
+  if (item.subItems && Array.isArray(item.subItems) && item.subItems.length > 0) {
+    return item.subItems.some(sub => isTabPermitted(sub, user, planTabs));
+  }
+
+  // 7. Individual Nav Item / Sub-item Permission check
   const itemMods = Array.isArray(item.module) ? item.module : (item.module ? [item.module] : []);
 
   if (item.id) {
+    // Check explicit grant by item.id in enabled_modules or permissions
     const hasExplicitTabInModules = modules.includes(item.id);
     const hasExplicitTabInPerms = perms.includes(item.id) || perms.includes(`${item.id}:view`) || perms.some(p => p.startsWith(`${item.id}:`));
-    
-    // For dashboard, check if dashboards module is enabled or has dashboards permission
-    const isDashboardAllowed = item.id === 'dashboard' && (
-      modules.includes('dashboards') || 
-      modules.includes('dashboard') ||
-      perms.includes('dashboards') ||
-      perms.includes('dashboard') ||
-      perms.some(p => p.startsWith('dashboards:'))
-    );
 
-    if (hasExplicitTabInModules || hasExplicitTabInPerms || isDashboardAllowed) {
-      isPermitted = true;
-    } else {
-      return false;
+    if (hasExplicitTabInModules || hasExplicitTabInPerms) {
+      // Check page-level permissions if defined
+      const pagePerms = user?.role?.page_permissions || {};
+      for (const mod of itemMods) {
+        if (pagePerms[mod] && Array.isArray(pagePerms[mod]) && pagePerms[mod].length > 0) {
+          const allowed = pagePerms[mod].includes(item.id) || pagePerms[mod].includes(item.label);
+          if (!allowed) return false;
+        }
+      }
+      return true;
     }
-  } else if (item.permission) {
-    if (perms.includes(item.permission)) {
-      isPermitted = true;
+
+    // Special case for dashboard
+    if (item.id === 'dashboard') {
+      const isDashboardAllowed = (
+        modules.includes('dashboards') || 
+        modules.includes('dashboard') ||
+        perms.includes('dashboards') ||
+        perms.includes('dashboard') ||
+        perms.some(p => p.startsWith('dashboards:'))
+      );
+      if (isDashboardAllowed) return true;
     }
-  } else if (itemMods.length > 0) {
-    if (itemMods.some(m => modules.includes(m) || perms.includes(`${m}:view`))) {
-      isPermitted = true;
+
+    // Special case for reports hub
+    if (item.id === 'reports') {
+      const isReportsAllowed = (
+        modules.includes('reports') ||
+        perms.includes('reports') ||
+        perms.includes('reports:view') ||
+        perms.some(p => p.startsWith('reports:'))
+      );
+      if (isReportsAllowed) return true;
     }
-  } else {
-    isPermitted = true;
+
+    // Special case for leads sub-items: if role was granted generic 'leads' module and no specific sub-tabs were configured
+    if (item.id.startsWith('leads-') && (modules.includes('leads') || perms.includes('leads') || perms.includes('leads:view'))) {
+      const hasAnySpecificLeadsTabConfigured = modules.some(m => m.startsWith('leads-'));
+      if (!hasAnySpecificLeadsTabConfigured) {
+        return true;
+      }
+    }
+
+    // Distinct tabs (e.g. coordination, handover-dashboard, retention-dashboard, resource-capacity,
+    // factory-production, vendor-performance, vendor-capacity, vendor-lead-times, analytics-*, etc.)
+    // MUST NOT leak through parent module names like 'projects', 'factory', 'vendors', 'analytics'.
+    return false;
   }
 
-  if (!isPermitted) return false;
-
-  // 7. Granular Page / Tab Permissions check
-  const pagePerms = user?.role?.page_permissions || {};
-  for (const mod of itemMods) {
-    if (pagePerms[mod] && Array.isArray(pagePerms[mod]) && pagePerms[mod].length > 0) {
-      const allowed = pagePerms[mod].includes(item.id) || pagePerms[mod].includes(item.label);
-      if (!allowed) return false;
-    }
-  }
-
-  return true;
+  return false;
 };
 
 export const getDefaultRouteForUser = (user, planTabs = null) => {

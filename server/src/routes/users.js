@@ -629,9 +629,14 @@ router.patch('/:id', authenticate, async (req, res, next) => {
     if (effectiveRoleId) {
       if (!hasPerm('users:assign_roles')) return fail(res, 'FORBIDDEN', 'Insufficient permissions to assign roles', 403);
       
-      const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveRoleId);
-      if (!isUUID) {
-        let roleQuery = await pool.query(
+      let roleQuery;
+      if (isUUID) {
+        roleQuery = await pool.query(
+          `SELECT id FROM roles WHERE tenant_id = $1 AND id = $2 LIMIT 1`,
+          [tenantId, effectiveRoleId]
+        );
+      } else {
+        roleQuery = await pool.query(
           `SELECT id FROM roles WHERE tenant_id = $1 AND (LOWER(name) = LOWER($2) OR LOWER(id::text) = LOWER($2)) LIMIT 1`,
           [tenantId, effectiveRoleId]
         );
@@ -641,20 +646,20 @@ router.patch('/:id', authenticate, async (req, res, next) => {
             [tenantId, role_name]
           );
         }
-        if (roleQuery.rows.length > 0) {
-          resolvedRoleId = roleQuery.rows[0].id;
-        } else {
-          // Provision the role from role defaults
-          const roleConfig = getRoleConfig(role_name || effectiveRoleId) || ROLE_DEFAULTS['Designer'];
-          const roleLabel = roleConfig.name || role_name || effectiveRoleId;
-          const newRoleRes = await pool.query(
-            `INSERT INTO roles (tenant_id, name, permissions) 
-             VALUES ($1, $2, $3) 
-             RETURNING id`,
-            [tenantId, roleLabel, JSON.stringify({ actions: roleConfig.permissions, modules: roleConfig.enabled_modules })]
-          );
-          resolvedRoleId = newRoleRes.rows[0].id;
-        }
+      }
+      if (roleQuery.rows.length > 0) {
+        resolvedRoleId = roleQuery.rows[0].id;
+      } else {
+        // Provision the role from role defaults
+        const roleConfig = getRoleConfig(role_name || effectiveRoleId) || ROLE_DEFAULTS['Team Member'];
+        const roleLabel = roleConfig.name || role_name || effectiveRoleId;
+        const newRoleRes = await pool.query(
+          `INSERT INTO roles (tenant_id, name, permissions) 
+           VALUES ($1, $2, $3) 
+           RETURNING id`,
+          [tenantId, roleLabel, JSON.stringify({ actions: roleConfig.permissions, modules: roleConfig.enabled_modules })]
+        );
+        resolvedRoleId = newRoleRes.rows[0].id;
       }
 
       params.push(resolvedRoleId);
@@ -732,6 +737,9 @@ router.patch('/:id', authenticate, async (req, res, next) => {
     }
 
     await clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
+    const { clearCache, clearCachePrefix: clearPermsPrefix } = require('../utils/cache');
+    await clearCache(`user_role_perms:${userIdToUpdate}`).catch(() => {});
+    await clearPermsPrefix('user_role_perms').catch(() => {});
 
     const { password_hash: _password_hash, ...safeUser } = rows[0];
     return success(res, safeUser);
@@ -768,27 +776,42 @@ router.post('/add-member', authorize(['users:invite_user', 'users:create', 'user
     const userStatus = requestedStatus || (canActivate ? 'active' : 'pending_approval');
 
     const effectiveRoleId = roleId || role_id;
-    let resolvedRoleId = effectiveRoleId;
+    let resolvedRoleId = null;
     if (effectiveRoleId) {
       const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(effectiveRoleId);
-      if (!isUUID) {
-        let roleQuery = await pool.query(
+      let roleQuery;
+      if (isUUID) {
+        roleQuery = await pool.query(
+          `SELECT id FROM roles WHERE tenant_id = $1 AND id = $2 LIMIT 1`,
+          [tenantId, effectiveRoleId]
+        );
+      } else {
+        roleQuery = await pool.query(
           `SELECT id FROM roles WHERE tenant_id = $1 AND (LOWER(name) = LOWER($2) OR LOWER(id::text) = LOWER($2)) LIMIT 1`,
           [tenantId, effectiveRoleId]
         );
-        if (roleQuery.rows.length > 0) {
-          resolvedRoleId = roleQuery.rows[0].id;
-        } else {
-          const roleConfig = getRoleConfig(effectiveRoleId) || ROLE_DEFAULTS['Designer'];
-          const roleLabel = roleConfig.name || effectiveRoleId;
-          const newRoleRes = await pool.query(
-            `INSERT INTO roles (tenant_id, name, permissions) 
-             VALUES ($1, $2, $3) 
-             RETURNING id`,
-            [tenantId, roleLabel, JSON.stringify({ actions: roleConfig.permissions, modules: roleConfig.enabled_modules })]
-          );
-          resolvedRoleId = newRoleRes.rows[0].id;
-        }
+      }
+      if (roleQuery.rows.length > 0) {
+        resolvedRoleId = roleQuery.rows[0].id;
+      }
+    }
+
+    if (!resolvedRoleId) {
+      let defaultRoleQuery = await pool.query(
+        `SELECT id FROM roles WHERE tenant_id = $1 AND LOWER(name) IN ('team member', 'employee', 'designer') ORDER BY id LIMIT 1`,
+        [tenantId]
+      );
+      if (defaultRoleQuery.rows.length > 0) {
+        resolvedRoleId = defaultRoleQuery.rows[0].id;
+      } else {
+        const teamMemberConfig = ROLE_DEFAULTS['Team Member'] || { name: 'Team Member', permissions: ['tasks:view'], enabled_modules: ['tasks'] };
+        const newRoleRes = await pool.query(
+          `INSERT INTO roles (tenant_id, name, permissions) 
+           VALUES ($1, $2, $3) 
+           RETURNING id`,
+          [tenantId, 'Team Member', JSON.stringify({ actions: teamMemberConfig.permissions, modules: teamMemberConfig.enabled_modules })]
+        );
+        resolvedRoleId = newRoleRes.rows[0].id;
       }
     }
 
@@ -817,6 +840,9 @@ router.post('/add-member', authorize(['users:invite_user', 'users:create', 'user
     }
 
     await clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
+    const { clearCache, clearCachePrefix: clearPermsPrefix } = require('../utils/cache');
+    await clearCache(`user_role_perms:${newUserId}`).catch(() => {});
+    await clearPermsPrefix('user_role_perms').catch(() => {});
 
     const { password_hash: _password_hash, ...safeUser } = rows[0];
     return success(res, safeUser);

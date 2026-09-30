@@ -66,9 +66,9 @@ function responseFormatter(req, res, next) {
       }
     }
 
-    // Enterprise Finance Permissions: Automatically redact sensitive financial data 
-    // if the user lacks the explicit action permissions (view_cost, view_profit, etc.)
-    if (formattedResponse.data && req.user && req.user.role && req.user.role.name !== 'superadmin') {
+    const roleNormalized = (typeof req.user?.role === 'string' ? req.user.role : (req.user?.role?.name || req.user?.role_name || '')).toLowerCase();
+    const isSuperOrAdmin = roleNormalized === 'superadmin' || roleNormalized === 'admin' || roleNormalized === 'owner' || (req.user?.permissions && (req.user.permissions.includes('*') || req.user.permissions.includes('*:*')));
+    if (formattedResponse.data && req.user && !isSuperOrAdmin) {
       const { redactFinancials } = require('../utils/financeRedactor');
       // Role permissions should be available on req.user.permissions
       formattedResponse.data = redactFinancials(formattedResponse.data, req.user.permissions || []);

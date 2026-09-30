@@ -42,6 +42,7 @@ export const PAGE_PERMISSIONS_SCHEMA = {
     { id: 'Material Palettes', label: 'Material Palettes' },
     { id: 'Quotations & Budget', label: 'Quotations & Budget' },
     { id: 'Commercial Approval', label: 'Commercial Approval' },
+    { id: 'Design & Approvals', label: 'Design & Approvals' },
     { id: 'Change Orders', label: 'Change Orders' },
     { id: 'Budget Variance', label: 'Budget Variance' },
     { id: 'Budget', label: 'Budget' },

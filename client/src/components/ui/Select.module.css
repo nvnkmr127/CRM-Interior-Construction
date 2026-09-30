@@ -47,3 +47,18 @@
   padding: 2px 8px; border-radius:var(--radius-sm); font-size:var(--text-xs);
 }
 .chipRemove { cursor:pointer; font-size:10px; }
+.editableInput {
+  flex: 1;
+  border: none;
+  outline: none;
+  background: transparent;
+  font-size: var(--text-base);
+  color: var(--color-text);
+  font-family: inherit;
+  padding: 0;
+  width: 100%;
+  cursor: text;
+}
+.editableInput::placeholder {
+  color: var(--color-text-muted);
+}

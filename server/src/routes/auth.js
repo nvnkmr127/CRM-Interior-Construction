@@ -283,7 +283,7 @@ router.get('/me', async (req, res, next) => {
     let dataScopes = {};
     let fieldPermissions = {};
     let pagePermissions = {};
-    let roleName = row.role_name || (row.role_id ? 'Team Member' : 'Designer');
+    let roleName = row.role_name || (row.role_id ? 'Team Member' : 'Team Member');
     if (row.role_permissions) {
       const p = typeof row.role_permissions === 'string' ? JSON.parse(row.role_permissions) : row.role_permissions;
       actions = Array.isArray(p) ? p : (p.actions || []);
@@ -294,7 +294,7 @@ router.get('/me', async (req, res, next) => {
     }
 
     if (!row.role_permissions) {
-      const roleConfig = getRoleConfig(roleName) || ROLE_DEFAULTS['Designer'];
+      const roleConfig = getRoleConfig(roleName) || ROLE_DEFAULTS['Team Member'];
       if (roleConfig) {
         if (actions.length === 0) actions = roleConfig.permissions || [];
         if (enabledModules.length === 0) enabledModules = roleConfig.enabled_modules || [];
@@ -340,10 +340,10 @@ router.get('/me', async (req, res, next) => {
       department_id: row.department_id || null,
       department_name: row.department_name || null,
       profile_data: profile,
-      is_master_developer: (decoded && decoded.is_master_developer === true) || (row.tenant_slug === 'demo' || row.email === 'admin@demo.com' || row.email === 'digicloudify@gmail.com'),
+      is_master_developer: (row.email === 'admin@demo.com' || row.email === 'digicloudify@gmail.com') || (row.tenant_slug === 'demo' && (roleName.toLowerCase() === 'superadmin' || roleName.toLowerCase() === 'admin' || roleName.toLowerCase() === 'owner' || roleName.toLowerCase() === 'super admin' || actions.includes('*') || actions.includes('*:*'))),
       masterSession: (decoded && decoded.masterSession) ? decoded.masterSession : null,
       role: {
-        id: row.role_id || 'superadmin',
+        id: row.role_id || 'team_member',
         name: roleName,
         permissions: actions,
         enabled_modules: enabledModules,
@@ -376,7 +376,7 @@ router.get('/me', async (req, res, next) => {
   }
 });
 
-router.get('/sidebar-config', authenticate, cacheResponse(300), async (req, res, next) => {
+router.get('/sidebar-config', authenticate, async (req, res, next) => {
   try {
     const tenantRes = await pool.query('SELECT plan FROM tenants WHERE id = $1', [req.tenantId]);
     const tenantPlan = (tenantRes.rows[0]?.plan || 'starter').toLowerCase();
@@ -535,7 +535,7 @@ router.patch('/me', authenticate, async (req, res, next) => {
       department_id: updatedRow.department_id || null,
       department_name: updatedRow.department_name || null,
       profile_data: finalProfile,
-      is_master_developer: req.user.is_master_developer === true || updatedRow.tenant_slug === 'demo' || updatedRow.email === 'admin@demo.com' || updatedRow.email === 'digicloudify@gmail.com',
+      is_master_developer: (updatedRow.email === 'admin@demo.com' || updatedRow.email === 'digicloudify@gmail.com') || (updatedRow.tenant_slug === 'demo' && ((updatedRow.role_name || '').toLowerCase() === 'superadmin' || (updatedRow.role_name || '').toLowerCase() === 'admin' || (updatedRow.role_name || '').toLowerCase() === 'owner' || (updatedRow.role_name || '').toLowerCase() === 'super admin' || actions.includes('*') || actions.includes('*:*'))),
       masterSession: req.user.masterSession || null,
       tenant: updatedRow.tenant_id ? {
         id: updatedRow.tenant_id,

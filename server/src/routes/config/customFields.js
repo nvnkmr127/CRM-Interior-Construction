@@ -39,7 +39,7 @@ const createSchema = z.object({
   display_tab: z.string().optional()
 });
 
-router.post('/', authorize('config:manage'), async (req, res, next) => {
+router.post('/', authorize(['config:manage', 'custom-fields', 'custom-fields:create', 'custom-fields:manage', 'settings:edit', 'settings:manage']), async (req, res, next) => {
   try {
     const parsed = createSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -68,7 +68,7 @@ const updateSchema = z.object({
   display_tab: z.string().optional()
 });
 
-router.put('/:id', authorize('config:manage'), async (req, res, next) => {
+router.put('/:id', authorize(['config:manage', 'custom-fields', 'custom-fields:edit', 'custom-fields:update', 'custom-fields:manage', 'settings:edit', 'settings:manage']), async (req, res, next) => {
   try {
     const parsed = updateSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -88,7 +88,7 @@ router.put('/:id', authorize('config:manage'), async (req, res, next) => {
   }
 });
 
-router.delete('/:id', authorize('config:manage'), async (req, res, next) => {
+router.delete('/:id', authorize(['config:manage', 'custom-fields', 'custom-fields:delete', 'custom-fields:manage', 'settings:edit', 'settings:manage']), async (req, res, next) => {
   try {
     await deleteField(req.tenantId, req.params.id);
     return res.status(204).send();

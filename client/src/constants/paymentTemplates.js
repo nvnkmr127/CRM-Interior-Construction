@@ -43,11 +43,22 @@ export const formatTemplatePercentages = (tpl) => {
   return tpl?.name || '';
 };
 
+export const formatTemplateLabel = (tpl) => {
+  if (!tpl) return '';
+  const pctStr = formatTemplatePercentages(tpl);
+  if (tpl.name && tpl.name.includes('%')) {
+    return tpl.name;
+  }
+  return pctStr ? `${tpl.name} (${pctStr})` : (tpl.name || pctStr);
+};
+
 export const PAYMENT_TEMPLATE_NAMES = DEFAULT_PAYMENT_TEMPLATES.reduce((acc, tpl) => {
-  acc[tpl.id] = formatTemplatePercentages(tpl);
+  acc[tpl.id] = formatTemplateLabel(tpl);
   return acc;
 }, {
-  '10_40_40_10': '10% - 40% - 40% - 10%',
+  '10_40_40_10': 'Commercial Construction 4-Stage (10% - 40% - 40% - 10%)',
+  '20_50_30': 'Standard 3-Stage Milestone (20% - 50% - 30%)',
+  '20_20_20_20_20': '5-Month Equal Installment Plan (20% x 5)',
   '30_30_30_10': '30% - 30% - 30% - 10%',
   '50_50': '50% - 50%'
 });

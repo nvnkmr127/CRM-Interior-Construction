@@ -5,6 +5,7 @@ import api from '../api/axios';
 import { loadMockDatabase } from '../api/mockData';
 import { ROLE_DEFAULTS } from '../constants/roleDefaults';
 import { clearTenantClientStorage } from '../utils/storageCleanup';
+import { isSuperMasterDeveloper } from '../utils/isSuperMasterDeveloper';
 
 const AuthContext = createContext();
 
@@ -84,7 +85,16 @@ export function AuthProvider({ children }) {
     try {
       if (localStorage.getItem('isAuthenticated')) {
         const cached = localStorage.getItem('cachedUser');
-        if (cached) return JSON.parse(cached);
+        if (cached) {
+          const parsed = JSON.parse(cached);
+          if (parsed && parsed.is_master_developer && !isSuperMasterDeveloper(parsed)) {
+            parsed.is_master_developer = false;
+            try {
+              localStorage.setItem('cachedUser', JSON.stringify(parsed));
+            } catch (e) {}
+          }
+          return parsed;
+        }
       }
     } catch (e) {}
     return null;
@@ -185,6 +195,9 @@ export function AuthProvider({ children }) {
         const response = await api.get('/auth/me');
         if (response.data.success) {
           const freshUser = response.data.data.user;
+          if (freshUser && freshUser.is_master_developer && !isSuperMasterDeveloper(freshUser)) {
+            freshUser.is_master_developer = false;
+          }
           setUser(freshUser);
           try {
             localStorage.setItem('cachedUser', JSON.stringify(freshUser));
@@ -243,7 +256,14 @@ export function AuthProvider({ children }) {
       if (window.location.pathname.startsWith('/portal') || !localStorage.getItem('isAuthenticated') || document.hidden) return;
       api.get('/auth/me').then(res => {
         if (res.data?.success) {
-          setUser(res.data.data.user);
+          const freshUser = res.data.data.user;
+          if (freshUser && freshUser.is_master_developer && !isSuperMasterDeveloper(freshUser)) {
+            freshUser.is_master_developer = false;
+          }
+          setUser(freshUser);
+          try {
+            localStorage.setItem('cachedUser', JSON.stringify(freshUser));
+          } catch (e) {}
         }
       }).catch(err => {
         // Do not force log out on background config sync failures; let axios interceptor manage unrecoverable auth errors
@@ -267,7 +287,7 @@ export function AuthProvider({ children }) {
           const rawPerms = updatedRole.permissions;
           const newPerms = Array.isArray(rawPerms) ? rawPerms : (rawPerms?.actions || []);
           const newMods = Array.isArray(updatedRole.enabled_modules) ? updatedRole.enabled_modules : (rawPerms?.modules || []);
-          return {
+          const nextUser = {
             ...prev,
             role: {
               ...prev.role,
@@ -279,6 +299,10 @@ export function AuthProvider({ children }) {
               page_permissions: updatedRole.page_permissions || prev.role.page_permissions
             }
           };
+          try {
+            localStorage.setItem('cachedUser', JSON.stringify(nextUser));
+          } catch (e) {}
+          return nextUser;
         }
         return prev;
       });

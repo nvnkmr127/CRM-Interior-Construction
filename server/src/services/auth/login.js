@@ -279,35 +279,34 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
     const mfaRequired = false;
 
     // Fetch role name and permissions
-    let roleName = user.role_name || (user.role && typeof user.role === 'object' ? user.role.name : user.role) || (user.role_id ? 'Team Member' : 'Designer');
+    let roleName = user.role_name || (user.role && typeof user.role === 'object' ? user.role.name : user.role) || (user.role_id ? 'Team Member' : 'Team Member');
     let rolePermissions = [];
     let enabledModules = [];
     let dataScopes = {};
     let fieldPermissions = {};
     let pagePermissions = {};
 
-    if (user.role_id) {
+    if (user.role_id && user.role_permissions !== null && user.role_permissions !== undefined) {
       const p = typeof user.role_permissions === 'string' ? JSON.parse(user.role_permissions) : (user.role_permissions || []);
       rolePermissions = Array.isArray(p) ? p : (p.actions || []);
       enabledModules = Array.isArray(p) ? [] : (p.modules || []);
       dataScopes = Array.isArray(p) ? {} : (p.scopes || {});
       fieldPermissions = Array.isArray(p) ? {} : (p.fields || {});
       pagePermissions = Array.isArray(p) ? {} : (p.pages || {});
-    }
-
-    if (rolePermissions.length === 0 || enabledModules.length === 0) {
-      const roleConfig = getRoleConfig(roleName) || ROLE_DEFAULTS['Designer'];
+    } else {
+      // Only fall back to role defaults if role_permissions was not configured in the database
+      const roleConfig = getRoleConfig(roleName) || ROLE_DEFAULTS['Team Member'];
       if (roleConfig) {
-        if (rolePermissions.length === 0) rolePermissions = roleConfig.permissions;
-        if (enabledModules.length === 0) enabledModules = roleConfig.enabled_modules;
-        if (Object.keys(dataScopes).length === 0) dataScopes = roleConfig.data_scopes || {};
-        if (Object.keys(fieldPermissions).length === 0) fieldPermissions = roleConfig.field_permissions || {};
-        if (Object.keys(pagePermissions).length === 0) pagePermissions = roleConfig.page_permissions || {};
+        rolePermissions = roleConfig.permissions || [];
+        enabledModules = roleConfig.enabled_modules || [];
+        dataScopes = roleConfig.data_scopes || {};
+        fieldPermissions = roleConfig.field_permissions || {};
+        pagePermissions = roleConfig.page_permissions || {};
       }
     }
 
     user.role = {
-      id: user.role_id || 'designer',
+      id: user.role_id || 'team_member',
       name: roleName,
       permissions: rolePermissions,
       enabled_modules: enabledModules,
@@ -372,11 +371,21 @@ async function loginUser({ email, password, tenantId, ip, userAgent, trustedDevi
       console.warn('Failed cleaning up stale sessions on login:', e);
     }
 
-    let isMaster = (cleanEmail === 'admin@demo.com');
+    const isMasterPlatformEmail = cleanEmail === 'admin@demo.com' || cleanEmail === 'digicloudify@gmail.com';
+    let isMaster = isMasterPlatformEmail;
     if (!isMaster) {
       try {
         const tenantSlugRes = await pool.query('SELECT slug FROM tenants WHERE id = $1 LIMIT 1', [tenantId]);
-        if (tenantSlugRes.rows[0]?.slug === 'demo' && (roleName === 'superadmin' || roleName === 'admin' || user.role_id)) {
+        const isDemoTenant = tenantSlugRes.rows[0]?.slug === 'demo';
+        const roleNormalized = (roleName || '').toLowerCase().trim();
+        const isAdminRole = (
+          roleNormalized === 'superadmin' || 
+          roleNormalized === 'admin' || 
+          roleNormalized === 'super admin' || 
+          roleNormalized === 'owner' || 
+          (Array.isArray(user.permissions) && user.permissions.includes('*'))
+        );
+        if (isDemoTenant && isAdminRole) {
           isMaster = true;
         }
       } catch (e) {

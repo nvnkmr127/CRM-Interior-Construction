@@ -263,7 +263,7 @@ class ProjectRepository {
     const documentsQuery = `
       SELECT id, name, doc_type, status, storage_key, created_at
       FROM documents
-      WHERE tenant_id = $1 AND project_id = $2 AND deleted_at IS NULL
+      WHERE tenant_id = $1 AND project_id = $2
       ORDER BY created_at DESC
     `;
 
@@ -300,6 +300,36 @@ class ProjectRepository {
     project.booking = bookingRes.rows[0] || null;
     project.documents = documentsRes.rows;
     project.type = project.project_type || project.type;
+
+    // Auto-sync project status if booking advance has already been collected
+    if (['pending_booking', 'pending_payment'].includes(project.status)) {
+      const isBookingPaid = paymentsRes.rows.some(m => {
+        const isBookingMilestone = /booking|advance|token/i.test(m.name || '') || (m.sort_order === 1 || paymentsRes.rows[0]?.id === m.id);
+        const hasPaid = m.status === 'paid' || (m.paid_amount !== null && Number(m.paid_amount) > 0);
+        return isBookingMilestone && hasPaid;
+      });
+
+      if (isBookingPaid) {
+        const bookingM = paymentsRes.rows.find(m => /booking|advance|token/i.test(m.name || '')) || paymentsRes.rows[0];
+        const collectedAmt = Number(bookingM?.paid_amount || bookingM?.amount || 0);
+
+        await pool.query(
+          `UPDATE projects 
+           SET status = 'active', 
+               booking_amount = COALESCE(NULLIF(booking_amount, 0), $1), 
+               updated_at = NOW() 
+           WHERE id = $2 AND tenant_id = $3`,
+          [collectedAmt, projectId, tenantId]
+        );
+        project.status = 'active';
+        if (!project.booking_amount || Number(project.booking_amount) === 0) {
+          project.booking_amount = collectedAmt;
+        }
+
+        const { clearCachePrefix } = require('../utils/cache');
+        clearCachePrefix(projectId).catch(() => {});
+      }
+    }
 
     const contractDoc = project.documents.find(d => d.doc_type === 'contract');
     if (contractDoc && !project.contract_file_key) {

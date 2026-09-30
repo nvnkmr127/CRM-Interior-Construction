@@ -38,7 +38,7 @@ const ROLE_DEFAULTS = {
       'analytics:view', 'analytics:view_project_analytics', 'analytics:export',
       'reports:view', 'reports:create', 'reports:edit', 'reports:export'
     ],
-    enabled_modules: ['dashboards', 'projects', 'tasks', 'clients', 'payments', 'quotations', 'boq', 'vendors', 'purchase_orders', 'inventory', 'warehouse', 'factory', 'analytics', 'reports']
+    enabled_modules: ['projects', 'tasks', 'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast', 'financial-thresholds']
   },
   'Designer': {
     name: 'Designer',

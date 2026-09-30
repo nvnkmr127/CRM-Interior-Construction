@@ -161,7 +161,11 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
     user.role.permissions.includes('finance:credits') ||
     user.role.permissions.includes('finance:view') ||
     user.role.permissions.some(p => p.startsWith('finance:')) ||
-    (user?.role?.enabled_modules && user.role.enabled_modules.includes('finance'))
+    (user?.role?.enabled_modules && (
+      user.role.enabled_modules.includes('finance') ||
+      user.role.enabled_modules.includes('finance-overview') ||
+      user.role.enabled_modules.includes('financial-approvals')
+    ))
   )) || isWorkspaceAdmin;
 
   const renderedNavGroups = useMemo(() => {
@@ -174,9 +178,21 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
       if (group.adminOnly && !isAdmin && !isWorkspaceAdmin) {
         const hasAnyGroupItemGranted = group.items.some(item => {
           if (item.id === 'absences') return true;
-          const modules = user?.role?.enabled_modules || [];
-          const perms = Array.isArray(user?.role?.permissions) ? user.role.permissions : [];
-          return modules.includes(item.id) || perms.includes(item.id) || perms.includes(`${item.id}:view`);
+          const modules = Array.isArray(user?.role?.enabled_modules)
+            ? user.role.enabled_modules
+            : (Array.isArray(user?.enabled_modules)
+              ? user.enabled_modules
+              : (Array.isArray(user?.role?.modules) ? user.role.modules : []));
+          const perms = Array.isArray(user?.role?.permissions)
+            ? user.role.permissions
+            : (Array.isArray(user?.permissions)
+              ? user.permissions
+              : (Array.isArray(user?.role?.actions) ? user.role.actions : []));
+          if (modules.includes(item.id) || perms.includes(item.id) || perms.includes(`${item.id}:view`)) return true;
+          if (item.subItems && Array.isArray(item.subItems)) {
+            return item.subItems.some(sub => modules.includes(sub.id) || perms.includes(sub.id) || perms.includes(`${sub.id}:view`));
+          }
+          return false;
         });
         if (!hasAnyGroupItemGranted) return null;
       }
@@ -194,22 +210,16 @@ export default function Sidebar({ collapsed, mobileOpen, onClose }) {
 
       const visibleItems = group.items.map(item => {
         if (item.subItems) {
-          if (!filterItem(item)) return null;
           const parentModule = item.module;
           const filteredSubItems = item.subItems.map(sub => ({
             ...sub,
             module: sub.module || parentModule
           })).filter(filterItem);
+          if (filteredSubItems.length === 0) return null;
           return { ...item, subItems: filteredSubItems };
         }
-        return item;
-      }).filter(item => {
-        if (!item) return false;
-        if (item.subItems) {
-          return item.subItems.length > 0;
-        }
-        return filterItem(item);
-      });
+        return filterItem(item) ? item : null;
+      }).filter(Boolean);
 
       if (visibleItems.length === 0) return null;
 

@@ -39,6 +39,8 @@ const ServiceTicketsTab = React.lazy(() => import('./ServiceTicketsTab'));
 const CustomerRetentionTab = React.lazy(() => import('./CustomerRetentionTab'));
 const BaselineAssessmentTab = React.lazy(() => import('./BaselineAssessmentTab'));
 
+const DesignPhaseTab = React.lazy(() => import('../../components/projects/DesignPhaseTab'));
+
 const DesignRequirements = React.lazy(() => import('../../components/projects/DesignRequirements'));
 const DesignAssetsTab = React.lazy(() => import('../../components/projects/DesignAssetsTab'));
 const DesignReviewsTab = React.lazy(() => import('../../components/projects/DesignReviewsTab'));
@@ -1379,12 +1381,15 @@ export default function ProjectDetail() {
           try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
         }
       })
-      .catch(() => setProject(null));
+      .catch((err) => {
+        console.error('Failed to reload project details:', err);
+        setProject(null);
+      });
   };
 
   useEffect(() => {
     if (!projectId) return;
-    if (!project) setLoading(true);
+    if (!project || project.id !== projectId) setLoading(true);
     getProject(projectId)
       .then(res => {
         const data = res.data?.data || res.data || null;
@@ -1393,8 +1398,9 @@ export default function ProjectDetail() {
           try { sessionStorage.setItem(cacheKey, JSON.stringify(data)); } catch (e) {}
         }
       })
-      .catch(() => {
-        if (!project) setProject(null);
+      .catch((err) => {
+        console.error('Failed to load project details:', err);
+        if (!project || project.id !== projectId) setProject(null);
       })
       .finally(() => setLoading(false));
   }, [projectId]);
@@ -1433,12 +1439,7 @@ export default function ProjectDetail() {
       case 'Baseline Assessment': return <BaselineAssessmentTab projectId={projectId} />;
       case 'Delay Notifications': return <DelayNotificationsTab projectId={projectId} />;
       case 'Handovers': return <HandoverHistoryTab projectId={projectId} />;
-      case 'Design Brief': return <DesignRequirements projectId={projectId} />;
-      case 'Design Assets': return <DesignAssetsTab projectId={projectId} />;
-      case 'Design Reviews': return <DesignReviewsTab projectId={projectId} />;
-      case 'Material Palettes': return <MaterialPalettesTab projectId={projectId} />;
-      case 'Quotations & Budget': return <ProjectQuotationsTab projectId={projectId} />;
-      case 'Commercial Approval': return <CommercialApprovalTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
+      case 'Design & Approvals': return <DesignPhaseTab projectId={projectId} project={project} onRefresh={reloadProject} />;
       case 'Change Orders': return <ChangeOrdersTab projectId={projectId} />;
       case 'Budget Variance': return <BOQVarianceTab projectId={projectId} />;
       case 'Budget': return <BudgetTab projectId={projectId} />;
@@ -1504,9 +1505,14 @@ export default function ProjectDetail() {
 
   const taskDone  = project.stats?.completedTasks ?? 0;
   const taskTotal = project.stats?.totalTasks     ?? 0;
+  const isBookingPaid = project.payment_milestones?.some(m => 
+    (/booking|advance|token/i.test(m.name || '') || m.sort_order === 1) && 
+    (m.status === 'paid' || Number(m.paid_amount || 0) > 0)
+  );
+  const effectiveStatus = (project.status === 'pending_booking' && isBookingPaid) ? 'active' : (project.status || 'active');
   const currentPhase = project.phases?.find(p => p.status !== 'completed')?.name
     || project.phases?.[project.phases.length - 1]?.name
-    || (project.status ? project.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '—');
+    || (effectiveStatus ? effectiveStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '—');
 
   if (!canAccessPage(activeTab)) {
     return (
@@ -1613,8 +1619,8 @@ export default function ProjectDetail() {
           <div className={styles.headerLeft}>
             <div className={styles.projName}>
               {project.name}{' '}
-              <Badge variant={project.status === 'active' ? 'info' : project.status === 'completed' ? 'success' : 'warning'} dot>
-                {project.status ? project.status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown'}
+              <Badge variant={effectiveStatus === 'active' ? 'info' : effectiveStatus === 'completed' ? 'success' : 'warning'} dot>
+                {effectiveStatus ? effectiveStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Unknown'}
               </Badge>{' '}
               {project.is_scope_locked ? (
                 <Badge variant="success">🔒 Scope Locked</Badge>
@@ -1854,7 +1860,10 @@ export default function ProjectDetail() {
             { id: 'Site Details', icon: '📍', label: 'Site Details' },
             { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },
 
-            // 2. Financials
+            // 2. Design & Approvals
+            { id: 'Design & Approvals', icon: '🎨', label: 'Design & Approvals' },
+
+            // 3. Financials
             { id: 'Financial Overview', icon: '💰', label: 'Financial Overview' },
             { id: 'Budget', icon: '📊', label: 'Budget' },
             { id: 'Payments', icon: '💸', label: 'Payments' },
@@ -1905,9 +1914,7 @@ export default function ProjectDetail() {
 
       <div className={styles.tabContent}>
         <Suspense fallback={<div style={{ padding: 24, color: 'var(--color-text-muted)' }}>Loading…</div>}>
-          {['Design Brief', 'Design Assets', 'Design Reviews'].includes(activeTab) && (
-            <DesignStageHeader projectId={projectId} />
-          )}
+
           {renderTabContent()}
         </Suspense>
       </div>

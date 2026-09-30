@@ -212,6 +212,10 @@ router.post('/', authorize('users:manage'), async (req, res) => {
       VALUES ($1, $2, 1, $3, $4, $5, $6, $7, $8, $9)
     `, [tenantId, newRole.id, req.user?.id || req.user?.userId || null, JSON.stringify(actions), JSON.stringify(scopes), JSON.stringify(fields), JSON.stringify(modules), JSON.stringify(pages), change_summary]);
 
+    const { clearCachePrefix } = require('../utils/cache');
+    await clearCachePrefix('user_role_perms').catch(() => {});
+    await clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
+
     return success(res, newRole);
   } catch (error) {
     logger.error('[Roles API] Create error:', error);
@@ -558,6 +562,10 @@ router.patch('/:id', authorize('users:manage'), async (req, res) => {
       page_permissions: pagesUpdated,
       security_policies: rows[0].security_policies || {}
     };
+    const { clearCachePrefix } = require('../utils/cache');
+    await clearCachePrefix('user_role_perms').catch(() => {});
+    await clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
+
     return success(res, updatedRole);
   } catch (error) {
     logger.error('[Roles API] Update error:', error);
@@ -596,6 +604,10 @@ router.delete('/:id', authorize('users:manage'), async (req, res) => {
     await pool.query('DELETE FROM roles WHERE id=$1 AND tenant_id=$2', [roleId, tenantId]);
     await logActivity(req, 'role', roleId, 'Deleted', JSON.stringify({ name: rows[0].name }), null);
     
+    const { clearCachePrefix } = require('../utils/cache');
+    await clearCachePrefix('user_role_perms').catch(() => {});
+    await clearCachePrefix(`cache:${tenantId}:`).catch(() => {});
+
     return success(res, { deleted: true });
   } catch (error) {
     logger.error('[Roles API] Delete error:', error);

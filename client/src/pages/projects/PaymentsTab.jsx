@@ -1129,6 +1129,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
       // Hit API
       await api.post(`/financial-approvals/${approval.id}/approve`);
       fetchApprovals();
+      if (typeof onProjectUpdated === 'function') onProjectUpdated();
 
       // Append to immutable audit log
       let oldV = 0, newV = approval.amount;

@@ -1,6 +1,6 @@
 /* eslint-disable no-unused-vars, react-hooks/immutability, react-hooks/exhaustive-deps, no-undef */
 import React, { useState, useEffect } from 'react';
-import { Button, Badge, Modal, Input, EmptyState, Spinner } from '../ui';
+import { Button, Badge, Modal, Input, Textarea, EmptyState, Spinner } from '../ui';
 import { useToast } from '../../store/toastContext';
 import styles from './DesignReviewsTab.module.css';
 import { useConfirm } from '../../store/confirmContext';

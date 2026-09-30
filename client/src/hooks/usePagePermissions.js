@@ -21,7 +21,8 @@ const PAGE_MODULE_MAPPING = {
   'Substitutions': ['inventory'],
   'Design Brief': ['projects'],
   'Design Assets': ['projects'],
-  'Design Reviews': ['design_reviews']
+  'Design Reviews': ['design_reviews'],
+  'Design & Approvals': ['projects']
 };
 
 export const usePagePermissions = (moduleName) => {

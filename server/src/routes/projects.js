@@ -74,6 +74,10 @@ router.use(authenticate);
 // Enforce project access for all routes containing a project ID parameter
 // Note: router.param runs BEFORE router.use(authenticate). If req.user is missing, we must authenticate first.
 router.param('id', (req, res, next, id) => {
+  // If the route has :projectId or is a sub-resource path, :id belongs to the sub-resource (not the project)
+  if (req.params.projectId || req.path.includes('/room-requirements') || req.path.includes('/inspirations')) {
+    return next();
+  }
   if (!req.user) {
     authenticate(req, res, (err) => {
       if (err) return next(err);
@@ -1256,10 +1260,11 @@ router.post('/:projectId/room-requirements', authorize('projects:update'), valid
   }
 });
 
-// PUT /api/projects/:projectId/room-requirements/:id
-router.put('/:projectId/room-requirements/:id', authorize('projects:update'), validate(roomRequirementSchema), async (req, res, next) => {
+// PUT /api/projects/:projectId/room-requirements/:reqId
+router.put('/:projectId/room-requirements/:reqId', authorize('projects:update'), validate(roomRequirementSchema), async (req, res, next) => {
   try {
-    const { projectId, id } = req.params;
+    const { projectId } = req.params;
+    const id = req.params.reqId || req.params.id;
     const data = req.body;
     
     const query = `
@@ -1290,15 +1295,15 @@ router.put('/:projectId/room-requirements/:id', authorize('projects:update'), va
   }
 });
 
-// DELETE /api/projects/:projectId/room-requirements/:id
-router.delete('/:projectId/room-requirements/:id', authorize('projects:update'), async (req, res, next) => {
+// DELETE /api/projects/:projectId/room-requirements/:reqId
+router.delete('/:projectId/room-requirements/:reqId', authorize('projects:update'), async (req, res, next) => {
   try {
-    const { projectId, id } = req.params;
-    const { rows } = await pool.query(
-      `DELETE FROM project_room_requirements WHERE id = $1 AND project_id = $2 AND tenant_id = $3 RETURNING *`,
+    const { projectId } = req.params;
+    const id = req.params.reqId || req.params.id;
+    await pool.query(
+      `DELETE FROM project_room_requirements WHERE id = $1 AND project_id = $2 AND tenant_id = $3`,
       [id, projectId, req.tenantId]
     );
-    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Room requirement not found', 404);
     return res.status(204).send();
   } catch (error) {
     next(error);
@@ -1331,15 +1336,15 @@ router.post('/:projectId/inspirations', authorize('projects:update'), validate(i
   }
 });
 
-// DELETE /api/projects/:projectId/inspirations/:id
-router.delete('/:projectId/inspirations/:id', authorize('projects:update'), async (req, res, next) => {
+// DELETE /api/projects/:projectId/inspirations/:inspId
+router.delete('/:projectId/inspirations/:inspId', authorize('projects:update'), async (req, res, next) => {
   try {
-    const { projectId, id } = req.params;
-    const { rows } = await pool.query(
-      `DELETE FROM project_inspirations WHERE id = $1 AND project_id = $2 AND tenant_id = $3 RETURNING *`,
+    const { projectId } = req.params;
+    const id = req.params.inspId || req.params.id;
+    await pool.query(
+      `DELETE FROM project_inspirations WHERE id = $1 AND project_id = $2 AND tenant_id = $3`,
       [id, projectId, req.tenantId]
     );
-    if (rows.length === 0) return fail(res, 'NOT_FOUND', 'Inspiration not found', 404);
     return res.status(204).send();
   } catch (error) {
     next(error);
@@ -2323,7 +2328,7 @@ router.post('/:id/booking/confirm', authenticate, authorize('projects:manage'), 
 
       // Check payment milestone
       const milestoneRes = await client.query(
-        "SELECT id FROM payment_milestones WHERE project_id = $1 AND tenant_id = $2 AND name = 'Booking Advance' LIMIT 1",
+        "SELECT id FROM payment_milestones WHERE project_id = $1 AND tenant_id = $2 AND (name = 'Booking Advance' OR name ILIKE '%booking%' OR name ILIKE '%advance%' OR name ILIKE '%token%') ORDER BY created_at ASC LIMIT 1",
         [projectId, tenantId]
       );
       if (milestoneRes.rows.length > 0) {

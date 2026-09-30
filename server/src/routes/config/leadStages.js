@@ -49,7 +49,7 @@ const createStageSchema = z.object({
   wip_limit: z.number().int().nullable().optional()
 });
 
-router.post('/', authorize('config:manage'), async (req, res, next) => {
+router.post('/', authorize(['config:manage', 'lead-stages', 'lead-stages:create', 'lead-stages:manage', 'settings:edit', 'settings:manage']), async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
@@ -95,7 +95,7 @@ const updateStageSchema = z.object({
   wip_limit: z.number().int().nullable().optional()
 });
 
-router.put('/:id', authorize('config:manage'), async (req, res, next) => {
+router.put('/:id', authorize(['config:manage', 'lead-stages', 'lead-stages:edit', 'lead-stages:update', 'lead-stages:manage', 'settings:edit', 'settings:manage']), async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);
@@ -156,7 +156,7 @@ const reorderSchema = z.object({
   orderedIds: z.array(z.string().uuid())
 });
 
-router.patch('/reorder', authorize('config:manage'), async (req, res, next) => {
+router.patch('/reorder', authorize(['config:manage', 'lead-stages', 'lead-stages:edit', 'lead-stages:update', 'lead-stages:manage', 'settings:edit', 'settings:manage']), async (req, res, next) => {
   const client = await pool.connect();
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
@@ -197,7 +197,7 @@ router.patch('/reorder', authorize('config:manage'), async (req, res, next) => {
   }
 });
 
-router.delete('/:id', authorize('config:manage'), async (req, res, next) => {
+router.delete('/:id', authorize(['config:manage', 'lead-stages', 'lead-stages:delete', 'lead-stages:manage', 'settings:edit', 'settings:manage']), async (req, res, next) => {
   try {
     const tenantId = req.tenantId || (req.user && req.user.tenantId);
     if (!tenantId) return fail(res, 'UNAUTHORIZED', 'Tenant context missing', 401);

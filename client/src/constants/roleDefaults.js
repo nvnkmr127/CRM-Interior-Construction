@@ -98,7 +98,7 @@ export const ROLE_DEFAULTS = {
       'analytics:view', 'analytics:export',
       'reports:view', 'reports:create', 'reports:edit', 'reports:export'
     ],
-    enabled_modules: ['projects', 'tasks', 'clients', 'payments', 'quotations', 'boq', 'vendors', 'purchase_orders', 'inventory', 'warehouse', 'factory', 'analytics', 'reports'],
+    enabled_modules: ['projects', 'tasks', 'finance-overview', 'financial-approvals', 'analytics-profitability', 'analytics-collection-forecast', 'financial-thresholds'],
     data_scopes: {
       projects: 'department', tasks: 'department', clients: 'department',
       payments: 'department', quotations: 'department', boq: 'department',

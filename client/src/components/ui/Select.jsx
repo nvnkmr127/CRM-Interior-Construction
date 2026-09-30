@@ -11,12 +11,28 @@ export default function Select({
   disabled = false, 
   label, 
   required,
-  allowCustom = false
+  allowCustom = false,
+  editable = false
 }) {
   const [isOpen, setIsOpen] = useState(false)
   const [searchTerm, setSearchTerm] = useState('')
   const [highlightedIndex, setHighlightedIndex] = useState(-1)
   const wrapperRef = useRef(null)
+  const isInputFocused = useRef(false)
+
+  const currentOpt = options.find(o => 
+    (o.value !== '' && o.value !== undefined && o.value === value) ||
+    (o.value && String(o.value).toLowerCase() === String(value || '').toLowerCase()) ||
+    (o.label && String(o.label).toLowerCase() === String(value || '').toLowerCase())
+  )
+  const displayLabel = currentOpt ? currentOpt.label : (value || '')
+  const [inputValue, setInputValue] = useState(displayLabel)
+
+  useEffect(() => {
+    if (!isInputFocused.current) {
+      setInputValue(displayLabel)
+    }
+  }, [displayLabel])
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -38,14 +54,36 @@ export default function Select({
     }
   }, [isOpen])
 
-  const filteredOptions = searchable 
-    ? options.filter(opt => opt.label.toLowerCase().includes(searchTerm.toLowerCase()))
+  const filteredOptions = (editable || searchable) 
+    ? options.filter(opt => {
+        if (!opt.value && !opt.label) return false
+        if (!searchTerm) return true
+        return (
+          (opt.label && opt.label.toLowerCase().includes(searchTerm.toLowerCase())) ||
+          (opt.value && String(opt.value).toLowerCase().includes(searchTerm.toLowerCase()))
+        )
+      })
     : options
 
-  const hasExactMatch = options.some(opt => opt.label.toLowerCase() === searchTerm.toLowerCase())
-  const displayOptions = (allowCustom && searchTerm && !hasExactMatch)
+  const hasExactMatch = options.some(opt => 
+    (opt.label && opt.label.toLowerCase() === searchTerm.toLowerCase()) ||
+    (opt.value && String(opt.value).toLowerCase() === searchTerm.toLowerCase())
+  )
+  const displayOptions = ((allowCustom || editable) && searchTerm && !hasExactMatch)
     ? [...filteredOptions, { value: searchTerm, label: `Use "${searchTerm}"` }]
     : filteredOptions
+
+  const handleInputChange = (e) => {
+    const val = e.target.value
+    setInputValue(val)
+    setSearchTerm(val)
+    const match = options.find(o => 
+      (o.label && o.label.toLowerCase() === val.trim().toLowerCase()) || 
+      (o.value && String(o.value).toLowerCase() === val.trim().toLowerCase())
+    )
+    onChange(match ? match.value : val)
+    if (!isOpen) setIsOpen(true)
+  }
 
   const handleSelect = (option) => {
     if (multi) {
@@ -57,6 +95,11 @@ export default function Select({
       }
     } else {
       onChange(option.value)
+      if (editable) {
+        const textToDisplay = (option.label && !option.label.startsWith('Use "')) ? option.label : option.value
+        setInputValue(textToDisplay || '')
+        setSearchTerm('')
+      }
       setIsOpen(false)
     }
   }
@@ -128,16 +171,58 @@ export default function Select({
       {label && <label className={styles.label}>{label} {required && '*'}</label>}
       <div 
         className={styles.trigger} 
-        onClick={() => !disabled && setIsOpen(!isOpen)}
-        style={{ opacity: disabled ? 0.5 : 1, cursor: disabled ? 'not-allowed' : 'pointer' }}
+        onClick={() => {
+          if (!disabled && !editable) setIsOpen(!isOpen)
+        }}
+        style={{ opacity: disabled ? 0.5 : 1, cursor: disabled ? 'not-allowed' : (editable ? 'text' : 'pointer') }}
       >
-        <div className={styles.triggerText}>{renderValue()}</div>
-        <span className={styles.arrow}>▼</span>
+        {editable ? (
+          <input
+            type="text"
+            className={styles.editableInput}
+            value={inputValue}
+            placeholder={placeholder}
+            disabled={disabled}
+            onChange={handleInputChange}
+            onFocus={() => {
+              isInputFocused.current = true
+              if (!disabled) setIsOpen(true)
+            }}
+            onBlur={() => {
+              isInputFocused.current = false
+              const match = options.find(o => 
+                (o.value !== '' && o.value === value) ||
+                (o.value && String(o.value).toLowerCase() === String(value || '').toLowerCase())
+              )
+              if (match) {
+                setInputValue(match.label)
+              }
+            }}
+            onClick={(e) => {
+              e.stopPropagation()
+              if (!disabled && !isOpen) setIsOpen(true)
+            }}
+          />
+        ) : (
+          <div className={styles.triggerText}>{renderValue()}</div>
+        )}
+        <span 
+          className={styles.arrow}
+          onClick={(e) => {
+            e.stopPropagation()
+            if (!disabled) {
+              if (!isOpen) setSearchTerm('')
+              setIsOpen(!isOpen)
+            }
+          }}
+        >
+          ▼
+        </span>
       </div>
       
       {isOpen && (
         <div className={styles.dropdown}>
-          {searchable && (
+          {searchable && !editable && (
             <div className={styles.search}>
               <input 
                 type="text" 

@@ -1,6 +1,6 @@
 import { Navigate } from 'react-router-dom'
 import { useAuth } from '../store/authContext'
-import { PLAN_DEFAULTS, getModulesForTabs, getDefaultRouteForUser } from '../constants/permissions'
+import { PLAN_DEFAULTS, getModulesForTabs, getDefaultRouteForUser, isTabPermitted } from '../constants/permissions'
 import { isSuperMasterDeveloper } from '../utils/isSuperMasterDeveloper'
 import Spinner from './ui/Spinner'
 import styles from './ProtectedRoute.module.css'
@@ -87,14 +87,9 @@ export default function ProtectedRoute({ children, requiredPermission, requiredM
 
   const enabledModules = user?.role?.enabled_modules || [];
 
-  // If a specific tab is required, enforce tab access
+  // If a specific tab is required, enforce tab access using exact isTabPermitted logic
   if (requiredTab) {
-    const isTabGranted = enabledModules.includes(requiredTab) || 
-      (requiredTab === 'dashboard' && (enabledModules.includes('dashboards') || perms.includes('dashboards') || perms.some(p => p.startsWith('dashboards:')))) ||
-      perms.includes(requiredTab) || 
-      perms.includes(`${requiredTab}:view`) || 
-      perms.some(p => p.startsWith(`${requiredTab}:`)) ||
-      requiredTab === 'absences'; // Dedicated Leave Management portal accessible to team members by default
+    const isTabGranted = isTabPermitted({ id: requiredTab, module: requiredModule }, user, planTabs);
     
     if (isTabGranted) {
       return children;

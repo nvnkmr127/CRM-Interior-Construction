@@ -212,6 +212,7 @@ async function authenticate(req, res, next) {
       let dbPerms = [];
       let dbScopes = {};
       let dbFields = {};
+      let dbModules = [];
       let rName = req.user.role || '';
 
       if (uRow && (uRow.role_name || uRow.role_id || uRow.role_permissions)) {
@@ -226,24 +227,27 @@ async function authenticate(req, res, next) {
             dbPerms = p.actions || [];
             dbScopes = p.scopes || {};
             dbFields = p.fields || {};
+            dbModules = p.modules || [];
           }
         }
       }
 
       if (rName) {
         req.user.role = rName.toLowerCase();
+        req.user.role_name = rName;
+      }
+      if (uRow?.role_id) {
+        req.user.role_id = uRow.role_id;
       }
 
       const roleCfg = getRoleConfig(rName || req.user.role) || ROLE_DEFAULTS['Team Member'];
       const defaultPerms = roleCfg ? roleCfg.permissions : ['projects:view', 'tasks:view', 'leads:view', 'leads:read'];
 
-      const tokenPerms = Array.isArray(req.user.permissions) 
-        ? req.user.permissions 
-        : (req.user.permissions?.actions || []);
-
-      const combinedPerms = [...new Set([...tokenPerms, ...dbPerms, ...defaultPerms])];
+      // If user has role permissions configured in DB, those strictly govern. Otherwise use defaultPerms.
+      const effectivePerms = (uRow && uRow.role_permissions) ? dbPerms : defaultPerms;
       
-      req.user.permissions = combinedPerms;
+      req.user.permissions = effectivePerms;
+      req.user.enabled_modules = dbModules.length > 0 ? dbModules : (roleCfg ? roleCfg.enabled_modules : []);
       if (Object.keys(dbScopes).length > 0) {
         req.user.data_scopes = dbScopes;
       }
@@ -257,12 +261,12 @@ async function authenticate(req, res, next) {
 
     // Normalize user permissions for the new schema (actions, scopes, fields)
     if (req.user.permissions && !Array.isArray(req.user.permissions) && req.user.permissions.actions) {
-      req.user.data_scopes = req.user.permissions.scopes || {};
-      req.user.field_permissions = req.user.permissions.fields || {};
+      req.user.data_scopes = req.user.permissions.scopes || req.user.data_scopes || {};
+      req.user.field_permissions = req.user.permissions.fields || req.user.field_permissions || {};
       req.user.permissions = req.user.permissions.actions; // backward compatibility for authorize()
     } else {
-      req.user.data_scopes = {};
-      req.user.field_permissions = {};
+      req.user.data_scopes = req.user.data_scopes || {};
+      req.user.field_permissions = req.user.field_permissions || {};
     }
 
     req.tenantId = decoded.tenantId;

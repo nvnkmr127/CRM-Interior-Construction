@@ -191,17 +191,23 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
   const updated = result.rows[0];
 
   // Auto-activate project on booking advance payment confirmation
-  if (status === 'paid' && current.status !== 'paid' && current.name === 'Booking Advance') {
+  const isAdvanceMilestone = /booking|advance|token/i.test(current.name || '') || /booking|advance/i.test(updated?.name || '');
+  const isNowPaid = status === 'paid' || (data.paid_amount !== undefined && Number(data.paid_amount) > 0) || updated?.status === 'paid';
+  if (isNowPaid && isAdvanceMilestone) {
     const projCheck = await pool.query(
       "SELECT id, status FROM projects WHERE id = $1 AND tenant_id = $2",
       [current.project_id, tenantId]
     );
-    if (projCheck.rows.length > 0 && projCheck.rows[0].status === 'pending_payment') {
+    if (projCheck.rows.length > 0 && ['pending_booking', 'pending_payment'].includes(projCheck.rows[0].status)) {
+      const advancePaid = Number(updated?.paid_amount || updated?.amount || current.paid_amount || current.amount || 0);
       await pool.query(
-        "UPDATE projects SET status = 'active', updated_at = NOW() WHERE id = $1 AND tenant_id = $2",
-        [current.project_id, tenantId]
+        "UPDATE projects SET status = 'active', booking_amount = COALESCE(NULLIF(booking_amount, 0), $1), updated_at = NOW() WHERE id = $2 AND tenant_id = $3",
+        [advancePaid, current.project_id, tenantId]
       );
       
+      const { clearCachePrefix } = require('../../utils/cache');
+      clearCachePrefix(current.project_id).catch(() => {});
+
       // Log audit action for project status change
       await logAction({
         tenantId,
@@ -209,7 +215,7 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
         action: 'project.updated',
         entity: 'project',
         entityId: current.project_id,
-        oldValue: { status: 'pending_payment' },
+        oldValue: { status: projCheck.rows[0].status },
         newValue: { status: 'active' }
       });
     }
