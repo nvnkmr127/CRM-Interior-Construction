@@ -1,64 +1,19 @@
-/* eslint-disable no-unused-vars */
 import React, { useState, useEffect } from 'react';
-import { Button, Input, Select, Modal } from '../ui';
-import { updateProject, getProjectMembers, assignProjectMembers, removeProjectMember } from '../../api/projects';
+import { Button, Select, Modal } from '../ui';
+import { updateProject } from '../../api/projects';
 import { usersApi } from '../../api/users';
 import { useToast } from '../../store/toastContext';
 
-import { useConfirm } from '../../store/confirmContext';
-
 export default function TeamAndRolesTab({ project, onRefresh }) {
-  const { confirm } = useConfirm();
-
   const toast = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [teamMembers, setTeamMembers] = useState([]);
-  
   const [formData, setFormData] = useState({});
-  const [projectMembers, setProjectMembers] = useState([]);
-  const [assignModalOpen, setAssignModalOpen] = useState(false);
-  const [selectedUsersToAssign, setSelectedUsersToAssign] = useState([]);
-  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     usersApi.getAll().then(res => setTeamMembers(res || [])).catch(console.error);
-    fetchMembers();
   }, []);
-
-  const fetchMembers = () => {
-    getProjectMembers(project.id).then(res => {
-      const members = Array.isArray(res) ? res : (res?.data || []);
-      setProjectMembers(Array.isArray(members) ? members : []);
-    }).catch(console.error);
-  };
-
-  const handleAssignMembers = async () => {
-    if (!selectedUsersToAssign.length) return;
-    try {
-      setAssigning(true);
-      await assignProjectMembers(project.id, selectedUsersToAssign);
-      toast.success('Members assigned successfully');
-      setAssignModalOpen(false);
-      setSelectedUsersToAssign([]);
-      fetchMembers();
-    } catch (e) {
-      toast.error(e?.response?.data?.error || 'Failed to assign members');
-    } finally {
-      setAssigning(false);
-    }
-  };
-
-  const handleRemoveMember = async (userId) => {
-    if (!await confirm('Remove member from project?')) return;
-    try {
-      await removeProjectMember(project.id, userId);
-      toast.success('Member removed');
-      fetchMembers();
-    } catch (e) {
-      toast.error(e?.response?.data?.error || 'Failed to remove member');
-    }
-  };
 
   const openEdit = () => {
     usersApi.getAll().then(res => setTeamMembers(res || [])).catch(console.error);
@@ -71,6 +26,7 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
 
     setFormData({
       pm: project.pm_id || '',
+      salesRep: project.sales_rep_id || '',
       designer: getSingularVal(project.designer_id, project.designer_ids),
       leadDesigner: getSingularVal(project.lead_designer_id, project.lead_designer_ids),
       juniorDesigner: getSingularVal(project.junior_designer_id, project.junior_designer_ids),
@@ -88,6 +44,7 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
       setSaving(true);
       const payload = {
         pm_id: formData.pm || null,
+        sales_rep_id: formData.salesRep || null,
         designer_id: formData.designer || null,
         lead_designer_id: formData.leadDesigner || null,
         junior_designer_id: formData.juniorDesigner || null,
@@ -122,6 +79,7 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
 
   const fields = [
     { label: 'Project Manager', value: getRoleNames(project.pm_id, project.pm_name) },
+    { label: 'Sales Representative', value: getRoleNames(project.sales_rep_id, project.sales_rep_name) },
     { label: 'Designer', value: getRoleNames(project.designer_id || project.designer_ids, project.designer_name) },
     { label: 'Lead Designer', value: getRoleNames(project.lead_designer_id || project.lead_designer_ids, project.lead_designer_name) },
     { label: 'Junior Designer', value: getRoleNames(project.junior_designer_id || project.junior_designer_ids, project.junior_designer_name) },
@@ -130,6 +88,10 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
     { label: 'Site Supervisor', value: getRoleNames(project.site_supervisor_id || project.site_supervisor_ids, project.site_supervisor_name) },
     { label: 'CRM Executive', value: getRoleNames(project.crm_executive_id || project.crm_executive_ids, project.crm_executive_name) },
     { label: 'Procurement Officer', value: getRoleNames(project.procurement_officer_id || project.procurement_officer_ids, project.procurement_officer_name) },
+    ...(project.site_team || []).map(member => ({
+      label: `${(member.role || 'Site Member').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}${member.vendor_name ? ` (${member.vendor_name})` : ''}`,
+      value: member.name || '—'
+    }))
   ];
 
   const getOptions = (roleKeywords) => {
@@ -155,12 +117,14 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
             ✏️ Edit
           </Button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0, margin: '0 -1px -1px 0' }}>
-          {fields.map((f, i) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0, marginRight: '-1px', marginBottom: '-1px' }}>
+          {fields.map((f) => (
             <div key={f.label} style={{
               padding: '14px 20px',
               borderBottom: '1px solid var(--color-border)',
               borderRight: '1px solid var(--color-border)',
+              boxSizing: 'border-box',
+              minWidth: 0,
             }}>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {f.label}
@@ -173,47 +137,6 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
         </div>
       </div>
 
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-            Project Access List
-          </div>
-          <Button variant="primary" size="sm" onClick={async () => setAssignModalOpen(true)}>
-            + Assign Members
-          </Button>
-        </div>
-        
-        {projectMembers.length === 0 ? (
-          <div style={{ padding: '32px', textAlign: 'center', color: 'var(--color-text-muted)' }}>
-            No members assigned. Users will only have access if they are assigned globally or set as Project Manager.
-          </div>
-        ) : (
-          <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left' }}>
-            <thead>
-              <tr style={{ background: 'var(--color-bg)', borderBottom: '1px solid var(--color-border)' }}>
-                <th style={{ padding: '12px 20px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Name</th>
-                <th style={{ padding: '12px 20px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Email</th>
-                <th style={{ padding: '12px 20px', fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', textTransform: 'uppercase' }}>Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {projectMembers.map((m, index) => {
-                const memberId = m.user_id || m.id;
-                return (
-                  <tr key={memberId || index} style={{ borderBottom: '1px solid var(--color-border)' }}>
-                    <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>{m.name}</td>
-                    <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>{m.email}</td>
-                    <td style={{ padding: '12px 20px', fontSize: 'var(--text-sm)' }}>
-                      <Button variant="danger" size="sm" onClick={async () => handleRemoveMember(memberId)}>Remove</Button>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        )}
-      </div>
-
       <Modal isOpen={isEditing} onClose={() => setIsEditing(false)} title="Edit Team & Roles" size="md">
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '16px', paddingBottom: '16px' }}>
           <Select 
@@ -221,6 +144,12 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
             options={getOptions(['project manager', 'pm', 'project_manager'])}
             value={formData.pm}
             onChange={v => setFormData({...formData, pm: v})}
+          />
+          <Select 
+            label="Sales Representative" 
+            options={getOptions(['sales', 'rep'])}
+            value={formData.salesRep}
+            onChange={v => setFormData({...formData, salesRep: v})}
           />
           <Select 
             label="Designer" 
@@ -274,27 +203,6 @@ export default function TeamAndRolesTab({ project, onRefresh }) {
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
           <Button variant="outline" onClick={async () => setIsEditing(false)} disabled={saving}>Cancel</Button>
           <Button onClick={handleSave} disabled={saving}>{saving ? 'Saving...' : 'Save Changes'}</Button>
-        </div>
-      </Modal>
-
-      <Modal isOpen={assignModalOpen} onClose={() => setAssignModalOpen(false)} title="Assign Project Members" size="sm">
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '16px', paddingBottom: '16px' }}>
-          <p style={{ margin: 0, fontSize: 'var(--text-sm)', color: 'var(--color-text-muted)' }}>
-            Select users to grant explicit access to this project.
-          </p>
-          <Select 
-            label="Select Users"
-            multi={true}
-            options={teamMembers.filter(tm => !projectMembers.some(pm => pm.user_id === tm.id)).map(tm => ({ label: tm.name, value: tm.id }))}
-            value={selectedUsersToAssign}
-            onChange={setSelectedUsersToAssign}
-          />
-        </div>
-        <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '16px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>
-          <Button variant="outline" onClick={async () => setAssignModalOpen(false)} disabled={assigning}>Cancel</Button>
-          <Button onClick={handleAssignMembers} disabled={assigning || !selectedUsersToAssign.length}>
-            {assigning ? 'Assigning...' : 'Assign Users'}
-          </Button>
         </div>
       </Modal>
     </div>

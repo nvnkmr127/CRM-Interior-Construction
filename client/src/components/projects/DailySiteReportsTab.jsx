@@ -1,41 +1,53 @@
 /* eslint-disable no-unused-vars, react-hooks/immutability, react-hooks/exhaustive-deps */
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styles from './DailySiteReportsTab.module.css';
-import { Button, Modal, Input, Select } from '../ui';
+import { Button, Modal, Input, Select, Badge } from '../ui';
 import { getDailyReports, submitDailyReport } from '../../api/projects';
 import { useS3Upload } from '../../hooks/useS3Upload';
 import { useToast } from '../../store/toastContext';
+import { useAuth } from '../../store/authContext';
 
 const TRADES = [
-  { value: 'civil', label: 'Civil / Demolition' },
-  { value: 'electrical', label: 'Electrical Work' },
-  { value: 'plumbing', label: 'Plumbing Work' },
-  { value: 'false_ceiling', label: 'False Ceiling' },
-  { value: 'flooring', label: 'Flooring & Tiling' },
-  { value: 'painting', label: 'Painting & Putty' },
-  { value: 'carpentry', label: 'Carpentry & Modular' },
-  { value: 'glass_metal', label: 'Glass & Metal Work' },
-  { value: 'furnishing', label: 'Soft Furnishing' }
+  { value: 'civil', label: 'Civil / Demolition', icon: '🧱' },
+  { value: 'electrical', label: 'Electrical Work', icon: '⚡' },
+  { value: 'plumbing', label: 'Plumbing Work', icon: '🚰' },
+  { value: 'false_ceiling', label: 'False Ceiling', icon: '📐' },
+  { value: 'flooring', label: 'Flooring & Tiling', icon: '🏁' },
+  { value: 'painting', label: 'Painting & Putty', icon: '🎨' },
+  { value: 'carpentry', label: 'Carpentry & Modular', icon: '🔨' },
+  { value: 'glass_metal', label: 'Glass & Metal Work', icon: '🪟' },
+  { value: 'furnishing', label: 'Soft Furnishing', icon: '🛋️' }
 ];
 
 export default function DailySiteReportsTab({ projectId }) {
+  const { user } = useAuth();
   const toast = useToast();
   const { uploadRaw, uploading: s3Uploading, progress: uploadProgress } = useS3Upload();
 
-  // State
+  // Core Data States
   const [reports, setReports] = useState([]);
   const [selectedReport, setSelectedReport] = useState(null);
   const [loading, setLoading] = useState(true);
+
+  // Search & Filters
+  const [searchQuery, setSearchQuery] = useState('');
+  const [tradeFilter, setTradeFilter] = useState('all');
+  const [issuesOnly, setIssuesOnly] = useState(false);
+
+  // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [lightboxPhoto, setLightboxPhoto] = useState(null);
 
   // Form State
   const [formDate, setFormDate] = useState(new Date().toISOString().split('T')[0]);
   const [formWorkDone, setFormWorkDone] = useState('');
+  const [formTomorrowsPlan, setFormTomorrowsPlan] = useState('');
+  const [formSupervisorSignature, setFormSupervisorSignature] = useState(user?.name || '');
   const [formIssues, setFormIssues] = useState('');
   const [formManpower, setFormManpower] = useState([]);
   const [formMaterials, setFormMaterials] = useState([]);
-  const [uploadedPhotos, setUploadedPhotos] = useState([]); // List of storage keys
-  const [localPhotoUrls, setLocalPhotoUrls] = useState({}); // key -> local object URL for instant preview
+  const [uploadedPhotos, setUploadedPhotos] = useState([]);
+  const [localPhotoUrls, setLocalPhotoUrls] = useState({});
 
   // Dynamic add manpower state
   const [selectedTrade, setSelectedTrade] = useState('carpentry');
@@ -56,9 +68,10 @@ export default function DailySiteReportsTab({ projectId }) {
     try {
       const res = await getDailyReports(projectId);
       const data = res.data?.data || res.data || [];
-      setReports(data);
-      if (data.length > 0 && !selectedReport) {
-        setSelectedReport(data[0]);
+      const list = Array.isArray(data) ? data : [];
+      setReports(list);
+      if (list.length > 0 && !selectedReport) {
+        setSelectedReport(list[0]);
       }
     } catch (err) {
       toast.error('Failed to load daily site reports.');
@@ -67,11 +80,43 @@ export default function DailySiteReportsTab({ projectId }) {
     }
   };
 
+  // KPI Calculations
+  const totalReportsCount = reports.length;
+  const latestReport = reports[0];
+  const latestManpowerCount = (latestReport?.manpower || []).reduce((sum, item) => sum + (Number(item.count) || 0), 0);
+  const totalBlockersCount = reports.filter(r => Boolean(r.issues_encountered && r.issues_encountered.trim())).length;
+  const totalPhotosCount = reports.reduce((sum, r) => sum + (Array.isArray(r.photos) ? r.photos.length : 0), 0);
+
+  // Filtered Reports
+  const filteredReports = useMemo(() => {
+    return reports.filter(r => {
+      if (searchQuery.trim()) {
+        const q = searchQuery.toLowerCase();
+        const matchesWork = (r.work_done || '').toLowerCase().includes(q);
+        const matchesIssues = (r.issues_encountered || '').toLowerCase().includes(q);
+        const matchesPlan = (r.tomorrows_plan || '').toLowerCase().includes(q);
+        const matchesDate = (r.report_date || '').includes(q);
+        if (!matchesWork && !matchesIssues && !matchesPlan && !matchesDate) return false;
+      }
+
+      if (issuesOnly && (!r.issues_encountered || !r.issues_encountered.trim())) {
+        return false;
+      }
+
+      if (tradeFilter !== 'all') {
+        const hasTrade = (r.manpower || []).some(m => m.trade === tradeFilter);
+        if (!hasTrade) return false;
+      }
+
+      return true;
+    });
+  }, [reports, searchQuery, tradeFilter, issuesOnly]);
+
   const handleAddManpower = () => {
     if (workerCount <= 0) return;
-    const label = TRADES.find(t => t.value === selectedTrade)?.label || selectedTrade;
+    const item = TRADES.find(t => t.value === selectedTrade);
+    const label = item?.label || selectedTrade;
     
-    // Check if trade already exists
     if (formManpower.some(m => m.trade === selectedTrade)) {
       toast.error('Trade already added. Modify or remove it first.');
       return;
@@ -115,7 +160,6 @@ export default function DailySiteReportsTab({ projectId }) {
 
   const handleRemovePhoto = (storageKey) => {
     setUploadedPhotos(prev => prev.filter(key => key !== storageKey));
-    // Clean local object URL if exists
     if (localPhotoUrls[storageKey]) {
       URL.revokeObjectURL(localPhotoUrls[storageKey]);
       setLocalPhotoUrls(prev => {
@@ -132,28 +176,26 @@ export default function DailySiteReportsTab({ projectId }) {
       return;
     }
 
-    if (uploadedPhotos.length === 0) {
-      toast.error('Submission blocked: At least one progress photo is required.');
-      return;
-    }
-
     setSubmitting(true);
     try {
       const payload = {
         reportDate: formDate,
-        workDone: formWorkDone,
+        workDone: formWorkDone.trim(),
+        tomorrowsPlan: formTomorrowsPlan.trim() || null,
+        supervisorSignature: formSupervisorSignature.trim() || user?.name || 'Site Supervisor',
         manpower: formManpower.map(m => ({ trade: m.trade, count: m.count })),
         materials: formMaterials,
         issuesEncountered: formIssues.trim() || null,
         photos: uploadedPhotos
       };
 
-      const res = await submitDailyReport(projectId, payload);
+      await submitDailyReport(projectId, payload);
       toast.success('Daily site report submitted successfully!');
       setIsModalOpen(false);
       
       // Reset form
       setFormWorkDone('');
+      setFormTomorrowsPlan('');
       setFormIssues('');
       setFormManpower([]);
       setFormMaterials([]);
@@ -161,175 +203,369 @@ export default function DailySiteReportsTab({ projectId }) {
       setLocalPhotoUrls({});
       setFormDate(new Date().toISOString().split('T')[0]);
 
-      // Refresh list
       fetchReports();
     } catch (err) {
-      toast.error(err?.response?.data?.error?.message || 'Failed to submit daily report.');
+      toast.error(err?.response?.data?.error?.message || err?.response?.data?.message || 'Failed to submit daily report.');
     } finally {
       setSubmitting(false);
     }
   };
 
-  // Helper to render image thumbnails
   const resolvePhotoUrl = (key) => {
+    if (!key) return '';
     if (localPhotoUrls[key]) return localPhotoUrls[key];
-    // Mock image source mapping to look professional offline
+    if (key.startsWith('http://') || key.startsWith('https://')) return key;
     if (key.includes('mock-dsr-photo') || key.includes('photo-')) {
-      return 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=400&q=80';
+      return 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=800&q=80';
     }
-    return key; // Fallback or S3 URL
+    return key;
+  };
+
+  // Generate WhatsApp Message
+  const handleCopyWhatsApp = (report) => {
+    if (!report) return;
+    const dateStr = new Date(report.report_date).toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    const totalWorkers = (report.manpower || []).reduce((sum, item) => sum + (Number(item.count) || 0), 0);
+
+    let msg = `*📋 Daily Site Report — ${dateStr}*\n\n`;
+    msg += `*✅ Work Completed Today:*\n${report.work_done}\n\n`;
+
+    if (report.tomorrows_plan) {
+      msg += `*🎯 Tomorrow's Planned Work:*\n${report.tomorrows_plan}\n\n`;
+    }
+
+    if (totalWorkers > 0) {
+      msg += `*👥 Manpower Deployed (${totalWorkers} Total):*\n`;
+      (report.manpower || []).forEach(m => {
+        const trObj = TRADES.find(t => t.value === m.trade);
+        msg += `- ${trObj?.label || m.trade}: ${m.count} workers\n`;
+      });
+      msg += '\n';
+    }
+
+    if (report.materials && report.materials.length > 0) {
+      msg += `*📦 Materials Received / Consumed:*\n`;
+      report.materials.forEach(m => {
+        msg += `- ${m.material}: ${m.quantity}\n`;
+      });
+      msg += '\n';
+    }
+
+    if (report.issues_encountered) {
+      msg += `*⚠️ Issues / Site Blockers:*\n${report.issues_encountered}\n\n`;
+    }
+
+    msg += `_Submitted by: ${report.submitted_by_name || report.supervisor_signature || 'Site Incharge'}_`;
+
+    navigator.clipboard.writeText(msg);
+    toast.success('Daily Site Report formatted & copied to clipboard!');
   };
 
   if (loading && reports.length === 0) {
-    return <div style={{ padding: 40, text: 'center', color: 'var(--color-text-muted)' }}>Loading reports history...</div>;
+    return <div style={{ padding: 40, textAlign: 'center', color: 'var(--color-text-muted)' }}>Loading site reports history...</div>;
   }
 
   return (
-    <div className={styles.container}>
-      {/* Left Column: Timeline List */}
-      <div className={styles.leftCol}>
-        <div className={styles.headerRow}>
-          <h3 className={styles.title}>Daily Reports</h3>
-          <Button variant="primary" size="sm" onClick={() => setIsModalOpen(true)}>+ Submit Report</Button>
+    <div className={styles.wrapper}>
+      {/* KPI Stats Bar */}
+      <div className={styles.kpiBar}>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiIcon}>📋</div>
+          <div className={styles.kpiInfo}>
+            <span className={styles.kpiVal}>{totalReportsCount}</span>
+            <span className={styles.kpiTitle}>Total Reports Logged</span>
+          </div>
         </div>
 
-        {reports.length === 0 ? (
-          <div className={styles.emptyState}>
-            <div className={styles.emptyIcon}>📋</div>
-            <p style={{ margin: 0, fontSize: '13px' }}>No daily reports submitted yet.</p>
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiIcon}>👷</div>
+          <div className={styles.kpiInfo}>
+            <span className={styles.kpiVal}>{latestManpowerCount}</span>
+            <span className={styles.kpiTitle}>Latest Site Workers</span>
           </div>
-        ) : (
-          <div className={styles.reportsList}>
-            {reports.map(report => {
-              const totalWorkers = (report.manpower || []).reduce((sum, item) => sum + item.count, 0);
-              return (
-                <div 
-                  key={report.id} 
-                  className={`${styles.reportCard} ${selectedReport?.id === report.id ? styles.reportCardActive : ''}`}
-                  onClick={() => setSelectedReport(report)}
+        </div>
+
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiIcon}>⚠️</div>
+          <div className={styles.kpiInfo}>
+            <span className={styles.kpiVal} style={{ color: totalBlockersCount > 0 ? 'var(--color-warning)' : 'var(--color-text)' }}>
+              {totalBlockersCount}
+            </span>
+            <span className={styles.kpiTitle}>Reported Blockers</span>
+          </div>
+        </div>
+
+        <div className={styles.kpiCard}>
+          <div className={styles.kpiIcon}>📸</div>
+          <div className={styles.kpiInfo}>
+            <span className={styles.kpiVal}>{totalPhotosCount}</span>
+            <span className={styles.kpiTitle}>Progress Photos</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Split Container */}
+      <div className={styles.container}>
+        {/* Left Column: Timeline List */}
+        <div className={styles.leftCol}>
+          <div className={styles.headerRow}>
+            <h3 className={styles.title}>Daily Reports</h3>
+            <Button variant="primary" size="sm" onClick={() => setIsModalOpen(true)}>+ New Report</Button>
+          </div>
+
+          {/* Search & Filter Bar */}
+          <div className={styles.filterRow}>
+            <input 
+              type="text"
+              className={styles.searchInput}
+              placeholder="Search work done, date..."
+              value={searchQuery}
+              onChange={e => setSearchQuery(e.target.value)}
+            />
+            <select 
+              className={styles.filterSelect}
+              value={tradeFilter}
+              onChange={e => setTradeFilter(e.target.value)}
+            >
+              <option value="all">All Trades</option>
+              {TRADES.map(t => (
+                <option key={t.value} value={t.value}>{t.icon} {t.label}</option>
+              ))}
+            </select>
+            <button
+              type="button"
+              className={`${styles.filterPill} ${issuesOnly ? styles.filterPillActive : ''}`}
+              onClick={() => setIssuesOnly(prev => !prev)}
+              title="Filter reports with reported blockers or site issues"
+            >
+              ⚠️ Blockers Only
+            </button>
+          </div>
+
+          {filteredReports.length === 0 ? (
+            <div className={styles.emptyState}>
+              <div className={styles.emptyIcon}>📋</div>
+              <p style={{ margin: 0, fontSize: '13px', fontWeight: 600 }}>No matching daily reports</p>
+              <span style={{ fontSize: '12px', color: 'var(--color-text-muted)', marginTop: 4 }}>
+                {reports.length === 0 ? 'Click "+ New Report" to log the first site entry.' : 'Try adjusting your search filters.'}
+              </span>
+              {(searchQuery || tradeFilter !== 'all' || issuesOnly) && (
+                <button
+                  type="button"
+                  className={styles.resetFilterBtn}
+                  onClick={() => {
+                    setSearchQuery('');
+                    setTradeFilter('all');
+                    setIssuesOnly(false);
+                  }}
                 >
-                  <div className={styles.cardHeader}>
-                    <span className={styles.cardDate}>
-                      {new Date(report.report_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
-                    </span>
-                    <span className={styles.cardSubmitter}>{report.submitted_by_name || 'Supervisor'}</span>
-                  </div>
-                  <div className={styles.cardSnippet}>{report.work_done}</div>
-                  <div className={styles.cardBadges}>
-                    {totalWorkers > 0 && (
-                      <span className={`${styles.badge} ${styles.badgeManpower}`}>
-                        👥 {totalWorkers} Workers
-                      </span>
-                    )}
-                    {report.issues_encountered && (
-                      <span className={`${styles.badge} ${styles.badgeIssue}`}>
-                        ⚠️ Issue Reported
-                      </span>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Right Column: Detail View */}
-      <div className={styles.rightCol}>
-        {selectedReport ? (
-          <>
-            <div className={styles.detailHeader}>
-              <h2 className={styles.detailDate}>
-                DSR - {new Date(selectedReport.report_date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
-              </h2>
-              <div className={styles.detailMeta}>
-                Submitted by: <strong>{selectedReport.submitted_by_name || 'Supervisor'}</strong> on {new Date(selectedReport.created_at).toLocaleString('en-IN')}
-              </div>
-            </div>
-
-            <div>
-              <h4 className={styles.sectionTitle}>Work Completed</h4>
-              <div className={styles.sectionBox}>{selectedReport.work_done}</div>
-            </div>
-
-            {selectedReport.issues_encountered && (
-              <div>
-                <h4 className={styles.sectionTitle}>Issues & Blockers</h4>
-                <div className={styles.issueCallout}>
-                  <strong>⚠️ Issue Details:</strong><br />
-                  {selectedReport.issues_encountered}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <h4 className={styles.sectionTitle}>Manpower Deployed</h4>
-              {selectedReport.manpower && selectedReport.manpower.length > 0 ? (
-                <div className={styles.gridList}>
-                  {selectedReport.manpower.map((m, idx) => {
-                    const label = TRADES.find(t => t.value === m.trade)?.label || m.trade;
-                    return (
-                      <div key={idx} className={styles.gridItem}>
-                        <span className={styles.gridLabel}>{label}</span>
-                        <span className={styles.gridVal}>{m.count}</span>
-                      </div>
-                    );
-                  })}
-                </div>
-              ) : (
-                <p style={{ margin: 0, fontStyle: 'italic', fontSize: '13px', color: 'var(--color-text-muted)' }}>No manpower recorded.</p>
+                  Clear Filters
+                </button>
               )}
             </div>
+          ) : (
+            <div className={styles.reportsList}>
+              {filteredReports.map(report => {
+                const totalWorkers = (report.manpower || []).reduce((sum, item) => sum + (Number(item.count) || 0), 0);
+                const photoCount = Array.isArray(report.photos) ? report.photos.length : 0;
+                const isSelected = selectedReport?.id === report.id;
 
-            <div>
-              <h4 className={styles.sectionTitle}>Materials Consumed</h4>
-              {selectedReport.materials && selectedReport.materials.length > 0 ? (
-                <div className={styles.gridList}>
-                  {selectedReport.materials.map((m, idx) => (
-                    <div key={idx} className={styles.gridItem}>
-                      <span className={styles.gridLabel}>{m.material}</span>
-                      <span className={styles.gridVal}>{m.quantity}</span>
+                return (
+                  <div 
+                    key={report.id} 
+                    className={`${styles.reportCard} ${isSelected ? styles.reportCardActive : ''}`}
+                    onClick={() => setSelectedReport(report)}
+                  >
+                    <div className={styles.cardHeader}>
+                      <span className={styles.cardDate}>
+                        📅 {new Date(report.report_date).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })}
+                      </span>
+                      <span className={styles.cardSubmitter}>
+                        {report.submitted_by_name || report.supervisor_signature || 'Supervisor'}
+                      </span>
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <p style={{ margin: 0, fontStyle: 'italic', fontSize: '13px', color: 'var(--color-text-muted)' }}>No materials recorded.</p>
-              )}
-            </div>
 
-            <div>
-              <h4 className={styles.sectionTitle}>Progress Photos</h4>
-              {selectedReport.photos && selectedReport.photos.length > 0 ? (
-                <div className={styles.gallery}>
-                  {selectedReport.photos.map((key, idx) => (
-                    <img 
-                      key={idx} 
-                      src={resolvePhotoUrl(key)} 
-                      alt={`Site Progress ${idx + 1}`} 
-                      className={styles.galleryImg} 
-                      onClick={() => window.open(resolvePhotoUrl(key), '_blank')}
-                    />
-                  ))}
-                </div>
-              ) : (
-                <p style={{ margin: 0, fontStyle: 'italic', fontSize: '13px', color: 'var(--color-text-danger)' }}>⚠️ Error: No photos submitted.</p>
-              )}
+                    <div className={styles.cardSnippet}>{report.work_done}</div>
+
+                    <div className={styles.cardBadges}>
+                      {totalWorkers > 0 && (
+                        <span className={`${styles.badge} ${styles.badgeManpower}`}>
+                          👥 {totalWorkers} Workers
+                        </span>
+                      )}
+                      {photoCount > 0 && (
+                        <span className={`${styles.badge} ${styles.badgePhotos}`}>
+                          📸 {photoCount} Photos
+                        </span>
+                      )}
+                      {report.issues_encountered && (
+                        <span className={`${styles.badge} ${styles.badgeIssue}`}>
+                          ⚠️ Blocker
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
             </div>
-          </>
-        ) : (
-          <div className={styles.emptySelection}>
-            <div style={{ fontSize: '48px', marginBottom: 12 }}>📋</div>
-            <p>Select a daily site report from the list to view its details.</p>
-          </div>
-        )}
+          )}
+        </div>
+
+        {/* Right Column: Detail View */}
+        <div className={styles.rightCol}>
+          {selectedReport ? (
+            <>
+              <div className={styles.detailHeader}>
+                <div className={styles.detailHeaderLeft}>
+                  <h2 className={styles.detailDate}>
+                    <span>📋</span>
+                    DSR — {new Date(selectedReport.report_date).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}
+                  </h2>
+                  <div className={styles.detailMeta}>
+                    Logged by <strong>{selectedReport.submitted_by_name || selectedReport.supervisor_signature || 'Site Incharge'}</strong> on {new Date(selectedReport.created_at || selectedReport.report_date).toLocaleDateString('en-IN', { hour: '2-digit', minute: '2-digit' })}
+                  </div>
+                </div>
+
+                <div className={styles.detailActions}>
+                  <Button variant="outline" size="sm" onClick={() => window.print()}>
+                    🖨️ Print DSR
+                  </Button>
+                  <Button variant="primary" size="sm" onClick={() => handleCopyWhatsApp(selectedReport)}>
+                    💬 Copy WhatsApp Update
+                  </Button>
+                </div>
+              </div>
+
+              {/* Work Completed */}
+              <div>
+                <h4 className={styles.sectionTitle}>
+                  <span>🔨</span> Work Completed Today
+                </h4>
+                <div className={styles.sectionBox}>{selectedReport.work_done}</div>
+              </div>
+
+              {/* Tomorrow's Plan */}
+              {selectedReport.tomorrows_plan && (
+                <div>
+                  <h4 className={styles.sectionTitle}>
+                    <span>🎯</span> Tomorrow's Planned Work
+                  </h4>
+                  <div className={styles.planBox}>{selectedReport.tomorrows_plan}</div>
+                </div>
+              )}
+
+              {/* Issues & Blockers */}
+              {selectedReport.issues_encountered && (
+                <div>
+                  <h4 className={styles.sectionTitle}>
+                    <span>⚠️</span> Issues & Site Blockers
+                  </h4>
+                  <div className={styles.issueCallout}>
+                    <strong>Identified Delay / Block:</strong><br />
+                    {selectedReport.issues_encountered}
+                  </div>
+                </div>
+              )}
+
+              {/* Manpower Deployed */}
+              <div>
+                <h4 className={styles.sectionTitle}>
+                  <span>👥</span> Manpower Deployed
+                </h4>
+                {selectedReport.manpower && selectedReport.manpower.length > 0 ? (
+                  <div className={styles.gridList}>
+                    {selectedReport.manpower.map((m, idx) => {
+                      const trObj = TRADES.find(t => t.value === m.trade);
+                      return (
+                        <div key={idx} className={styles.gridItem}>
+                          <span className={styles.gridLabel}>
+                            <span>{trObj?.icon || '👷'}</span>
+                            {trObj?.label || m.trade}
+                          </span>
+                          <span className={styles.gridVal}>{m.count} workers</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                ) : (
+                  <p style={{ margin: 0, fontStyle: 'italic', fontSize: '13px', color: 'var(--color-text-muted)' }}>No manpower recorded for this day.</p>
+                )}
+              </div>
+
+              {/* Materials Consumed */}
+              <div>
+                <h4 className={styles.sectionTitle}>
+                  <span>📦</span> Materials Received / Consumed
+                </h4>
+                {selectedReport.materials && selectedReport.materials.length > 0 ? (
+                  <div className={styles.gridList}>
+                    {selectedReport.materials.map((m, idx) => (
+                      <div key={idx} className={styles.gridItem}>
+                        <span className={styles.gridLabel}>
+                          <span>🧱</span>
+                          {m.material}
+                        </span>
+                        <span className={styles.gridVal}>{m.quantity}</span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ margin: 0, fontStyle: 'italic', fontSize: '13px', color: 'var(--color-text-muted)' }}>No materials recorded for this day.</p>
+                )}
+              </div>
+
+              {/* Progress Photos Gallery */}
+              <div>
+                <h4 className={styles.sectionTitle}>
+                  <span>📸</span> Site Progress Photos
+                </h4>
+                {selectedReport.photos && selectedReport.photos.length > 0 ? (
+                  <div className={styles.gallery}>
+                    {selectedReport.photos.map((key, idx) => (
+                      <div key={idx} className={styles.galleryCard} onClick={() => setLightboxPhoto(resolvePhotoUrl(key))}>
+                        <img 
+                          src={resolvePhotoUrl(key)} 
+                          alt={`Site Progress ${idx + 1}`} 
+                          className={styles.galleryImg} 
+                        />
+                        <div className={styles.galleryOverlay}>
+                          <span>Photo #{idx + 1}</span>
+                          <span>🔍 Zoom</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p style={{ margin: 0, fontStyle: 'italic', fontSize: '13px', color: 'var(--color-text-muted)' }}>No progress photos uploaded for this report.</p>
+                )}
+              </div>
+            </>
+          ) : (
+            <div className={styles.emptySelection}>
+              <div style={{ fontSize: '48px', marginBottom: 12 }}>📋</div>
+              <p style={{ fontSize: '15px', fontWeight: 600, color: 'var(--color-text)' }}>Select a report to view full details</p>
+              <span style={{ fontSize: '13px', color: 'var(--color-text-muted)' }}>Click on any date in the timeline to inspect work details, manpower, and site photos.</span>
+            </div>
+          )}
+        </div>
       </div>
+
+      {/* Lightbox Modal */}
+      {lightboxPhoto && (
+        <div className={styles.lightboxOverlay} onClick={() => setLightboxPhoto(null)}>
+          <div className={styles.lightboxContent} onClick={e => e.stopPropagation()}>
+            <button className={styles.lightboxClose} onClick={() => setLightboxPhoto(null)}>×</button>
+            <img src={lightboxPhoto} alt="Full resolution site inspection" className={styles.lightboxImg} />
+          </div>
+        </div>
+      )}
 
       {/* Submit Report Modal */}
       {isModalOpen && (
         <Modal
           isOpen={isModalOpen}
           onClose={() => setIsModalOpen(false)}
-          title="Submit Daily Site Report"
+          title="Log Daily Site Report (DSR)"
           size="lg"
           footer={
             <>
@@ -341,22 +577,43 @@ export default function DailySiteReportsTab({ projectId }) {
           }
         >
           <div className={styles.formGrid}>
-            <div className={styles.inputGroup}>
-              <Input 
-                label="Report Date *" 
-                type="date" 
-                value={formDate} 
-                onChange={e => setFormDate(e.target.value)} 
-              />
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
+              <div className={styles.inputGroup}>
+                <Input 
+                  label="Report Date *" 
+                  type="date" 
+                  value={formDate} 
+                  onChange={e => setFormDate(e.target.value)} 
+                />
+              </div>
+              <div className={styles.inputGroup}>
+                <Input 
+                  label="Supervisor / Incharge" 
+                  value={formSupervisorSignature} 
+                  onChange={e => setFormSupervisorSignature(e.target.value)} 
+                  placeholder="Supervisor Name"
+                />
+              </div>
             </div>
 
             <div className={styles.inputGroup}>
               <label className={styles.label}>Work Done Today *</label>
               <textarea 
                 className={styles.textarea} 
-                placeholder="Describe the tasks executed today (e.g. Completed living room electrical piping, started kitchen wall putty)..."
+                placeholder="Detail today's activities (e.g. Completed master bedroom false ceiling framing, began primer coat in hallway, 4 electrical points shifted)..."
                 value={formWorkDone}
                 onChange={e => setFormWorkDone(e.target.value)}
+              />
+            </div>
+
+            <div className={styles.inputGroup}>
+              <label className={styles.label}>Tomorrow's Planned Work</label>
+              <textarea 
+                className={styles.textarea} 
+                style={{ minHeight: 70 }}
+                placeholder="What is targeted for tomorrow? (e.g. Electrical wiring pull-through, tile grouting in guest bathroom)..."
+                value={formTomorrowsPlan}
+                onChange={e => setFormTomorrowsPlan(e.target.value)}
               />
             </div>
 
@@ -372,9 +629,9 @@ export default function DailySiteReportsTab({ projectId }) {
                       <button 
                         type="button" 
                         onClick={() => handleRemoveManpower(m.trade)}
-                        className="text-red-500 hover:text-red-400 font-bold"
+                        style={{ background: 'none', border: 'none', color: 'var(--color-danger)', fontWeight: 'bold', cursor: 'pointer', padding: 0 }}
                       >
-                        Remove
+                        ×
                       </button>
                     </div>
                   ))}
@@ -384,7 +641,7 @@ export default function DailySiteReportsTab({ projectId }) {
               <div className={styles.dynamicRow}>
                 <div style={{ flex: 2 }}>
                   <Select 
-                    options={TRADES}
+                    options={TRADES.map(t => ({ value: t.value, label: `${t.icon} ${t.label}` }))}
                     value={selectedTrade}
                     onChange={v => setSelectedTrade(v)}
                   />
@@ -397,13 +654,13 @@ export default function DailySiteReportsTab({ projectId }) {
                     onChange={e => setWorkerCount(Math.max(1, parseInt(e.target.value) || 1))}
                   />
                 </div>
-                <Button type="button" variant="outline" onClick={handleAddManpower}>+ Add</Button>
+                <Button type="button" variant="outline" onClick={handleAddManpower}>+ Add Trade</Button>
               </div>
             </div>
 
             {/* Materials Manager */}
             <div className={styles.dynamicManager}>
-              <label className={styles.label} style={{ marginBottom: 10, display: 'block' }}>Materials Consumed Today</label>
+              <label className={styles.label} style={{ marginBottom: 10, display: 'block' }}>Materials Consumed / Received</label>
               
               {formMaterials.length > 0 && (
                 <div className={styles.addedItems}>
@@ -413,9 +670,9 @@ export default function DailySiteReportsTab({ projectId }) {
                       <button 
                         type="button" 
                         onClick={() => handleRemoveMaterial(idx)}
-                        className="text-red-500 hover:text-red-400 font-bold"
+                        style={{ background: 'none', border: 'none', color: 'var(--color-danger)', fontWeight: 'bold', cursor: 'pointer', padding: 0 }}
                       >
-                        Remove
+                        ×
                       </button>
                     </div>
                   ))}
@@ -425,19 +682,19 @@ export default function DailySiteReportsTab({ projectId }) {
               <div className={styles.dynamicRow}>
                 <div style={{ flex: 2 }}>
                   <Input 
-                    placeholder="Material Name (e.g. Paint)"
+                    placeholder="Material Name (e.g. Gyproc Board, Primer)"
                     value={materialName}
                     onChange={e => setMaterialName(e.target.value)}
                   />
                 </div>
                 <div style={{ flex: 1.5 }}>
                   <Input 
-                    placeholder="Qty (e.g. 20 Liters)"
+                    placeholder="Qty (e.g. 15 Sheets, 20 Ltr)"
                     value={materialQty}
                     onChange={e => setMaterialQty(e.target.value)}
                   />
                 </div>
-                <Button type="button" variant="outline" onClick={handleAddMaterial}>+ Add</Button>
+                <Button type="button" variant="outline" onClick={handleAddMaterial}>+ Add Material</Button>
               </div>
             </div>
 
@@ -445,7 +702,8 @@ export default function DailySiteReportsTab({ projectId }) {
               <label className={styles.label}>Issues / Blockers Encountered</label>
               <textarea 
                 className={styles.textarea} 
-                placeholder="Mention any material delays, power failure, client change request, or design mismatch..."
+                style={{ minHeight: 70 }}
+                placeholder="Mention any material delays, power outage, customer changes, site access restrictions..."
                 value={formIssues}
                 onChange={e => setFormIssues(e.target.value)}
               />
@@ -453,7 +711,7 @@ export default function DailySiteReportsTab({ projectId }) {
 
             {/* Photo Uploader */}
             <div className={styles.inputGroup}>
-              <label className={styles.label}>Progress Photos * (Mandatory - upload at least 1 photo)</label>
+              <label className={styles.label}>Progress Photos (Recommended for documentation)</label>
               <div 
                 className={styles.uploadSection}
                 onClick={() => document.getElementById('dsr-file-upload').click()}
@@ -469,7 +727,7 @@ export default function DailySiteReportsTab({ projectId }) {
                 />
                 {s3Uploading && (
                   <div style={{ marginTop: 8, fontSize: '11px', color: 'var(--color-accent)' }}>
-                    Uploading to storage ({uploadProgress}%)...
+                    Uploading to cloud storage ({uploadProgress}%)...
                   </div>
                 )}
               </div>

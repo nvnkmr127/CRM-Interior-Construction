@@ -59,7 +59,7 @@ export default function ClientProfileTab({ project, onRefresh }) {
   const fields = [
     { label: 'Client Phone', value: project.client_phone || '—' },
     { label: 'Client Email', value: project.client_email || '—' },
-    { label: 'Spouse Name', value: project.spouse_name || '—' },
+    { label: 'Spouse / Partner Name', value: project.spouse_name || '—' },
     { label: 'Spouse Phone', value: project.spouse_phone || '—' },
     { label: 'Spouse Email', value: project.spouse_email || '—' },
     { label: 'Preferred Comm. Channel', value: project.preferred_communication_channel || '—' },
@@ -79,12 +79,14 @@ export default function ClientProfileTab({ project, onRefresh }) {
             ✏️ Edit
           </Button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
-          {fields.map((f, i) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0, marginRight: '-1px', marginBottom: '-1px' }}>
+          {fields.map((f) => (
             <div key={f.label} style={{
               padding: '14px 20px',
-              borderBottom: i < fields.length - (fields.length % 2 === 0 ? 2 : 1) ? '1px solid var(--color-border)' : 'none',
-              borderRight: (i % 2 === 0) ? '1px solid var(--color-border)' : 'none',
+              borderBottom: '1px solid var(--color-border)',
+              borderRight: '1px solid var(--color-border)',
+              boxSizing: 'border-box',
+              minWidth: 0,
             }}>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {f.label}
@@ -111,7 +113,7 @@ export default function ClientProfileTab({ project, onRefresh }) {
             onChange={e => setFormData({...formData, clientEmail: e.target.value})}
           />
           <Input 
-            label="Spouse Name" 
+            label="Spouse / Partner Name" 
             value={formData.spouseName}
             onChange={e => setFormData({...formData, spouseName: e.target.value})}
           />
@@ -131,6 +133,24 @@ export default function ClientProfileTab({ project, onRefresh }) {
             placeholder="e.g. WhatsApp, Email"
             value={formData.preferredCommunicationChannel}
             onChange={e => setFormData({...formData, preferredCommunicationChannel: e.target.value})}
+          />
+          <Input 
+            label="Agreement Signed By" 
+            placeholder="e.g. Primary Client"
+            value={formData.agreementSignedBy}
+            onChange={e => setFormData({...formData, agreementSignedBy: e.target.value})}
+          />
+          <Input 
+            label="Agreement Signed Date" 
+            type="date"
+            value={formData.agreementSignedAt}
+            onChange={e => setFormData({...formData, agreementSignedAt: e.target.value})}
+          />
+          <Input 
+            label="Signature Method" 
+            placeholder="e.g. digital, physical"
+            value={formData.agreementSignatureMethod}
+            onChange={e => setFormData({...formData, agreementSignatureMethod: e.target.value})}
           />
         </div>
         <div style={{ display: 'flex', justifyContent: 'flex-end', gap: '12px', marginTop: '24px', paddingTop: '16px', borderTop: '1px solid var(--color-border)' }}>

@@ -469,6 +469,7 @@ class ProjectRepository {
 
     const nonColumnKeys = new Set([
       'id', 'tenant_id', 'created_at', 'deleted_at',
+      'type', 'projectType',
       'contacts', 'measurements', 'vendors', 'consultants', 'site_team',
       'changeReason', 'change_reason', 'template_id', 'enforce_dependencies', 'enforceDependencies',
       'phases', 'payment_milestones', 'booking', 'pm_name', 'designer_name',
@@ -478,6 +479,10 @@ class ProjectRepository {
       'designer_ids', 'lead_designer_ids', 'junior_designer_ids', 'site_engineer_ids',
       'qc_engineer_ids', 'site_supervisor_ids', 'crm_executive_ids', 'procurement_officer_ids'
     ]);
+
+    if ((updates.type !== undefined || updates.projectType !== undefined) && updates.project_type === undefined) {
+      updates.project_type = updates.project_type || updates.type || updates.projectType;
+    }
 
     for (let [key, value] of Object.entries(updates)) {
       if (nonColumnKeys.has(key)) continue;

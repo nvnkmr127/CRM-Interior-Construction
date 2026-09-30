@@ -1,8 +1,31 @@
-.page { display: flex; flex-direction: column; gap: var(--space-4); min-height: 100%; padding: var(--space-6); }
-.breadcrumb { font-size: var(--text-sm); color: var(--color-text-secondary); }
+.page { 
+  display: flex; 
+  flex-direction: column; 
+  gap: var(--space-3); 
+  min-height: 100%; 
+  padding: 0; 
+  width: 100%;
+}
+.breadcrumb { 
+  font-size: var(--text-sm); 
+  color: var(--color-text-secondary); 
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  margin-bottom: 2px;
+}
 .breadcrumb a { color: var(--color-text-secondary); text-decoration: none; }
 .breadcrumb a:hover { color: var(--color-accent); }
-.headerCard { background: var(--color-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+.headerCard { 
+  background: var(--color-surface); 
+  border: 1px solid var(--color-border); 
+  border-radius: var(--radius-lg); 
+  padding: var(--space-5) var(--space-6); 
+  display: flex; 
+  flex-direction: column; 
+  gap: var(--space-4); 
+  box-shadow: var(--shadow-sm);
+}
 .headerTop { display: flex; align-items: flex-start; justify-content: space-between; }
 .headerLeft { display: flex; flex-direction: column; gap: var(--space-1); }
 .projName { font-size: var(--text-2xl); font-weight: 700; color: var(--color-text); display: flex; align-items: center; gap: var(--space-3); }
@@ -88,21 +111,33 @@
 
 .headerNav {
   display: flex;
-  gap: var(--space-4);
+  gap: var(--space-2);
   margin-top: var(--space-6);
-  padding: var(--space-2) var(--space-4);
+  padding: var(--space-2) var(--space-3);
   background: var(--color-surface);
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
   box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05), 0 2px 4px -1px rgba(0, 0, 0, 0.03);
   overflow-x: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-border) transparent;
+  scroll-behavior: smooth;
+}
+
+.headerNav::-webkit-scrollbar {
+  height: 4px;
+}
+
+.headerNav::-webkit-scrollbar-thumb {
+  background: var(--color-border);
+  border-radius: 4px;
 }
 
 .headerNavItem {
   display: flex;
   align-items: center;
   gap: var(--space-2);
-  padding: var(--space-2) var(--space-4);
+  padding: 8px 14px;
   font-size: var(--text-sm);
   font-weight: 500;
   color: var(--color-text-secondary);
@@ -111,6 +146,7 @@
   background: transparent;
   cursor: pointer;
   white-space: nowrap;
+  flex-shrink: 0;
   transition: all 0.2s ease;
 }
 

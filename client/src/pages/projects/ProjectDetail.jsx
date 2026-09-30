@@ -72,188 +72,7 @@ import DesignStageHeader from '../../components/projects/DesignStageHeader';
 import ActivityLogsTab from '../../components/projects/ActivityLogsTab';
 import LeadDrawer from '../../components/leads/LeadDrawer';
 
-// FinancialOverviewPanel syncs with PaymentsTab's dynamic payment processing
-const FinancialOverviewPanel = React.memo(function FinancialOverviewPanel({ project, projectId }) {
-  const [stats, setStats] = useState({
-    contractValue: 0,
-    billed: 0,
-    collected: 0,
-    outstanding: 0,
-    overdue: 0,
-    pending: 0,
-    totalCost: 0
-  });
-
-  useEffect(() => {
-    let mounted = true;
-    
-    // Initial fallback from project.stats
-    const rawContractValue = project.stats?.netContractValue ?? project.contract_value;
-    const contractValue = Number(rawContractValue) || 0;
-    const billed = project.stats?.netBilled !== undefined ? project.stats.netBilled : (project.stats?.totalPayment || 0);
-    const collected = project.stats?.netCollections !== undefined ? project.stats.netCollections : (project.stats?.collectedPayment || 0);
-    const outstanding = project.stats?.outstandingBalance !== undefined ? project.stats.outstandingBalance : Math.max(0, billed - collected);
-    
-    setStats({
-      contractValue,
-      billed,
-      collected,
-      outstanding,
-      overdue: project.stats?.overduePayments || 0,
-      pending: project.stats?.pendingInvoices || 0,
-      totalCost: project.stats?.totalActualCost || 0
-    });
-
-    // Fetch payments to recalculate collected and outstanding (identical to PaymentsTab mock/fetch logic)
-    import('../../api/paymentMilestones').then(({ getPaymentMilestones }) => {
-      getPaymentMilestones(projectId).then(res => {
-         if (!mounted) return;
-         const _r = res.data?.data || res.data;
-         let raw = Array.isArray(_r) ? _r : [];
-         
-         const totalBudgetFallback = Number(project?.booking_amount || 0) > 0 ? Number(project.booking_amount) * 10 : 0;
-         const totalB = Number(project?.contract_value || 0) || totalBudgetFallback || 0;
-         
-         const defaultMilestoneConfig = [
-          { key: 'booking', name: 'Booking', percentage: 10, enabled: true, dependency: null },
-          { key: 'design', name: 'Design Advance', percentage: 15, enabled: true, dependency: 'booking' },
-          { key: 'production', name: 'Production', percentage: 40, enabled: true, dependency: 'design advance' },
-          { key: 'dispatch', name: 'Dispatch', percentage: 20, enabled: true, dependency: 'production' },
-          { key: 'installation', name: 'Installation', percentage: 10, enabled: true, dependency: 'dispatch' },
-          { key: 'handover', name: 'Final Handover', percentage: 5, enabled: true, dependency: 'installation' }
-         ];
-
-         const adminConfig = project?.milestone_config || defaultMilestoneConfig;
-         const activeMilestones = adminConfig.filter(m => m.enabled);
-
-         if (raw.length === 0) {
-            activeMilestones.forEach((mConf, index) => {
-              let mockDate = new Date(project?.createdAt || Date.now());
-              mockDate.setDate(mockDate.getDate() + (index * 15));
-              const milestoneAmount = (totalB * mConf.percentage) / 100;
-              let mockPaymentEntries = [];
-              let mockStatus = index === 0 ? 'pending' : 'scheduled';
-              if (index === 0) {
-                 mockStatus = 'paid';
-                 mockPaymentEntries = [{ amount: milestoneAmount }];
-              } else if (index === 1) {
-                 mockStatus = 'partially_paid';
-                 mockPaymentEntries = [{ amount: milestoneAmount * 0.5 }];
-              }
-              const mockEntry = {
-                id: `mock_m_${index}`,
-                amount: milestoneAmount,
-                payment_entries: mockPaymentEntries,
-                status: mockStatus
-              };
-              if (index === 0) raw.unshift(mockEntry);
-              else raw.push(mockEntry);
-            });
-         }
-         
-         let computedCollected = 0;
-         let computedRemaining = 0;
-         let computedBilled = 0;
-
-         raw.forEach((p, index) => {
-            const entries = p.payment_entries ? [...p.payment_entries] : [];
-            if (p.status === 'paid' && entries.length === 0) {
-               entries.push({ amount: Number(p.amount || p.paid_amount || 0) });
-            }
-            const pCollected = entries.reduce((s, e) => s + Number(e.amount || 0), 0);
-            const pAmount = Number(p.amount || p.paid_amount || 0);
-            computedCollected += pCollected;
-
-            const isInvoiced = p.status === 'invoice_raised' || p.status === 'partially_paid' || p.status === 'overdue' || p.status === 'paid' || Boolean(p.invoice_reference);
-            if (isInvoiced) {
-               computedBilled += pAmount;
-               computedRemaining += Math.max(0, pAmount - pCollected);
-            }
-         });
-
-         setStats(prev => ({
-           ...prev,
-           collected: computedCollected,
-           outstanding: computedRemaining,
-           billed: Math.max(computedBilled, computedCollected)
-         }));
-      }).catch(err => console.log('Error fetching milestones for overview', err));
-    });
-    
-    return () => { mounted = false; };
-  }, [projectId, project]);
-
-  const effectiveRevenue = stats.contractValue > 0 ? stats.contractValue : stats.billed;
-  const grossProfit = project.stats?.grossProfit !== undefined 
-      ? project.stats.grossProfit 
-      : (effectiveRevenue > 0 || stats.totalCost > 0 ? effectiveRevenue - stats.totalCost : 0);
-      
-  const grossMarginPct = project.stats?.grossMarginPct !== undefined 
-      ? project.stats.grossMarginPct 
-      : (effectiveRevenue > 0 ? Math.round((grossProfit / effectiveRevenue) * 100) : 0);
-
-  return (
-    <div className={styles.financialPanel}>
-      <div className={styles.financialPanelHeader}>Financial Overview</div>
-      <div className={styles.financialGrid}>
-        <div className={styles.financialCard}>
-          <span className={styles.financialLabel}>Contract Value (Net)</span>
-          <span className={styles.financialValue}>
-            {formatValue(stats.contractValue > 0 ? stats.contractValue : project.contract_value)}
-          </span>
-        </div>
-        <div className={styles.financialCard}>
-          <span className={styles.financialLabel}>Billed (Net)</span>
-          <span className={styles.financialValue}>
-            {formatValue(stats.billed)}
-          </span>
-        </div>
-        <div className={styles.financialCard}>
-          <span className={styles.financialLabel}>Collected (Net)</span>
-          <span className={styles.financialValue} style={{ color: 'var(--color-success, #22c55e)' }}>
-            {formatValue(stats.collected)}
-          </span>
-        </div>
-        <div className={styles.financialCard}>
-          <span className={styles.financialLabel}>Outstanding Balance</span>
-          <span className={styles.financialValue} style={{ color: 'var(--color-accent, #3b82f6)' }}>
-            {formatValue(stats.outstanding)}
-          </span>
-        </div>
-        <div className={styles.financialCard}>
-          <span className={styles.financialLabel}>Overdue Amount</span>
-          <span className={`${styles.financialValue} ${stats.overdue > 0 ? styles.financialDanger : ''}`}>
-            {formatValue(stats.overdue)}
-          </span>
-        </div>
-        <div className={styles.financialCard}>
-          <span className={styles.financialLabel}>Pending Invoices</span>
-          <span className={styles.financialValue} style={{ color: 'var(--color-info, #0ea5e9)' }}>
-            {formatValue(stats.pending)}
-          </span>
-        </div>
-        <div className={styles.financialCard}>
-          <span className={styles.financialLabel}>Total Cost</span>
-          <span className={styles.financialValue} style={{ color: 'var(--color-danger, #ef4444)' }}>
-            {formatValue(stats.totalCost)}
-          </span>
-        </div>
-        <div className={styles.financialCard}>
-          <span className={styles.financialLabel}>Gross Profit</span>
-          <span className={styles.financialValue} style={{ color: grossProfit >= 0 && effectiveRevenue > 0 ? 'var(--color-success, #22c55e)' : grossProfit < 0 ? 'var(--color-danger, #ef4444)' : 'inherit' }}>
-            {effectiveRevenue > 0 || stats.totalCost > 0 ? formatValue(grossProfit) : '—'}
-          </span>
-        </div>
-        <div className={styles.financialCard}>
-          <span className={styles.financialLabel}>Gross Margin</span>
-          <span className={styles.financialValue} style={{ color: grossMarginPct >= 20 ? 'var(--color-success, #22c55e)' : (grossMarginPct > 0 ? 'var(--color-warning, #eab308)' : (grossMarginPct < 0 ? 'var(--color-danger, #ef4444)' : 'inherit')) }}>
-            {effectiveRevenue > 0 ? `${grossMarginPct}%` : '—'}
-          </span>
-        </div>
-      </div>
-    </div>
-  );
-});
+import FinancialOverviewPanel from '../../components/projects/FinancialOverviewPanel';
 
 // New Editable Tabs
 const TeamAndRolesTab = React.lazy(() => import('../../components/projects/TeamAndRolesTab'));
@@ -278,8 +97,11 @@ function formatValue(val) {
 
 function daysRemaining(targetDate) {
   if (!targetDate) return null;
-  const now = (import.meta.env.DEV && Date.now() >= 1786536584000) ? 1786536584000 : Date.now();
-  const diff = Math.ceil((new Date(targetDate) - now) / 86400000);
+  const target = new Date(targetDate);
+  const now = new Date();
+  const targetDay = new Date(target.getFullYear(), target.getMonth(), target.getDate());
+  const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const diff = Math.round((targetDay - today) / (1000 * 60 * 60 * 24));
   return diff;
 }
 
@@ -298,8 +120,6 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
   });
   const [projectCoverages, setProjectCoverages] = useState([]);
   const [showPastCoverages, setShowPastCoverages] = useState(false);
-  const [savingChecklistKey, setSavingChecklistKey] = useState(null);
-  const [isEditingChecklist, setIsEditingChecklist] = useState(false);
 
   useEffect(() => {
     if (!project?.id) return;
@@ -339,133 +159,23 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
     return project.custom_fields;
   }, [project?.custom_fields]);
 
-  const [checklistState, setChecklistState] = useState(parsedCf);
+  const cf = parsedCf;
 
-  useEffect(() => {
-    setChecklistState(parsedCf);
-  }, [parsedCf]);
-
-  const cf = checklistState;
-
-  const CHECKLIST_ITEMS = React.useMemo(() => [
-    {
-      key: 'booking_received',
-      label: 'Booking amount received',
-      detect: (proj, currentCf) =>
-        Number(proj.stats?.collectedPayment || 0) > 0 ||
-        Number(proj.booking_amount || 0) > 0 ||
-        Number(currentCf.advance_amount || 0) > 0 ||
-        Number(currentCf.booking_received || 0) > 0 ||
-        proj.status === 'active' ||
-        proj.status === 'in_progress',
-    },
-    {
-      key: 'floor_plan',
-      label: 'Floor plan attached',
-      detect: (proj, currentCf) =>
-        Boolean(
-          proj.floor_plan_url ||
-          proj.floor_plan_file_key ||
-          currentCf.floor_plan ||
-          currentCf.floor_plan_url ||
-          currentCf.has_floor_plan ||
-          currentCf.pre_conversion_checklist?.floor_plan ||
-          (Array.isArray(proj.documents) && proj.documents.some(d => (d.doc_type === 'drawing' || d.doc_type === 'floor_plan') && !d.deleted_at))
-        ),
-    },
-    {
-      key: 'scope_finalized',
-      label: 'Scope finalized',
-      detect: (proj, currentCf) =>
-        Boolean(
-          proj.is_scope_locked ||
-          proj.scope_finalized ||
-          proj.type ||
-          proj.project_type ||
-          currentCf.scope_finalized ||
-          currentCf.pre_conversion_checklist?.scope_finalized
-        ),
-    },
-    {
-      key: 'contract_signed',
-      label: 'Signed contract attached',
-      detect: (proj, currentCf) =>
-        Boolean(
-          proj.contract_file_key ||
-          proj.agreement_signed_at ||
-          proj.agreement_signed_by ||
-          proj.signed_contract_url ||
-          currentCf.contract_signed ||
-          currentCf.pre_conversion_checklist?.contract_signed ||
-          (Array.isArray(proj.documents) && proj.documents.some(d => d.doc_type === 'contract' && !d.deleted_at))
-        ),
-    },
-    {
-      key: 'site_address_confirmed',
-      label: 'Site address confirmed',
-      detect: (proj, currentCf) =>
-        Boolean(
-          (proj.site_address && proj.site_address.trim().length > 0) ||
-          proj.latitude ||
-          currentCf.site_address ||
-          currentCf.site_address_confirmed ||
-          currentCf.pre_conversion_checklist?.site_address_confirmed ||
-          proj.street ||
-          proj.city
-        ),
-    },
-  ], []);
-
-  const isItemChecked = React.useCallback((item) => {
-    const val = checklistState[item.key] !== undefined && checklistState[item.key] !== null
-      ? checklistState[item.key]
-      : checklistState.pre_conversion_checklist?.[item.key];
-    if (val !== undefined && val !== null) {
-      return val === true || val === 'true';
-    }
-    return item.detect(project, checklistState);
-  }, [checklistState, project]);
-
-  const handleToggleChecklistItem = async (item) => {
-    if (!isEditingChecklist || savingChecklistKey) return;
-    const currentStatus = isItemChecked(item);
-    const nextStatus = !currentStatus;
-    const nextCustomFields = {
-      ...checklistState,
-      [item.key]: nextStatus,
-      pre_conversion_checklist: {
-        ...(checklistState.pre_conversion_checklist || {}),
-        [item.key]: nextStatus,
-      }
-    };
-
-    // Optimistic UI update
-    setChecklistState(nextCustomFields);
-    setSavingChecklistKey(item.key);
-
-    try {
-      await updateProject(project.id, {
-        custom_fields: nextCustomFields,
-      });
-      toast.success(`"${item.label}" marked as ${nextStatus ? 'verified ✓' : 'pending ✗'}.`);
-      if (onRefresh) onRefresh();
-    } catch (err) {
-      console.error('Failed to update checklist item:', err);
-      toast.error('Failed to save checklist state. Please try again.');
-      setChecklistState(parsedCf);
-    } finally {
-      setSavingChecklistKey(null);
-    }
-  };
+  const totalScheduleDays = React.useMemo(() => {
+    if (!project?.start_date || !project?.target_date) return null;
+    const s = new Date(project.start_date);
+    const t = new Date(project.target_date);
+    const diff = Math.round((t - s) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : null;
+  }, [project?.start_date, project?.target_date]);
 
   const fields = React.useMemo(() => [
-    { label: 'Project Type',    value: (project.type || project.project_type) ? (project.type || project.project_type).replace(/_/g, ' ') : '—' },
+    { label: 'Project Type',    value: (project.type || project.project_type) ? (project.type || project.project_type).replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '—' },
     { label: 'City',            value: project.city || '—' },
-    { label: 'Builder Name',    value: project.builder_name || '—' },
-    { label: 'Project Category', value: project.project_category ? project.project_category.replace(/_/g, ' ') : '—' },
-    { label: 'Sub-Category',    value: project.project_sub_category ? project.project_sub_category.replace(/_/g, ' ') : '—' },
+    { label: 'Project Category', value: project.project_category ? project.project_category.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '—' },
     { label: 'Start Date',      value: formatDate(project.start_date) },
     { label: 'Target Date',     value: formatDate(project.target_date) },
+    ...(totalScheduleDays ? [{ label: 'Total Schedule', value: `${totalScheduleDays} Days` }] : []),
     ...(timelineImpact > 0 && revisedTargetDate ? [{ label: 'Revised Target Date', value: formatDate(revisedTargetDate) }] : []),
     { label: 'Base Contract Value (Original Scope)', value: formatValue(project.stats?.originalScopeTotal || project.contract_value) },
     { label: 'Scope Additions (Change Orders)', value: formatValue(project.stats?.additionsTotal || 0) },
@@ -474,7 +184,7 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
     { label: 'Booking Amount',  value: project.booking_amount ? formatValue(project.booking_amount) : (cf.advance_amount ? formatValue(cf.advance_amount) : '—') },
     { label: 'Payment Terms',   value: (project.payment_terms && PAYMENT_TEMPLATE_NAMES[project.payment_terms]) || (project.payment_terms ? project.payment_terms.replace(/_/g, ' – ') : (cf.payment_terms ? (PAYMENT_TEMPLATE_NAMES[cf.payment_terms] || cf.payment_terms.replace(/_/g, ' – ')) : '—')) },
     { label: 'Status',          value: project.status ? project.status.replace(/_/g, ' ') : '—' },
-  ], [project, timelineImpact, revisedTargetDate, cf]);
+  ], [project, timelineImpact, revisedTargetDate, cf, totalScheduleDays]);
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
@@ -487,12 +197,24 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
           color: days < 0 ? 'var(--color-danger)' : days <= 14 ? 'var(--color-warning)' : 'var(--color-success)',
           fontWeight: 600,
           fontSize: 'var(--text-sm)',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '8px'
         }}>
-          {days < 0
-            ? `Project is overdue by ${Math.abs(days)} days`
-            : days === 0
-            ? 'Due today'
-            : `${days} days remaining until target date`}
+          <span>
+            {days < 0
+              ? `Project is overdue by ${Math.abs(days)} days`
+              : days === 0
+              ? 'Due today'
+              : `${days} days remaining until target date`}
+          </span>
+          {totalScheduleDays && (
+            <span style={{ fontSize: 'var(--text-xs)', opacity: 0.9 }}>
+              Total Schedule: {totalScheduleDays} days
+            </span>
+          )}
         </div>
       )}
 
@@ -506,12 +228,14 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
             ✏️ Edit
           </Button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
-          {fields.map((f, i) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0, marginRight: '-1px', marginBottom: '-1px' }}>
+          {fields.map((f) => (
             <div key={f.label} style={{
               padding: '14px 20px',
-              borderBottom: i < fields.length - 2 ? '1px solid var(--color-border)' : 'none',
-              borderRight: (i % 2 === 0) ? '1px solid var(--color-border)' : 'none',
+              borderBottom: '1px solid var(--color-border)',
+              borderRight: '1px solid var(--color-border)',
+              boxSizing: 'border-box',
+              minWidth: 0,
             }}>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {f.label}
@@ -523,6 +247,16 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
           ))}
         </div>
       </div>
+
+      {/* Client Profile Section */}
+      <React.Suspense fallback={<div style={{ padding: '20px', color: 'var(--color-text-muted)' }}>Loading Client Profile…</div>}>
+        <ClientProfileTab project={project} onRefresh={onRefresh} />
+      </React.Suspense>
+
+      {/* Site Details Section */}
+      <React.Suspense fallback={<div style={{ padding: '20px', color: 'var(--color-text-muted)' }}>Loading Site Details…</div>}>
+        <SiteDetailsTab project={project} onRefresh={onRefresh} />
+      </React.Suspense>
 
       {/* Design Stage Revisions Tracker */}
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden', padding: '20px' }}>
@@ -614,107 +348,10 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
         </div>
       </div>
 
-      {/* Project Phases & Schedule */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden', padding: '20px' }}>
-        <h3 style={{ margin: '0 0 16px 0', fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-          <span>⏱️</span> Project Phases & Schedule
-        </h3>
-        <React.Suspense fallback={<div style={{ padding: '20px', color: 'var(--color-text-muted)' }}>Loading Phases & Schedule…</div>}>
-          <PhaseTimeline projectId={project.id} />
-        </React.Suspense>
-      </div>
-
-      {/* Team */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-            Team
-          </div>
-          <Button variant="outline" size="sm" onClick={() => onEdit('team')}>
-            ✏️ Edit
-          </Button>
-        </div>
-        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 0 }}>
-          {[
-            { role: 'Project Manager', name: project.pm_name, key: 'pm', id: project.pm_id },
-            { role: 'Sales Representative', name: project.sales_rep_name, key: 'sales_rep', id: project.sales_rep_id },
-            { role: 'Designer', name: project.designer_name, key: 'designer', id: project.designer_id },
-            { role: 'Lead Designer', name: project.lead_designer_name, id: project.lead_designer_id },
-            { role: 'Junior Designer', name: project.junior_designer_name, id: project.junior_designer_id },
-            { role: 'Site Engineer', name: project.site_engineer_name, id: project.site_engineer_id },
-            { role: 'QC Engineer', name: project.qc_engineer_name, id: project.qc_engineer_id },
-            { role: 'Site Supervisor', name: project.site_supervisor_name, id: project.site_supervisor_id },
-            { role: 'CRM Executive', name: project.crm_executive_name, id: project.crm_executive_id },
-            { role: 'Procurement Officer', name: project.procurement_officer_name, id: project.procurement_officer_id },
-            ...(project.site_team || []).map(member => ({
-              role: `${member.role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())} ${member.vendor_name ? `(${member.vendor_name})` : ''}`,
-              name: member.name,
-              isSiteTeam: true
-            }))
-          ].filter(m => m.name).map((member, idx, arr) => (
-            <div key={`${member.role}-${idx}`} style={{ 
-              padding: '14px 20px', 
-              display: 'flex', 
-              alignItems: 'center', 
-              gap: 12, 
-              flex: '1 1 220px', 
-              borderRight: idx === arr.length - 1 ? 'none' : '1px solid var(--color-border)',
-              borderBottom: '1px solid var(--color-border)'
-            }}>
-              <div style={{
-                width: 36, height: 36, borderRadius: '50%',
-                background: member.isSiteTeam ? 'var(--color-success, #22c55e)' : 'var(--color-accent, #3b82f6)', 
-                color: '#fff',
-                display: 'flex', alignItems: 'center', justifyContent: 'center',
-                fontWeight: 700, fontSize: 'var(--text-sm)', flexShrink: 0,
-              }}>
-                {(member.name || '?').charAt(0)}
-              </div>
-              <div style={{ flex: 1, minWidth: 0 }}>
-                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px', flexWrap: 'wrap' }}>
-                  <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '6px', flexWrap: 'wrap' }}>
-                    <span>{member.name}</span>
-                    {(() => {
-                      const cov = activeCoverages.find(c => String(c.on_leave_user_id) === String(member.id));
-                      if (!cov) return null;
-                      return (
-                        <span style={{ fontSize: '10px', fontWeight: 600, color: 'var(--color-accent, #3b82f6)', background: 'var(--color-accent-bg, #eff6ff)', padding: '2px 6px', borderRadius: '4px', display: 'inline-flex', alignItems: 'center', gap: '3px', whiteSpace: 'nowrap' }}>
-                          🤝 Covered by {cov.covering_user_name}
-                        </span>
-                      );
-                    })()}
-                  </div>
-                  {member.key && (
-                    <button
-                      onClick={() => setHandoverState({
-                        isOpen: true,
-                        role: member.key,
-                        currentResourceId: member.id,
-                        currentResourceName: member.name
-                      })}
-                      style={{
-                        background: 'var(--color-accent-bg, #eff6ff)',
-                        border: 'none',
-                        color: 'var(--color-accent, #3b82f6)',
-                        fontSize: '10px',
-                        fontWeight: 600,
-                        cursor: 'pointer',
-                        padding: '2px 6px',
-                        borderRadius: '4px',
-                        marginLeft: 'auto'
-                      }}
-                      title={`Replace ${member.role}`}
-                    >
-                      Replace
-                    </button>
-                  )}
-                </div>
-                <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginTop: '2px' }}>{member.role}</div>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      {/* Team & Roles Section */}
+      <React.Suspense fallback={<div style={{ padding: '20px', color: 'var(--color-text-muted)' }}>Loading Team & Roles…</div>}>
+        <TeamAndRolesTab project={project} onRefresh={onRefresh} />
+      </React.Suspense>
 
       {/* Active Colleague Handover & Coverage Banner */}
       {activeCoverages.length > 0 && (
@@ -811,218 +448,6 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
           )}
         </div>
       )}
-
-      {/* Pre-Conversion Checklist — only shown for converted leads or if checklist exists */}
-      {(project.lead_id || CHECKLIST_ITEMS.some(isItemChecked)) && (
-        <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden', boxShadow: 'var(--shadow-sm)' }}>
-          <div style={{
-            padding: '12px 20px',
-            borderBottom: '1px solid var(--color-border)',
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            flexWrap: 'wrap',
-            gap: '10px'
-          }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              <span style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-                Pre-Conversion Checklist
-              </span>
-              <span style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                padding: '2px 8px',
-                borderRadius: '999px',
-                background: CHECKLIST_ITEMS.filter(isItemChecked).length === CHECKLIST_ITEMS.length
-                  ? 'var(--color-success-bg, #dcfce7)'
-                  : 'var(--color-surface-2, #f3f4f6)',
-                color: CHECKLIST_ITEMS.filter(isItemChecked).length === CHECKLIST_ITEMS.length
-                  ? 'var(--color-success, #16a34a)'
-                  : 'var(--color-text-secondary, #4b5563)',
-                border: '1px solid var(--color-border)'
-              }}>
-                {CHECKLIST_ITEMS.filter(isItemChecked).length} / {CHECKLIST_ITEMS.length} Verified
-              </span>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
-              {isEditingChecklist ? (
-                <>
-                  <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-accent, #3b82f6)', fontWeight: 500 }}>
-                    Click items to check or uncheck
-                  </span>
-                  <Button variant="primary" size="sm" onClick={() => setIsEditingChecklist(false)}>
-                    ✓ Done
-                  </Button>
-                </>
-              ) : (
-                <Button variant="outline" size="sm" onClick={() => setIsEditingChecklist(true)}>
-                  ✏️ Edit
-                </Button>
-              )}
-            </div>
-          </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(5, minmax(0, 1fr))',
-            gap: '1px',
-            background: 'var(--color-border)',
-            overflowX: 'auto'
-          }}>
-            {CHECKLIST_ITEMS.map((item) => {
-              const checked = isItemChecked(item);
-              const isSaving = savingChecklistKey === item.key;
-              return (
-                <div
-                  key={item.key}
-                  role={isEditingChecklist ? "button" : undefined}
-                  tabIndex={isEditingChecklist ? 0 : undefined}
-                  onClick={() => {
-                    if (isEditingChecklist) {
-                      handleToggleChecklistItem(item);
-                    }
-                  }}
-                  onKeyDown={(e) => {
-                    if (isEditingChecklist && (e.key === 'Enter' || e.key === ' ')) {
-                      e.preventDefault();
-                      handleToggleChecklistItem(item);
-                    }
-                  }}
-                  title={isEditingChecklist ? `Click to mark as ${checked ? 'pending' : 'verified'}` : item.hint}
-                  style={{
-                    background: 'var(--color-surface)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: 9,
-                    padding: '10px 12px',
-                    cursor: isEditingChecklist ? (isSaving ? 'wait' : 'pointer') : 'default',
-                    userSelect: 'none',
-                    transition: isEditingChecklist ? 'background var(--transition-fast, 0.15s ease)' : 'none',
-                    opacity: isSaving ? 0.7 : 1,
-                    minWidth: 0,
-                  }}
-                  onMouseEnter={(e) => {
-                    if (isEditingChecklist) {
-                      e.currentTarget.style.background = 'var(--color-surface-hover, #f8fafc)';
-                    }
-                  }}
-                  onMouseLeave={(e) => {
-                    if (isEditingChecklist) {
-                      e.currentTarget.style.background = 'var(--color-surface)';
-                    }
-                  }}
-                >
-                  <span style={{
-                    width: 20,
-                    height: 20,
-                    borderRadius: '50%',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    background: checked ? 'var(--color-success-bg, #dcfce7)' : 'var(--color-danger-bg, #fee2e2)',
-                    color: checked ? 'var(--color-success, #16a34a)' : 'var(--color-danger, #dc2626)',
-                    border: `1.5px solid ${checked ? 'var(--color-success, #16a34a)' : 'var(--color-danger, #dc2626)'}`,
-                    fontWeight: 700,
-                    fontSize: 11,
-                    flexShrink: 0,
-                    boxShadow: 'var(--shadow-sm)'
-                  }}>
-                    {isSaving ? '⏳' : (checked ? '✓' : '✗')}
-                  </span>
-                  <div style={{ display: 'flex', flexDirection: 'column', minWidth: 0, overflow: 'hidden' }}>
-                    <span style={{
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      color: checked ? 'var(--color-text)' : 'var(--color-text-secondary)',
-                      lineHeight: 1.25,
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }} title={item.label}>
-                      {item.label}
-                    </span>
-                    <span style={{
-                      fontSize: '10px',
-                      color: checked ? 'var(--color-success, #16a34a)' : 'var(--color-text-muted)',
-                      fontWeight: 500,
-                      marginTop: '2px',
-                      whiteSpace: 'nowrap',
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis'
-                    }}>
-                      {isEditingChecklist
-                        ? (checked ? '✓ Verified • Toggle' : '✗ Pending • Toggle')
-                        : (checked ? '✓ Verified' : '✗ Pending')}
-                    </span>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Client Household & Lifestyle Profile */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-            Client Household & Lifestyle Profile
-          </div>
-          <Button variant="outline" size="sm" onClick={() => onEdit('client')}>
-            ✏️ Edit
-          </Button>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Spouse / Partner Name
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.spouse_name || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Spouse Phone
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.spouse_phone || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Spouse Email
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.spouse_email || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Number of Family Members
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.number_of_family_members || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: 'none', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Preferred Communication Channel
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)', textTransform: 'capitalize' }}>
-              {project.preferred_communication_channel || '—'}
-            </div>
-          </div>
-          <div style={{ padding: '14px 20px', borderBottom: 'none', gridColumn: 'span 3' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Lifestyle Preferences & Brief
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {project.lifestyle_preferences || '—'}
-            </div>
-          </div>
-        </div>
-      </div>
-
 
       {/* Stakeholders & Contacts */}
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
@@ -1123,96 +548,6 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
         )}
       </div>
 
-      {/* Site Measurements & Room Dimensions */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-          Site Measurements & Room Dimensions
-        </div>
-        {project.measurements && project.measurements.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm)' }}>
-              <thead>
-                <tr style={{ background: 'var(--color-surface-hover, #f8fafc)', borderBottom: '1px solid var(--color-border)' }}>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Room Name</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Dimensions (L x W x H)</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Computed Area</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Notes</th>
-                </tr>
-              </thead>
-              <tbody>
-                {project.measurements.map((room, i) => (
-                  <tr key={room.id || i} style={{ borderBottom: i < project.measurements.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
-                    <td style={{ padding: '14px 20px', fontWeight: 500, color: 'var(--color-text)' }}>{room.room_name}</td>
-                    <td style={{ padding: '14px 20px', color: 'var(--color-text-secondary)' }}>
-                      {room.length} x {room.width} x {room.height} <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)' }}>{room.unit}</span>
-                    </td>
-                    <td style={{ padding: '14px 20px', fontWeight: 600, color: 'var(--color-text)' }}>
-                      {room.area} <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', fontWeight: 400 }}>sq {room.unit}</span>
-                    </td>
-                    <td style={{ padding: '14px 20px', color: 'var(--color-text-muted)', fontSize: 'var(--text-xs)' }}>{room.notes || '—'}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
-            No room-wise site measurements recorded for this project.
-          </div>
-        )}
-      </div>
-
-      {/* Project Vendors */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)' }}>
-          Project Vendors Engagement
-        </div>
-        {project.vendors && project.vendors.length > 0 ? (
-          <div style={{ overflowX: 'auto' }}>
-            <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 'var(--text-sm)' }}>
-              <thead>
-                <tr style={{ background: 'var(--color-surface-hover, #f8fafc)', borderBottom: '1px solid var(--color-border)' }}>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Vendor Name</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Scope of Work</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Agreed Rate/Value</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Payment Terms</th>
-                  <th style={{ padding: '12px 20px', textAlign: 'left', fontWeight: 600, color: 'var(--color-text-muted)' }}>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {project.vendors.map((vendor, i) => (
-                  <tr key={vendor.id || i} style={{ borderBottom: i < project.vendors.length - 1 ? '1px solid var(--color-border)' : 'none' }}>
-                    <td style={{ padding: '14px 20px', fontWeight: 600, color: 'var(--color-text)' }}>{vendor.vendor_name}</td>
-                    <td style={{ padding: '14px 20px', color: 'var(--color-text-secondary)' }}>{vendor.scope_of_work || '—'}</td>
-                    <td style={{ padding: '14px 20px', fontWeight: 600, color: 'var(--color-text)' }}>
-                      ₹{Number(vendor.agreed_rate).toLocaleString('en-IN', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                    </td>
-                    <td style={{ padding: '14px 20px', color: 'var(--color-text-secondary)' }}>{vendor.payment_terms || '—'}</td>
-                    <td style={{ padding: '14px 20px' }}>
-                      <span style={{
-                        padding: '2px 8px',
-                        fontSize: '11px',
-                        borderRadius: '4px',
-                        fontWeight: 600,
-                        textTransform: 'capitalize',
-                        background: vendor.status === 'active' ? 'var(--color-success-bg, #f0fdf4)' : (vendor.status === 'completed' ? 'var(--color-accent-bg, #eff6ff)' : 'var(--color-warning-bg, #fef3c7)'),
-                        color: vendor.status === 'active' ? 'var(--color-success, #22c55e)' : (vendor.status === 'completed' ? 'var(--color-accent, #3b82f6)' : 'var(--color-warning, #d97706)')
-                      }}>
-                        {vendor.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div style={{ padding: '20px', textAlign: 'center', color: 'var(--color-text-muted)', fontSize: 'var(--text-sm)' }}>
-            No vendors engaged for this project. Click "Edit" to add vendor commitments.
-          </div>
-        )}
-      </div>
-
 
       {/* Project Notes */}
       <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', padding: '16px 20px' }}>
@@ -1242,15 +577,48 @@ const OverviewTab = React.memo(function OverviewTab({ project, onRefresh, onEdit
   );
 });
 
+const ALL_PROJECT_TABS = [
+  // 1. Initiation & Setup (Scratch)
+  'Overview', 'Phases & Schedule', 'Client Profile', 'Site Details', 'Team & Roles', 'Booking', 'Baseline Assessment',
+  
+  // 2. Design, Planning & Architectural Drawings
+  'Design & Approvals', 'Drawing Register', 'Design Brief', 'Design Assets', 'Design Reviews', 'Material Palettes', 'Substitutions', 'Coordination',
+  
+  // 3. Financials, Budget & Client Cash Flow
+  'Financial Overview', 'Budget', 'Quotations & Budget', 'Payments', 'Change Orders', 'Budget Variance', 'Commercial Approval',
+  
+  // 4. Procurement & Vendor Sourcing
+  'Purchase Requests', 'Purchase Orders', 'Vendors', 'Material Deliveries', 'Factory Production',
+  
+  // 5. Execution & Site Monitoring
+  'Tasks', 'Room Progress', 'Site Visits', 'Daily Site Reports', 'Weekly Reports', 'Documents', 'Meeting Notes', 'Delay Notifications', 'MEP Checklist',
+  
+  // 6. Quality Control, Snags & Readiness (Pre-Handover)
+  'Snags', 'Handover Readiness', 'Handovers',
+  
+  // 7. Property Handover (Completion)
+  'Handover',
+  
+  // 8. Project Closure & Retrospective
+  'Project Closure', 'Retrospective',
+  
+  // 9. Post-Handover & Maintenance
+  'Warranties', 'AMCs', 'Service Tickets', 'Customer Retention',
+  
+  // 10. Audit & Activity Logs
+  'Activity Logs'
+];
+
 export default function ProjectDetail() {
   const { id: projectId } = useParams();
   const navigate = useNavigate();
   const navRef = useRef(null);
   const [searchParams, setSearchParams] = useSearchParams();
-  const { canAccessPage, getAllowedPages } = usePagePermissions('projects');
-  const allowedTabs = getAllowedPages().map(t => t.id);
+  const { canAccessPage } = usePagePermissions('projects');
+  const allowedTabs = ALL_PROJECT_TABS.filter(tab => canAccessPage(tab));
+  const tabs = allowedTabs;
   const currentTabParam = searchParams.get('tab');
-  const activeTab = (currentTabParam && allowedTabs.includes(currentTabParam)) ? currentTabParam : 'Overview';
+  const activeTab = (currentTabParam && (allowedTabs.includes(currentTabParam) || canAccessPage(currentTabParam))) ? currentTabParam : 'Overview';
   
   const setActiveTab = (tab) => {
     setSearchParams({ tab });
@@ -1341,35 +709,6 @@ export default function ProjectDetail() {
     }
   };
 
-  const allTabs = [
-    // Initiation & Setup
-    'Overview', 'Phases & Schedule', 'Client Profile', 'Site Details', 'Team & Roles', 'Booking', 'Baseline Assessment',
-    
-    // Design & Planning
-    'Design Brief', 'Design Assets', 'Material Palettes', 'Substitutions', 'Design Reviews', 'Coordination', 
-    
-    // Financials
-    'Financial Overview', 'Budget', 'Quotations & Budget', 'Budget Variance', 'Commercial Approval', 'Payments', 'Change Orders', 'Purchase Requests', 'Purchase Orders', 'Vendors', 'Vendor Payments',
-    
-    // Execution & Monitoring
-    'Work Activities', 'Room Progress', 'Tasks', 'Factory Production', 'Material Deliveries', 'Daily Site Reports', 'Weekly Reports', 'Site Visits', 'Meeting Notes', 'Delay Notifications', 'MEP Checklist', 'Drawing Register', 'Documents',
-    
-    // Quality & Pre-Handover Gating
-    'Snags', 'Punch List', 'Handovers', 'Handover Readiness', 
-    
-    // Property Handover
-    'Handover', 
-    
-    // Project Closure & Retrospective
-    'Project Closure', 'Retrospective',
-    
-    // Post-Handover & Maintenance
-    'Warranties', 'AMCs', 'Service Tickets', 'Customer Retention',
-    
-    // Administration & Logs
-    'Activity Logs'
-  ];
-  const tabs = allTabs.filter(tab => canAccessPage(tab));
 
   const reloadProject = () => {
     if (!projectId) return;
@@ -1413,11 +752,20 @@ export default function ProjectDetail() {
     return () => window.removeEventListener('app:mock-db-change', handleDbChange);
   }, [projectId]);
 
+  useEffect(() => {
+    if (navRef.current) {
+      const activeElement = navRef.current.querySelector(`.${styles.headerNavItemActive}`);
+      if (activeElement) {
+        activeElement.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+      }
+    }
+  }, [activeTab]);
+
 
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Overview': return project ? <OverviewTab project={project} onRefresh={reloadProject} onEdit={(section = 'all') => { setEditingSection(section); setIsEditing(true); }} /> : null;
-      case 'Phases & Schedule': return <PhaseTimeline projectId={projectId} />;
+      case 'Phases & Schedule': return <PhaseTimeline projectId={projectId} project={project} onNavigateTab={setActiveTab} />;
       case 'Team & Roles': return <TeamAndRolesTab project={project} onRefresh={reloadProject} />;
       case 'Client Profile': return <ClientProfileTab project={project} onRefresh={reloadProject} />;
       case 'Site Details': return <SiteDetailsTab project={project} onRefresh={reloadProject} />;
@@ -1444,6 +792,7 @@ export default function ProjectDetail() {
       case 'Budget Variance': return <BOQVarianceTab projectId={projectId} />;
       case 'Budget': return <BudgetTab projectId={projectId} />;
       case 'Purchase Requests': return <PurchaseRequestsTab projectId={projectId} />;
+      case 'Purchase Orders & Vendor Payments':
       case 'Purchase Orders': return <PurchaseOrdersTab projectId={projectId} />;
       case 'Material Deliveries': return <MaterialDeliveriesTab projectId={projectId} />;
       case 'Vendor Payments': return <VendorPaymentsTab projectId={projectId} />;
@@ -1453,6 +802,7 @@ export default function ProjectDetail() {
       case 'Work Activities': return <WorkActivitiesTab projectId={projectId} project={project} />;
       case 'Room Progress': return <RoomProgressTab projectId={projectId} />;
       case 'Tasks': return <ProjectTasksTab projectId={projectId} project={project} />;
+      case 'daily Site Reports':
       case 'Daily Site Reports': return <DailySiteReportsTab projectId={projectId} />;
       case 'Weekly Reports': return <WeeklyReportsTab projectId={projectId} />;
       case 'Documents': return <DocumentPanel projectId={projectId} projectStatus={project?.status} />;
@@ -1850,48 +1200,51 @@ export default function ProjectDetail() {
           </div>
         </div>
 
-        {/* Quick Nav Tabs from Form Sections */}
-        {/* Quick Nav Tabs from Form Sections */}
         <div className={styles.headerNav} ref={navRef}>
           {[
-            // 1. Initiation & Setup
+            // 1. Initiation & Master Schedule (Scratch)
             { id: 'Overview', icon: '📝', label: 'Overview' },
-            { id: 'Client Profile', icon: '👤', label: 'Client Profile' },
-            { id: 'Site Details', icon: '📍', label: 'Site Details' },
-            { id: 'Team & Roles', icon: '👥', label: 'Team & Roles' },
+            { id: 'Phases & Schedule', icon: '📅', label: 'Phases & Schedule' },
 
-            // 2. Design & Approvals
+            // 2. Design & Architectural Drawings
             { id: 'Design & Approvals', icon: '🎨', label: 'Design & Approvals' },
+            { id: 'Drawing Register', icon: '📐', label: 'Drawing Register' },
 
-            // 3. Financials
-            { id: 'Financial Overview', icon: '💰', label: 'Financial Overview' },
+            // 3. Commercials, Budget & Client Cash Flow
             { id: 'Budget', icon: '📊', label: 'Budget' },
             { id: 'Payments', icon: '💸', label: 'Payments' },
+            { id: 'Change Orders', icon: '📝', label: 'Change Orders' },
 
-            // 3. Execution & Monitoring
+            // 4. Procurement & Vendor Sourcing
+            { id: 'Purchase Orders', icon: '🛒', label: 'Purchase Orders' },
+
+            // 5. Site Execution & Field Monitoring
             { id: 'Tasks', icon: '✅', label: 'Tasks' },
+            { id: 'Room Progress', icon: '🚪', label: 'Room Progress' },
+            { id: 'Site Visits', icon: '🚶', label: 'Site Visits' },
+            { id: 'Daily Site Reports', icon: '📋', label: 'Daily Site Reports' },
+            { id: 'Weekly Reports', icon: '📈', label: 'Weekly Reports' },
             { id: 'Documents', icon: '📁', label: 'Documents' },
 
-            // 4. Quality Control, Snags & Readiness (Pre-Handover)
+            // 6. Quality Control, Snags & Readiness (Pre-Handover)
             { id: 'Snags', icon: '⚠️', label: 'Snags' },
-            { id: 'Punch List', icon: '📋', label: 'Punch List' },
             { id: 'Handover Readiness', icon: '🚦', label: 'Handover Readiness' },
 
-            // 5. Property Handover
+            // 7. Property Handover (Completion)
             { id: 'Handover', icon: '📦', label: 'Handover Checklist' },
 
-            // 6. Project Closure
+            // 8. Project Closure & Retrospective
             { id: 'Project Closure', icon: '🔑', label: 'Project Closure' },
             { id: 'Retrospective', icon: '💡', label: 'Retrospective' },
 
-            // 7. Post-Handover & Support
+            // 9. Post-Handover & Maintenance
             { id: 'Warranties', icon: '🛡️', label: 'Warranties' },
             { id: 'AMCs', icon: '🛠️', label: 'AMCs' },
             { id: 'Service Tickets', icon: '🎫', label: 'Service Tickets' },
             { id: 'Customer Retention', icon: '🔄', label: 'Customer Retention' },
 
-            // 8. Logs
-            { id: 'Activity Logs', icon: '📋', label: 'Activity Logs' }
+            // 10. Audit & Activity Logs
+            { id: 'Activity Logs', icon: '📜', label: 'Activity Logs' }
           ].filter(tab => canAccessPage(tab.id)).map(tab => {
             const isActive = activeTab === tab.id;
             return (

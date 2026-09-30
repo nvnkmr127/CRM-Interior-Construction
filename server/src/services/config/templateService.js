@@ -1,4 +1,4 @@
-const pool = require('../../db/pool');
+﻿const pool = require('../../db/pool');
 
 /**
  * Retrieves all active project templates for a tenant.
@@ -85,9 +85,18 @@ async function updateTemplate(tenantId, templateId, updates) {
  * Applies a project template to a specific project.
  * Uses a transactional boundary to safely spawn phases and milestones.
  */
-async function applyTemplate(projectId, templateId, tenantId, passedClient = null) {
-  const isExternalClient = !!passedClient;
-  const client = passedClient || (await pool.connect());
+async function applyTemplate(projectId, templateId, tenantId, passedClient = null, options = {}) {
+  let opts = options;
+  let actualClient = passedClient;
+  if (passedClient && typeof passedClient.query !== 'function') {
+    opts = passedClient;
+    actualClient = null;
+  }
+  const isExternalClient = !!actualClient;
+  const client = actualClient || (await pool.connect());
+    if (opts?.replaceExisting) {
+      await client.query('DELETE FROM project_phases WHERE project_id = $1 AND tenant_id = $2', [projectId, tenantId]);
+    }
   
   try {
     if (!isExternalClient) {

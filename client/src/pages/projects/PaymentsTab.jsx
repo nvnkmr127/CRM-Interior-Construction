@@ -13,6 +13,7 @@ import api from '../../api/axios';
 import { useToast } from '../../store/toastContext';
 import PaymentEscalationModal from '../../components/projects/PaymentEscalationModal';
 import DocumentPreviewModal from '../../components/finance/DocumentPreviewModal';
+import FinancialOverviewPanel from '../../components/projects/FinancialOverviewPanel';
 
 import { useConfirm } from '../../store/confirmContext';
 
@@ -968,7 +969,8 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
     requestFinanceApproval(writeOffForm.type, writeOffForm.amount, writeOffForm.reason, { ...writeOffForm });
     setWriteOffModalOpen(false);
   };
-  const requestFinanceApproval = async (type, amount, reason, payload) => {
+
+  const requestFinanceApproval = async (type, amount, reason, payload) => {
     try {
       await api.post('/financial-approvals', {
         type,
@@ -1368,7 +1370,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
       try {
         const settingsRes = await api.get('/config/tenant-settings');
         const defaultTpls = [
-          { id: 'tpl-5month-20', name: '5-Month Equal Installment Plan (20% x 5)', milestones: [{ name: 'Month 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 }, { name: 'Month 2 - Design Finalization', percentage: 20, stage: 'Design', offsetDays: 30 }, { name: 'Month 3 - Factory Production Start', percentage: 20, stage: 'Production', offsetDays: 60 }, { name: 'Month 4 - Site Installation', percentage: 20, stage: 'Installation', offsetDays: 90 }, { name: 'Month 5 - Final Handover', percentage: 20, stage: 'Handover', offsetDays: 120 }] },
+          { id: 'tpl-5month-20', name: '5-Stage Equal Installment Plan (20% x 5)', milestones: [{ name: 'Stage 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 }, { name: 'Stage 2 - Design Finalization', percentage: 20, stage: 'Design', offsetDays: 15 }, { name: 'Stage 3 - Factory Production Start', percentage: 20, stage: 'Production', offsetDays: 30 }, { name: 'Stage 4 - Site Installation', percentage: 20, stage: 'Installation', offsetDays: 45 }, { name: 'Stage 5 - Final Handover', percentage: 20, stage: 'Handover', offsetDays: 60 }] },
           { id: 'tpl-3stage-20-50-30', name: 'Standard 3-Stage Milestone (20% - 50% - 30%)', milestones: [{ name: 'Stage 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 }, { name: 'Stage 2 - Material Dispatch', percentage: 50, stage: 'Material Dispatch', offsetDays: 30 }, { name: 'Stage 3 - Final Handover', percentage: 30, stage: 'Handover', offsetDays: 60 }] },
           { id: 'tpl-4stage-10-40-40-10', name: 'Commercial Construction 4-Stage (10% - 40% - 40% - 10%)', milestones: [{ name: 'Token Advance', percentage: 10, stage: 'Token', offsetDays: 0 }, { name: 'Civil & Structure Work', percentage: 40, stage: 'Structure', offsetDays: 30 }, { name: 'Interior Finishing', percentage: 40, stage: 'Finishing', offsetDays: 75 }, { name: 'Handover & Retention', percentage: 10, stage: 'Retention', offsetDays: 105 }] }
         ];
@@ -2222,64 +2224,30 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 24 }}>
       
-      {/* Header Section as a standard card */}
-      <div style={{ background: 'var(--color-surface)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--color-border)', overflow: 'hidden' }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
-          <div style={{ fontWeight: 600, fontSize: 'var(--text-sm)', color: 'var(--color-text)', display: 'flex', alignItems: 'center', gap: '16px' }}>
-            Financial Overview
+      {/* Financial Overview Section */}
+      <FinancialOverviewPanel 
+        project={project} 
+        projectId={projectId}
+        headerActions={
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
             <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
               <span style={{ fontSize: '12px', fontWeight: 'normal', color: 'var(--color-text-muted)' }}>Simulate Role:</span>
-              <select value={simulateRole} onChange={e => setSimulateRole(e.target.value)} style={{ padding: '2px 8px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--color-border)' }}>
+              <select value={simulateRole} onChange={e => setSimulateRole(e.target.value)} style={{ padding: '2px 8px', fontSize: '12px', borderRadius: '4px', border: '1px solid var(--color-border)', background: 'var(--color-surface)', color: 'var(--color-text)' }}>
                 {Object.keys(permissionsConfig).map(role => (
                    <option key={role} value={role}>{role.replace('_', ' ')}</option>
                 ))}
               </select>
             </div>
+            <Button variant="outline" size="sm" onClick={async () => setIsCustomerPortalView(true)}>
+              Preview Customer Portal
+            </Button>
           </div>
-          <Button variant="outline" size="sm" onClick={async () => setIsCustomerPortalView(true)}>
-            Preview Customer Portal
-          </Button>
-        </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
-          
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Estimated Total Budget
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: '#0284c7' }}>
-              ₹{totalBudget.toLocaleString('en-IN')}/-
-              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 400, marginTop: 2 }}>({numberToWords(totalBudget)})</div>
-            </div>
-          </div>
-          
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Avg. Rate
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              ₹{avgRate}/sqft
-            </div>
-          </div>
-
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)', borderRight: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Total Area
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 500, color: 'var(--color-text)' }}>
-              {totalArea} sqft
-            </div>
-          </div>
-
-          <div style={{ padding: '14px 20px', borderBottom: '1px solid var(--color-border)' }}>
-            <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Outstanding Balance
-            </div>
-            <div style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: '#eab308' }}>
-              ₹{outstandingBalance > 0 ? outstandingBalance.toLocaleString('en-IN') : 0}
-            </div>
-          </div>
-        </div>
-      </div>
+        }
+        extraCards={[
+          { label: 'Avg. Rate', value: `₹${avgRate}/sqft` },
+          { label: 'Total Area', value: `${totalArea} sqft` },
+        ]}
+      />
 
       {/* Sub-Tabs */}
       <div className={styles.subTabsContainer} ref={subTabsRef}>

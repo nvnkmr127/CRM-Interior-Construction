@@ -1,11 +1,13 @@
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
+const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 const { getRetrospective, saveRetrospective } = require('../services/postSale/projectRetrospectiveService');
 
 const router = express.Router({ mergeParams: true });
+router.use(authenticate);
 
 const saveRetrospectiveSchema = z.object({
   what_went_well: z.string().optional().nullable(),

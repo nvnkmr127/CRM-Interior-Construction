@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/set-state-in-effect */
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import styles from './ProjectForm.module.css'
 import { Modal, Input, Select, Button, Badge } from '../ui'
 import { useTaskNotifications } from '../../store/TaskNotificationContext'
@@ -10,6 +10,30 @@ import { useS3Upload } from '../../hooks/useS3Upload'
 import { useFieldPermissions } from '../../hooks/useFieldPermissions'
 import { fetchProjectTypes, DEFAULT_PROJECT_TYPES } from '../../constants/projectTypes'
 import { fetchPaymentTemplates, DEFAULT_PAYMENT_TEMPLATES, formatTemplatePercentages, formatTemplateLabel } from '../../constants/paymentTemplates'
+
+export function normalizeProjectType(val, availableTypes = DEFAULT_PROJECT_TYPES) {
+  if (!val) return 'full_interior';
+  const clean = String(val).toLowerCase().trim().replace(/ /g, '_');
+  if (Array.isArray(availableTypes) && availableTypes.some(t => t.id === clean)) return clean;
+  if (clean.includes('kitchen')) return 'modular_kitchen';
+  if (clean.includes('commercial') || clean.includes('office')) return 'commercial';
+  if (clean.includes('turnkey')) return 'turnkey';
+  if (clean.includes('renov')) return 'renovation';
+  if (clean.includes('full') || clean.includes('interior') || clean.includes('home') || clean.includes('resident')) return 'full_interior';
+  return (Array.isArray(availableTypes) && availableTypes[0]?.id) || 'full_interior';
+}
+
+export function toDateInputValue(dateVal) {
+  if (!dateVal) return '';
+  const str = String(dateVal);
+  if (/^\d{4}-\d{2}-\d{2}$/.test(str)) return str;
+  const d = new Date(dateVal);
+  if (isNaN(d.getTime())) return '';
+  const year = d.getFullYear();
+  const month = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
 
 export default function ProjectForm({ project, onSave, onClose, isOpen, editSection = 'all' }) {
   const showAll = editSection === 'all';
@@ -37,20 +61,22 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
     notify_crm: true,
     notify_finance: true
   })
-  const [isProjectTypeEditable, setIsProjectTypeEditable] = useState(!project)
+  const hasExistingType = Boolean(project?.type || project?.project_type || project?.projectType);
+  const [isProjectTypeEditable, setIsProjectTypeEditable] = useState(!project || !hasExistingType || editSection === 'details');
   const [projectTypes, setProjectTypes] = useState(DEFAULT_PROJECT_TYPES)
   const [paymentTemplates, setPaymentTemplates] = useState(DEFAULT_PAYMENT_TEMPLATES)
 
   useEffect(() => {
     if (isOpen) {
-      setIsProjectTypeEditable(!project)
+      const hasType = Boolean(project?.type || project?.project_type || project?.projectType);
+      setIsProjectTypeEditable(!project || !hasType || editSection === 'details');
       fetchProjectTypes().then(types => setProjectTypes(types))
       fetchPaymentTemplates().then(tpls => setPaymentTemplates(tpls))
     }
-  }, [isOpen, project])
+  }, [isOpen, project, editSection])
   
   const [formData, setFormData] = useState({
-    projectType: '',
+    projectType: normalizeProjectType(project?.type || project?.project_type || project?.projectType),
     clientName: '',
     clientPhone: '',
     clientEmail: '',
@@ -240,8 +266,10 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
 
   useEffect(() => {
     if (project && isOpen) {
+      const rawType = project.type || project.projectType || project.project_type || project.custom_fields?.project_type;
+      const initialType = normalizeProjectType(rawType, projectTypes);
       setFormData({
-        projectType: (project.type || project.projectType || project.project_type || '').toLowerCase().replace(/ /g, '_'),
+        projectType: initialType,
         clientName: project.clientName || project.client_name || '',
         clientPhone: project.clientPhone || project.client_phone || '',
         clientEmail: project.clientEmail || project.client_email || '',
@@ -251,11 +279,11 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
         designer: project.designer || project.designer_id || '',
         contractValue: project.contractValue || project.contract_value || '',
         bookingAmount: project.bookingAmount || project.booking_amount || '',
-        startDate: project.startDate || (project.start_date ? project.start_date.split('T')[0] : ''),
-        targetDate: project.targetDate || (project.target_date ? project.target_date.split('T')[0] : ''),
+        startDate: toDateInputValue(project.startDate || project.start_date),
+        targetDate: toDateInputValue(project.targetDate || project.target_date),
         template: project.template || 'none',
         agreementSignedBy: project.agreementSignedBy || project.agreement_signed_by || '',
-        agreementSignedAt: project.agreementSignedAt || (project.agreement_signed_at ? project.agreement_signed_at.split('T')[0] : ''),
+        agreementSignedAt: toDateInputValue(project.agreementSignedAt || project.agreement_signed_at),
         agreementSignatureMethod: project.agreementSignatureMethod || project.agreement_signature_method || '',
         paymentTerms: project.paymentTerms || project.payment_terms || '',
         flatNumber: project.flat_number || project.flatNumber || '',
@@ -272,7 +300,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
         reraId: project.rera_id || project.reraId || '',
         nocStatus: project.noc_status || project.nocStatus || 'pending',
         occupancyCertificateStatus: project.occupancy_certificate_status || project.occupancyCertificateStatus || 'pending',
-        propertyHandoverDate: project.propertyHandoverDate || (project.property_handover_date ? project.property_handover_date.split('T')[0] : ''),
+        propertyHandoverDate: toDateInputValue(project.propertyHandoverDate || project.property_handover_date),
         contacts: project.contacts || [],
         measurements: project.measurements || [],
         carpetArea: project.carpet_area || project.carpetArea || '',
@@ -336,7 +364,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
         scope_finalized: true
       });
       setFormData({
-        projectType: '', clientName: '', clientPhone: '', clientEmail: '',
+        projectType: (projectTypes && projectTypes[0]?.id) || 'full_interior', clientName: '', clientPhone: '', clientEmail: '',
         siteAddress: '', projectName: '', pm: '', designer: '', contractValue: '',
         bookingAmount: '', startDate: '', targetDate: '', template: 'none',
         agreementSignedBy: '', agreementSignedAt: '', agreementSignatureMethod: '',
@@ -428,7 +456,12 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
 
   const validate = () => {
     const newErrors = {};
-    if (!formData.projectType) newErrors.projectType = 'Project type is required';
+    const effectiveType = formData.projectType || normalizeProjectType(project?.type || project?.project_type || project?.projectType, projectTypes);
+    if (!effectiveType) {
+      newErrors.projectType = 'Project type is required';
+    } else if (!formData.projectType) {
+      setFormData(prev => ({ ...prev, projectType: effectiveType }));
+    }
     if (!formData.projectName || formData.projectName.trim().length < 3) newErrors.projectName = 'Project name must be at least 3 characters';
     if (!formData.clientName || formData.clientName.trim().length < 2) newErrors.clientName = 'Client name is required';
     if (formData.clientPhone && formData.clientPhone.replace(/\D/g, '').length < 10) newErrors.clientPhone = 'Valid 10-digit phone required';
@@ -455,6 +488,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
   const handleSubmit = async () => {
     if (!validate()) return;
     try {
+      const effectiveType = formData.projectType || normalizeProjectType(project?.type || project?.project_type || project?.projectType, projectTypes);
       let contractFields = {}
       if (!project) {
         if (contractFile) {
@@ -481,8 +515,8 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
 
       const payload = {
         name: formData.projectName,
-        type: formData.projectType,
-        project_type: formData.projectType,
+        type: effectiveType,
+        project_type: effectiveType,
         client_name: formData.clientName || formData.projectName || 'TBD',
         client_phone: formData.clientPhone || null,
         client_email: formData.clientEmail || null,
@@ -570,12 +604,15 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
       }
       if (project) {
         if (project.status === 'active') {
-          const origStart = project.start_date ? project.start_date.split('T')[0] : (project.startDate ? project.startDate.split('T')[0] : '');
-          const origTarget = project.target_date ? project.target_date.split('T')[0] : (project.targetDate ? project.targetDate.split('T')[0] : '');
-          const newStart = formData.startDate || '';
-          const newTarget = formData.targetDate || '';
+          const origStart = toDateInputValue(project.startDate || project.start_date);
+          const origTarget = toDateInputValue(project.targetDate || project.target_date);
+          const newStart = toDateInputValue(formData.startDate);
+          const newTarget = toDateInputValue(formData.targetDate);
 
-          if (newStart !== origStart || newTarget !== origTarget) {
+          const isStartModified = Boolean(origStart && newStart && newStart !== origStart);
+          const isTargetModified = Boolean(origTarget && newTarget && newTarget !== origTarget);
+
+          if (isStartModified || isTargetModified) {
             const reason = window.prompt(
               'The project schedule is being modified. Please provide a reason for this schedule revision:'
             );
@@ -620,11 +657,19 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
     });
   }
 
+  const calculatedScheduleDays = useMemo(() => {
+    if (!formData.startDate || !formData.targetDate) return null;
+    const s = new Date(formData.startDate);
+    const t = new Date(formData.targetDate);
+    const diff = Math.round((t - s) / (1000 * 60 * 60 * 24));
+    return diff > 0 ? diff : null;
+  }, [formData.startDate, formData.targetDate]);
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      title={project ? 'Edit Project' : 'New Project'}
+      title={project ? (editSection && editSection !== 'all' ? `Edit Project - ${editSection.charAt(0).toUpperCase() + editSection.slice(1)}` : 'Edit Project') : 'New Project'}
       size="lg"
       footer={
         <>
@@ -636,44 +681,223 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
       }
     >
       {project ? (
-        <>
-        {showProjectDetails && (
-        <>
-      <div className={styles.sectionTitle} style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '12px'}}>
-        Project Type
-        {!!project && !isProjectTypeEditable && (
-          <Button variant="ghost" size="sm" onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            setIsProjectTypeEditable(true);
-          }}>
-            ✏️ Edit
-          </Button>
-        )}
-      </div>
-      <div className={styles.typeSelector} style={{ opacity: isProjectTypeEditable ? 1 : 0.6, pointerEvents: isProjectTypeEditable ? 'auto' : 'none' }}>
-        {projectTypes.map(type => (
-          <div 
-            key={type.id} 
-            className={`${styles.typeCard} ${formData.projectType === type.id ? styles.selected : ''}`}
-            onClick={() => {
-              if (!isProjectTypeEditable) return;
-              setFormData({...formData, projectType: type.id})
-              if (errors.projectType) setErrors({...errors, projectType: null})
-            }}
-          >
-            <div className={styles.typeIcon}>{type.icon}</div>
-            <div className={styles.typeLabel}>{type.label}</div>
-          </div>
-        ))}
-      </div>
-      {errors.projectType && <div className={styles.errorMsg}>{errors.projectType}</div>}
-        </>
-      )}
+        editSection === 'details' ? (
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-5)' }}>
+            {/* Section 1: Project Type */}
+            <div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 'var(--space-2)' }}>
+                <div className={styles.sectionTitle} style={{ margin: 0 }}>Project Type</div>
+                {!!project && !isProjectTypeEditable && (
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsProjectTypeEditable(true);
+                    }}
+                    style={{ fontSize: 'var(--text-xs)', height: '28px', padding: '0 8px' }}
+                  >
+                    ✏️ Edit
+                  </Button>
+                )}
+              </div>
+              <div className={styles.typeSelector} style={{ opacity: isProjectTypeEditable ? 1 : 0.6, pointerEvents: isProjectTypeEditable ? 'auto' : 'none' }}>
+                {projectTypes.map(type => (
+                  <div 
+                    key={type.id} 
+                    className={`${styles.typeCard} ${formData.projectType === type.id ? styles.selected : ''}`}
+                    onClick={() => {
+                      if (!isProjectTypeEditable) return;
+                      setFormData({...formData, projectType: type.id});
+                      if (errors.projectType) setErrors({...errors, projectType: null});
+                    }}
+                  >
+                    <div className={styles.typeIcon}>{type.icon}</div>
+                    <div className={styles.typeLabel}>{type.label}</div>
+                  </div>
+                ))}
+              </div>
+              {errors.projectType && <div className={styles.errorMsg}>{errors.projectType}</div>}
+            </div>
 
-      {(showProjectDetails || showTeam) && (
-        <>
-          {showProjectDetails && <div className={styles.sectionTitle}>Details</div>}
+            {/* Section 2: Basic Details */}
+            <div>
+              <div className={styles.sectionTitle} style={{ margin: '0 0 var(--space-3) 0' }}>Basic Details</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))', gap: 'var(--space-4)' }}>
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <Input 
+                    label="Project Name *" 
+                    placeholder="e.g. Sharma 3BHK - Banjara Hills"
+                    value={formData.projectName} 
+                    onChange={e => {
+                      setFormData({...formData, projectName: e.target.value});
+                      if (errors.projectName) setErrors({...errors, projectName: null});
+                    }} 
+                    error={errors.projectName}
+                  />
+                </div>
+                <Input 
+                  label="City" 
+                  placeholder="e.g. Hyderabad"
+                  value={formData.city} 
+                  onChange={e => setFormData({...formData, city: e.target.value})} 
+                />
+                <Select 
+                  label="Project Category" 
+                  editable
+                  placeholder="Select or enter category..."
+                  options={[
+                    { value: 'residential', label: 'Residential' },
+                    { value: 'commercial', label: 'Commercial' },
+                    { value: 'hospitality', label: 'Hospitality' },
+                    { value: 'retail', label: 'Retail' },
+                    { value: 'other', label: 'Other' }
+                  ]}
+                  value={formData.projectCategory}
+                  onChange={v => setFormData({...formData, projectCategory: v})}
+                />
+              </div>
+            </div>
+
+            {/* Section 3: Schedule & Timeline */}
+            <div>
+              <div className={styles.sectionTitle} style={{ margin: '0 0 var(--space-3) 0' }}>Schedule & Timeline</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-4)' }}>
+                <Input 
+                  label="Start Date" 
+                  type="date"
+                  value={formData.startDate} 
+                  onChange={e => setFormData({...formData, startDate: e.target.value})} 
+                />
+                <Input 
+                  label="Target Date" 
+                  type="date"
+                  value={formData.targetDate} 
+                  onChange={e => setFormData({...formData, targetDate: e.target.value})} 
+                />
+              </div>
+              {calculatedScheduleDays !== null && (
+                <div style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '8px',
+                  marginTop: 'var(--space-3)',
+                  padding: '6px 14px',
+                  borderRadius: 'var(--radius-md)',
+                  background: 'var(--color-surface)',
+                  border: '1px solid var(--color-border)',
+                  fontSize: 'var(--text-xs)',
+                  color: 'var(--color-text-secondary)',
+                  width: 'fit-content'
+                }}>
+                  <span>🗓️ Total Schedule:</span>
+                  <strong style={{ color: 'var(--color-accent, #3b82f6)', fontWeight: 600 }}>{calculatedScheduleDays} Days</strong>
+                </div>
+              )}
+            </div>
+
+            {/* Section 4: Commercial & Payment Terms */}
+            <div>
+              <div className={styles.sectionTitle} style={{ margin: '0 0 var(--space-3) 0' }}>Commercial & Payment Terms</div>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: 'var(--space-4)' }}>
+                {!isHidden('budget') && (
+                  <Input 
+                    label="Base Contract Value (₹)" 
+                    type="number"
+                    placeholder="e.g. 500000"
+                    value={formData.contractValue} 
+                    onChange={e => setFormData({...formData, contractValue: e.target.value})} 
+                    error={errors.contractValue}
+                    disabled={isReadOnly('budget')}
+                  />
+                )}
+                {!isHidden('budget') && (
+                  <Input 
+                    label="Booking Amount (₹)" 
+                    type="number"
+                    placeholder="e.g. 50000"
+                    value={formData.bookingAmount} 
+                    onChange={e => setFormData({...formData, bookingAmount: e.target.value})} 
+                    disabled={!!project || isReadOnly('budget')}
+                  />
+                )}
+                <div style={{ gridColumn: '1 / -1' }}>
+                  <Select 
+                    label="Payment Terms" 
+                    options={[
+                      { value: '', label: 'Select Terms' }, 
+                      ...paymentTermsOptions
+                    ]}
+                    value={formData.paymentTerms}
+                    onChange={handlePaymentTermsChange}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Section 5: Execution Settings */}
+            <div style={{
+              padding: 'var(--space-3) var(--space-4)',
+              borderRadius: 'var(--radius-md)',
+              border: '1px solid var(--color-border)',
+              background: 'var(--color-surface)'
+            }}>
+              <label style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer', userSelect: 'none' }}>
+                <input 
+                  type="checkbox" 
+                  checked={formData.enforceDependencies}
+                  onChange={e => setFormData({ ...formData, enforceDependencies: e.target.checked })}
+                  style={{ width: 18, height: 18, cursor: 'pointer', accentColor: 'var(--color-accent)' }}
+                />
+                <span style={{ fontSize: 'var(--text-sm)', fontWeight: 600, color: 'var(--color-text)' }}>
+                  Enforce Task Execution Sequence
+                </span>
+              </label>
+              <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', margin: '4px 0 0 28px', lineHeight: 1.4 }}>
+                When enabled, site supervisors are blocked from starting or completing tasks out of sequence based on configured dependencies.
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            {showAll && (
+              <>
+                <div className={styles.sectionTitle} style={{marginTop: 0, display: 'flex', alignItems: 'center', gap: '12px'}}>
+                  Project Type
+                  {!!project && !isProjectTypeEditable && (
+                    <Button variant="ghost" size="sm" onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsProjectTypeEditable(true);
+                    }}>
+                      ✏️ Edit
+                    </Button>
+                  )}
+                </div>
+                <div className={styles.typeSelector} style={{ opacity: isProjectTypeEditable ? 1 : 0.6, pointerEvents: isProjectTypeEditable ? 'auto' : 'none' }}>
+                  {projectTypes.map(type => (
+                    <div 
+                      key={type.id} 
+                      className={`${styles.typeCard} ${formData.projectType === type.id ? styles.selected : ''}`}
+                      onClick={() => {
+                        if (!isProjectTypeEditable) return;
+                        setFormData({...formData, projectType: type.id})
+                        if (errors.projectType) setErrors({...errors, projectType: null})
+                      }}
+                    >
+                      <div className={styles.typeIcon}>{type.icon}</div>
+                      <div className={styles.typeLabel}>{type.label}</div>
+                    </div>
+                  ))}
+                </div>
+                {errors.projectType && <div className={styles.errorMsg}>{errors.projectType}</div>}
+              </>
+            )}
+
+            {(showAll || showTeam) && (
+              <>
+                {showAll && <div className={styles.sectionTitle}>Details</div>}
           <div className={styles.grid}>
             {/* Left Col */}
             {showAll && (
@@ -721,9 +945,9 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
             )}
 
             {/* Right Col */}
-            {(showProjectDetails || showTeam) && (
+            {(showAll || showTeam) && (
               <div>
-                {showProjectDetails && (
+                {showAll && (
                   <Input 
                     label="Project Name *" 
                     placeholder="e.g. Sharma 3BHK - Banjara Hills"
@@ -734,7 +958,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
                 )}
                 {showTeam && (
                   <>
-                    <div style={{ marginTop: showProjectDetails ? 16 : 0 }}>
+                    <div style={{ marginTop: showAll ? 16 : 0 }}>
                       <Select 
                         label="Project Manager" 
                         options={[
@@ -930,7 +1154,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           )}
 
         {/* Site Details (City & Builder) */}
-        {showProjectDetails && (
+        {showAll && (
           <div className={styles.fullWidth} style={{ marginTop: 24, marginBottom: 16 }}>
             <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Location & Builder</div>
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '16px' }}>
@@ -1044,7 +1268,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
 
 
         {/* Project Classification & Nature */}
-        {showProjectDetails && (
+        {showAll && (
           <div className={styles.fullWidth} style={{ marginTop: 24 }}>
             <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Project Classification & Nature</div>
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '16px', marginBottom: '16px' }}>
@@ -1832,7 +2056,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
             </div>
           )}
 
-        {showProjectDetails && (
+        {showAll && (
           <div className={styles.fullWidth} style={{ marginTop: 24 }}>
             <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Financial Details</div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '24px' }}>
@@ -1924,7 +2148,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
           </div>
         )}
 
-        {showProjectDetails && (
+        {showAll && (
           <>
             <div className={styles.fullWidth} style={{ marginTop: 24 }}>
               <div className={styles.sectionTitle} style={{ marginBottom: 12 }}>Schedule & Timeline</div>
@@ -2007,6 +2231,7 @@ export default function ProjectForm({ project, onSave, onClose, isOpen, editSect
         </>
         )}
         </>
+        )
       ) : (
         <>
           {/* Project Type */}

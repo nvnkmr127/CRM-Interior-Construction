@@ -3,14 +3,14 @@ import api from '../api/axios';
 export const DEFAULT_PAYMENT_TEMPLATES = [
   {
     id: 'tpl-5month-20',
-    name: '5-Month Equal Installment Plan (20% x 5)',
-    description: '5 equal monthly payments of 20% across 5 consecutive project months.',
+    name: '5-Stage Equal Installment Plan (20% x 5)',
+    description: '5 equal stage-based payments of 20% across key project milestones.',
     milestones: [
-      { name: 'Month 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 },
-      { name: 'Month 2 - Design Finalization', percentage: 20, stage: 'Design', offsetDays: 30 },
-      { name: 'Month 3 - Factory Production Start', percentage: 20, stage: 'Production', offsetDays: 60 },
-      { name: 'Month 4 - Site Installation', percentage: 20, stage: 'Installation', offsetDays: 90 },
-      { name: 'Month 5 - Final Handover', percentage: 20, stage: 'Handover', offsetDays: 120 }
+      { name: 'Stage 1 - Booking Advance', percentage: 20, stage: 'Booking', offsetDays: 0 },
+      { name: 'Stage 2 - Design Finalization', percentage: 20, stage: 'Design', offsetDays: 15 },
+      { name: 'Stage 3 - Factory Production Start', percentage: 20, stage: 'Production', offsetDays: 30 },
+      { name: 'Stage 4 - Site Installation', percentage: 20, stage: 'Installation', offsetDays: 45 },
+      { name: 'Stage 5 - Final Handover', percentage: 20, stage: 'Handover', offsetDays: 60 }
     ]
   },
   {

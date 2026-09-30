@@ -122,12 +122,14 @@ export default function SiteDetailsTab({ project, onRefresh }) {
             ✏️ Edit
           </Button>
         </div>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0 }}>
-          {fields.map((f, i) => (
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(240px, 1fr))', gap: 0, marginRight: '-1px', marginBottom: '-1px' }}>
+          {fields.map((f) => (
             <div key={f.label} style={{
               padding: '14px 20px',
-              borderBottom: i < fields.length - (fields.length % 2 === 0 ? 2 : 1) ? '1px solid var(--color-border)' : 'none',
-              borderRight: (i % 2 === 0) ? '1px solid var(--color-border)' : 'none',
+              borderBottom: '1px solid var(--color-border)',
+              borderRight: '1px solid var(--color-border)',
+              boxSizing: 'border-box',
+              minWidth: 0,
             }}>
               <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-muted)', marginBottom: 4, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 {f.label}

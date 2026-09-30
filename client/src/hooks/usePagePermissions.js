@@ -22,7 +22,15 @@ const PAGE_MODULE_MAPPING = {
   'Design Brief': ['projects'],
   'Design Assets': ['projects'],
   'Design Reviews': ['design_reviews'],
-  'Design & Approvals': ['projects']
+  'Design & Approvals': ['projects'],
+  'Drawing Register': ['projects'],
+  'Phases & Schedule': ['projects'],
+  'Daily Site Reports': ['projects'],
+  'daily Site Reports': ['projects'],
+  'Weekly Reports': ['projects'],
+  'Work Activities': ['projects'],
+  'Site Visits': ['projects'],
+  'Room Progress': ['projects']
 };
 
 export const usePagePermissions = (moduleName) => {
@@ -40,6 +48,13 @@ export const usePagePermissions = (moduleName) => {
     // Platform developer bypass in root demo workspace
     if (isPlatformDeveloperAdmin) return true;
 
+    // Workspace Admin Check
+    const rName = user.role.name?.toLowerCase();
+    const isWorkspaceAdmin = user.role === 'superadmin' || rName === 'superadmin' || rName === 'super admin' || rName === 'admin' || rName === 'owner' || (user.role.permissions && (user.role.permissions.includes('*') || user.role.permissions.includes('*:*')));
+    if (isWorkspaceAdmin) {
+      return true;
+    }
+
     // 1. Workspace Plan Module Check
     const reqModRaw = PAGE_MODULE_MAPPING[pageId];
     if (reqModRaw) {
@@ -48,13 +63,6 @@ export const usePagePermissions = (moduleName) => {
       if (!hasPlanAccess) {
         return false;
       }
-    }
-
-    // 2. Workspace Admin Check
-    const rName = user.role.name?.toLowerCase();
-    const isWorkspaceAdmin = user.role === 'superadmin' || rName === 'superadmin' || rName === 'super admin' || rName === 'admin' || rName === 'owner' || (user.role.permissions && (user.role.permissions.includes('*') || user.role.permissions.includes('*:*')));
-    if (isWorkspaceAdmin) {
-      return true;
     }
     
     // 3. Role Level Enabled Modules Check

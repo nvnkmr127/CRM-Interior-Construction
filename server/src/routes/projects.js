@@ -49,6 +49,27 @@ const purchaseOrdersRoutes = require('./purchaseOrders');
 const purchaseRequestsRoutes = require('./purchaseRequests');
 const materialDeliveriesRoutes = require('./materialDeliveries');
 const vendorPaymentsRoutes = require('./vendorPayments');
+const materialSubstitutionsRoutes = require('./materialSubstitutions');
+const productionOrdersRoutes = require('./productionOrders');
+const workActivitiesRoutes = require('./workActivities');
+const siteReadinessRoutes = require('./siteReadiness');
+const taskDependenciesRoutes = require('./taskDependencies');
+const dailySiteReportsRoutes = require('./dailySiteReports');
+const roomProgressRoutes = require('./roomProgress');
+const meetingNotesRoutes = require('./meetingNotes');
+const delayNotificationsRoutes = require('./delayNotifications');
+const drawingRegisterRoutes = require('./drawingRegister');
+const punchListsRoutes = require('./punchLists');
+const warrantiesRoutes = require('./warranties');
+const amcsRoutes = require('./amcs');
+const warrantyClaimsRoutes = require('./warrantyClaims');
+const projectClosuresRoutes = require('./projectClosures');
+const projectRetrospectivesRoutes = require('./projectRetrospectives');
+const baselineAssessmentRoutes = require('./baselineAssessment');
+const siteExpensesRoutes = require('./siteExpenses');
+const materialUsagesRoutes = require('./materialUsages');
+const labourAttendanceRoutes = require('./labourAttendance');
+const paymentEscalationsRoutes = require('./paymentEscalations');
 
 const verifyProjectBooked = require('../middleware/verifyBooking');
 const enforceProjectAccess = require('../middleware/enforceProjectAccess');
@@ -351,27 +372,27 @@ router.use('/:projectId/purchase-orders', verifyProjectBooked, purchaseOrdersRou
 router.use('/:projectId/purchase-requests', verifyProjectBooked, purchaseRequestsRoutes);
 router.use('/:projectId/material-deliveries', verifyProjectBooked, materialDeliveriesRoutes);
 router.use('/:projectId/vendor-payments', verifyProjectBooked, vendorPaymentsRoutes);
-// router.use('/:projectId/material-substitutions', verifyProjectBooked, materialSubstitutionsRoutes);
-// router.use('/:projectId/production-orders', verifyProjectBooked, productionOrdersRoutes);
-// router.use('/:projectId/work-activities', verifyProjectBooked, workActivitiesRoutes);
-// router.use('/:projectId/site-readiness', verifyProjectBooked, siteReadinessRoutes);
-// router.use('/:projectId/task-dependencies', verifyProjectBooked, taskDependenciesRoutes);
-// router.use('/:projectId/daily-reports', verifyProjectBooked, dailySiteReportsRoutes);
-// router.use('/:projectId/room-progress', verifyProjectBooked, roomProgressRoutes);
-// router.use('/:projectId/meeting-notes', verifyProjectBooked, meetingNotesRoutes);
-// router.use('/:projectId/delay-notifications', verifyProjectBooked, delayNotificationsRoutes);
-// router.use('/:projectId/drawing-register', verifyProjectBooked, drawingRegisterRoutes);
-// router.use('/:projectId/punch-lists', verifyProjectBooked, punchListsRoutes);
-// router.use('/:projectId/warranties', verifyProjectBooked, warrantiesRoutes);
-// router.use('/:projectId/amcs', verifyProjectBooked, amcsRoutes);
-// router.use('/:projectId/warranty-claims', verifyProjectBooked, warrantyClaimsRoutes);
-// router.use('/:projectId/closure-checklist', verifyProjectBooked, projectClosuresRoutes);
-// router.use('/:projectId/retrospective', verifyProjectBooked, projectRetrospectivesRoutes);
-// router.use('/:projectId/baseline-assessment', verifyProjectBooked, baselineAssessmentRoutes);
-// router.use('/:projectId/attendance', verifyProjectBooked, labourAttendanceRoutes);
-// router.use('/:projectId/payment-escalations', verifyProjectBooked, paymentEscalationsRoutes);
-// router.use('/:projectId/site-expenses', verifyProjectBooked, siteExpensesRoutes);
-// router.use('/:projectId/material-usages', verifyProjectBooked, materialUsagesRoutes);
+router.use('/:projectId/material-substitutions', verifyProjectBooked, materialSubstitutionsRoutes);
+router.use('/:projectId/production-orders', verifyProjectBooked, productionOrdersRoutes);
+router.use('/:projectId/work-activities', verifyProjectBooked, workActivitiesRoutes);
+router.use('/:projectId/site-readiness', verifyProjectBooked, siteReadinessRoutes);
+router.use('/:projectId/task-dependencies', verifyProjectBooked, taskDependenciesRoutes);
+router.use('/:projectId/daily-reports', verifyProjectBooked, dailySiteReportsRoutes);
+router.use('/:projectId/room-progress', verifyProjectBooked, roomProgressRoutes);
+router.use('/:projectId/meeting-notes', verifyProjectBooked, meetingNotesRoutes);
+router.use('/:projectId/delay-notifications', verifyProjectBooked, delayNotificationsRoutes);
+router.use('/:projectId/drawing-register', verifyProjectBooked, drawingRegisterRoutes);
+router.use('/:projectId/punch-lists', verifyProjectBooked, punchListsRoutes);
+router.use('/:projectId/warranties', verifyProjectBooked, warrantiesRoutes);
+router.use('/:projectId/amcs', verifyProjectBooked, amcsRoutes);
+router.use('/:projectId/warranty-claims', verifyProjectBooked, warrantyClaimsRoutes);
+router.use('/:projectId/closure-checklist', verifyProjectBooked, projectClosuresRoutes);
+router.use('/:projectId/retrospective', verifyProjectBooked, projectRetrospectivesRoutes);
+router.use('/:projectId/baseline-assessment', verifyProjectBooked, baselineAssessmentRoutes);
+router.use('/:projectId/attendance', verifyProjectBooked, labourAttendanceRoutes);
+router.use('/:projectId/payment-escalations', verifyProjectBooked, paymentEscalationsRoutes);
+router.use('/:projectId/site-expenses', verifyProjectBooked, siteExpensesRoutes);
+router.use('/:projectId/material-usages', verifyProjectBooked, materialUsagesRoutes);
 
 
 // Standard CRUD routes
@@ -724,7 +745,7 @@ router.get('/:id', authorize('projects:read'), cacheResponse(30), async (req, re
     }
     
     const { filterAllowedFields } = require('../utils/fieldMasker');
-    const safeProject = filterAllowedFields({ ...project, stats }, 'projects', req.user.field_permissions);
+    const safeProject = filterAllowedFields({ ...project, stats }, 'projects', req.user?.field_permissions || {});
 
     return success(res, safeProject);
   } catch (error) {
@@ -1089,7 +1110,8 @@ router.post('/:id/apply-template', authorize('projects:manage'), async (req, res
       return fail(res, 'BAD_REQUEST', 'templateId is required', 400);
     }
 
-    const result = await applyTemplate(req.params.id, templateId, req.tenantId);
+    const replaceExisting = Boolean(req.body?.replaceExisting || req.body?.replace_existing);
+    const result = await applyTemplate(req.params.id, templateId, req.tenantId, null, { replaceExisting });
     return success(res, result);
   } catch (error) {
     if (error.message === 'TEMPLATE_NOT_FOUND') {

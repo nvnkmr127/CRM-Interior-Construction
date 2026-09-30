@@ -43,9 +43,6 @@ export const previewCancellation = (id) => api.post(`/projects/${id}/cancel/prev
 export const cancelProject = (id, data) => api.post(`/projects/${id}/cancel`, data);
 export const acknowledgeCancellation = (id) => api.post(`/projects/${id}/acknowledge-cancellation`);
 
-
-export const applyTemplate = (id, templateId) => api.post(`/projects/${id}/apply-template`, { templateId });
-
 // Phases
 export const getPhases = (projectId) => api.get(`/projects/${projectId}/phases`);
 
@@ -53,10 +50,16 @@ export const createPhase = (projectId, data) => api.post(`/projects/${projectId}
 
 export const signOffPhase = (projectId, phaseId) => api.post(`/projects/${projectId}/phases/${phaseId}/sign-off`);
 
+export const deletePhase = (projectId, phaseId) => api.delete(`/projects/${projectId}/phases/${phaseId}`);
+export const clearAllPhases = (projectId) => api.delete(`/projects/${projectId}/phases`);
+export const applyTemplate = (projectId, templateId, replaceExisting = false) => api.post(`/projects/${projectId}/apply-template`, { templateId, replaceExisting });
+
 // Milestones
 export const getMilestones = (phaseId) => api.get(`/phases/${phaseId}/milestones`);
-
+export const createMilestone = (phaseId, data) => api.post(`/phases/${phaseId}/milestones`, data);
 export const completeMilestone = (phaseId, mid) => api.post(`/phases/${phaseId}/milestones/${mid}/complete`);
+export const updateMilestone = (phaseId, mid, data) => api.patch(`/phases/${phaseId}/milestones/${mid}`, data);
+export const deleteMilestone = (phaseId, mid) => api.delete(`/phases/${phaseId}/milestones/${mid}`);
 
 // Tasks
 export const getTasks = (projectId, params) => api.get(`/projects/${projectId}/tasks`, { params });
@@ -68,13 +71,16 @@ export const updateTask = (projectId, tid, data) => api.patch(`/projects/${proje
 export const deleteTask = (projectId, tid) => api.delete(`/projects/${projectId}/tasks/${tid}`);
 
 export const bulkCreateTasks = (projectId, tasks) => api.post(`/projects/${projectId}/tasks/bulk`, { tasks });
+export const bulkUpdateTasks = (projectId, tasks) => api.patch(`/projects/${projectId}/tasks/bulk-update`, { tasks });
 
 // Task Dependencies
 export const getTaskDependencies = (projectId) => api.get(`/projects/${projectId}/task-dependencies`);
-
 export const createTaskDependency = (projectId, data) => api.post(`/projects/${projectId}/task-dependencies`, data);
-
 export const deleteTaskDependency = (projectId, id) => api.delete(`/projects/${projectId}/task-dependencies/${id}`);
+export const bulkUpdateTaskDependencies = (projectId, dependencies) => api.put(`/projects/${projectId}/task-dependencies/bulk`, { dependencies });
+
+// Schedule Revisions
+export const getScheduleRevisions = (projectId) => api.get(`/projects/${projectId}/schedule-revisions`);
 
 // Daily Site Reports
 export const getDailyReports = (projectId) => api.get(`/projects/${projectId}/daily-reports`);
@@ -233,11 +239,6 @@ export const createTransitDamageReport = (projectId, orderId, dispatchId, itemId
 export const initiateReplacementOrder = (projectId, orderId, damageId) => api.post(`/projects/${projectId}/production-orders/${orderId}/damage/${damageId}/replacement`);
 export const updateTransitDamageStatus = (projectId, orderId, damageId, data) => api.put(`/projects/${projectId}/production-orders/${orderId}/damage/${damageId}`, data);
 export const getTransitDamageRecords = (projectId, orderId) => api.get(`/projects/${projectId}/production-orders/${orderId}/damage`);
-
-export const bulkUpdateTasks = (projectId, tasks) => api.patch(`/projects/${projectId}/tasks/bulk-update`, { tasks });
-export const bulkUpdateTaskDependencies = (projectId, dependencies) => api.put(`/projects/${projectId}/task-dependencies/bulk`, { dependencies });
-
-export const getScheduleRevisions = (projectId) => api.get(`/projects/${projectId}/schedule-revisions`);
 
 // Resource Replacement
 export const replaceProjectResource = (projectId, data) => api.post(`/projects/${projectId}/replace-resource`, data);

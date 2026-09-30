@@ -290,7 +290,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           setChecklistConfig(activeItems);
 
           const defaultTpls = [
-            { id: 'tpl-5month-20', name: '5-Month Equal Installment Plan (20% x 5)', milestones: [{ name: 'M1', percentage: 20 }, { name: 'M2', percentage: 20 }, { name: 'M3', percentage: 20 }, { name: 'M4', percentage: 20 }, { name: 'M5', percentage: 20 }] },
+            { id: 'tpl-5month-20', name: '5-Stage Equal Installment Plan (20% x 5)', milestones: [{ name: 'Stage 1', percentage: 20 }, { name: 'Stage 2', percentage: 20 }, { name: 'Stage 3', percentage: 20 }, { name: 'Stage 4', percentage: 20 }, { name: 'Stage 5', percentage: 20 }] },
             { id: 'tpl-3stage-20-50-30', name: 'Standard 3-Stage Milestone (20% - 50% - 30%)', milestones: [{ name: 'M1', percentage: 20 }, { name: 'M2', percentage: 50 }, { name: 'M3', percentage: 30 }] },
             { id: 'tpl-4stage-10-40-40-10', name: 'Commercial Construction 4-Stage (10% - 40% - 40% - 10%)', milestones: [{ name: 'M1', percentage: 10 }, { name: 'M2', percentage: 40 }, { name: 'M3', percentage: 40 }, { name: 'M4', percentage: 10 }] }
           ];
@@ -321,7 +321,7 @@ export default function ConvertToProjectModal({ lead, isOpen, onClose, onConvert
           ];
           setChecklistConfig(fallback);
           setPaymentTemplates([
-            { id: 'tpl-5month-20', name: '5-Month Equal Installment Plan (20% x 5)', milestones: [{ percentage: 20 }] },
+            { id: 'tpl-5month-20', name: '5-Stage Equal Installment Plan (20% x 5)', milestones: [{ percentage: 20 }] },
             { id: 'tpl-3stage-20-50-30', name: 'Standard 3-Stage Milestone (20% - 50% - 30%)', milestones: [{ percentage: 20 }] },
             { id: 'tpl-4stage-10-40-40-10', name: 'Commercial Construction 4-Stage (10% - 40% - 40% - 10%)', milestones: [{ percentage: 10 }] }
           ]);

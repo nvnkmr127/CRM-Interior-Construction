@@ -34,6 +34,28 @@ class MilestoneRepository {
   }
 
   async updateMilestone(milestoneId, tenantId, updates) {
+    if (updates.status === 'pending') {
+      updates.completion_date = null;
+      updates.completed_by = null;
+      try {
+        const msRes = await pool.query('SELECT project_id, name, triggers_payment FROM milestones WHERE id = $1 AND tenant_id = $2', [milestoneId, tenantId]);
+        if (msRes.rows.length > 0 && msRes.rows[0].triggers_payment) {
+          await pool.query(`
+            UPDATE payment_milestones
+            SET status = 'scheduled'
+            WHERE tenant_id = $2
+              AND status = 'invoice_raised'
+              AND (
+                milestone_id = $1
+                OR (project_id = $3 AND (LOWER(TRIM(name)) = LOWER(TRIM($4)) OR LOWER(name) LIKE '%' || LOWER(TRIM($4)) || '%'))
+              )
+          `, [milestoneId, tenantId, msRes.rows[0].project_id, msRes.rows[0].name]);
+        }
+      } catch (err) {
+        console.error('[MilestoneRepo] Error rolling back payment status on uncheck:', err);
+      }
+    }
+
     const fields = [];
     const values = [];
     let idx = 1;
@@ -81,8 +103,13 @@ class MilestoneRepository {
       await pool.query(`
         UPDATE payment_milestones
         SET status = 'invoice_raised'
-        WHERE milestone_id = $1 AND tenant_id = $2 AND status = 'scheduled'
-      `, [milestoneId, tenantId]);
+        WHERE tenant_id = $2 
+          AND status = 'scheduled'
+          AND (
+            milestone_id = $1 
+            OR (project_id = $3 AND (LOWER(TRIM(name)) = LOWER(TRIM($4)) OR LOWER(name) LIKE '%' || LOWER(TRIM($4)) || '%'))
+          )
+      `, [milestoneId, tenantId, milestone.project_id, milestone.name]);
     }
 
     return milestone;

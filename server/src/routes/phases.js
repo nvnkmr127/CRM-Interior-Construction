@@ -1,4 +1,4 @@
-const logger = require('../utils/logger');
+﻿const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -97,6 +97,18 @@ router.put('/:phaseId', authorize('projects:manage'), validate(updatePhaseSchema
     }
     logger.error('[Phases Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update phase.', 500);
+  }
+});
+
+// DELETE /api/projects/:projectId/phases (Clear all phases for this project)
+router.delete('/', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const projectId = req.params.projectId || req.params.id;
+    await phaseRepository.clearProjectPhases(projectId, req.tenantId);
+    return success(res, { message: 'All project phases and milestones removed' });
+  } catch (error) {
+    logger.error('[Phases Router] Clear all error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to clear project phases.', 500);
   }
 });
 

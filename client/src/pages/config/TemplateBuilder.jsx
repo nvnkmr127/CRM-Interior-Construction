@@ -166,7 +166,8 @@ export default function TemplateBuilder() {
   const fetchTemplates = async () => {
     try {
       const data = await configApi.getTemplates()
-      const formatted = data.map(t => {
+      const rawList = Array.isArray(data) ? data : (data?.templates || []);
+      const formatted = rawList.map(t => {
         let parsedPhases = [];
         try {
           parsedPhases = typeof t.phases === 'string' ? JSON.parse(t.phases) : (t.phases || []);

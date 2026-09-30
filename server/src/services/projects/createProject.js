@@ -308,13 +308,13 @@ async function createProject({ tenantId, userId, data }) {
       const defaultPaymentTemplates = [
         {
           id: 'tpl-5month-20',
-          name: '5-Month Equal Installment Plan (20% x 5)',
+          name: '5-Stage Equal Installment Plan (20% x 5)',
           milestones: [
-            { name: 'Month 1 - Booking Advance', percentage: 20 },
-            { name: 'Month 2 - Design Finalization', percentage: 20 },
-            { name: 'Month 3 - Factory Production Start', percentage: 20 },
-            { name: 'Month 4 - Site Installation', percentage: 20 },
-            { name: 'Month 5 - Final Handover', percentage: 20 }
+            { name: 'Stage 1 - Booking Advance', percentage: 20 },
+            { name: 'Stage 2 - Design Finalization', percentage: 20 },
+            { name: 'Stage 3 - Factory Production Start', percentage: 20 },
+            { name: 'Stage 4 - Site Installation', percentage: 20 },
+            { name: 'Stage 5 - Final Handover', percentage: 20 }
           ]
         },
         {

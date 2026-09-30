@@ -22,9 +22,9 @@ const createReportSchema = z.object({
     quantity: z.string().min(1, 'Quantity is required')
   })).optional(),
   issuesEncountered: z.string().optional().nullable(),
-  photos: z.array(z.string()).min(3, 'At least three progress photo uploads are required'),
-  tomorrowsPlan: z.string().min(1, 'Tomorrow\'s plan is required'),
-  supervisorSignature: z.string().min(1, 'Supervisor signature is required')
+  photos: z.array(z.string()).optional().default([]),
+  tomorrowsPlan: z.string().optional().nullable(),
+  supervisorSignature: z.string().optional().nullable()
 });
 
 // GET /api/projects/:projectId/daily-reports

@@ -20,7 +20,9 @@ const createMilestoneSchema = z.object({
 });
 
 const updateMilestoneSchema = createMilestoneSchema.partial().extend({
-  status: z.string().optional()
+  status: z.string().optional(),
+  completion_date: z.string().optional().nullable(),
+  completed_by: z.string().optional().nullable()
 });
 
 // GET /api/phases/:phaseId/milestones

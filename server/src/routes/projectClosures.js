@@ -1,11 +1,13 @@
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
+const authenticate = require('../middleware/authenticate');
 const authorize = require('../middleware/authorize');
 const validate = require('../middleware/validate');
 const { getOrCreateClosureChecklist, updateClosureChecklist } = require('../services/postSale/projectClosureService');
 
 const router = express.Router({ mergeParams: true });
+router.use(authenticate);
 
 const updateClosureChecklistSchema = z.object({
   financial_clearance_completed: z.boolean().optional(),

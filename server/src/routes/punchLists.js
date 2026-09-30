@@ -3,8 +3,10 @@ const { z } = require('zod');
 const punchListRepository = require('../repositories/punchListRepository');
 const { success, fail } = require('../utils/response');
 const validate = require('../middleware/validate');
+const authenticate = require('../middleware/authenticate');
 
 const router = express.Router({ mergeParams: true });
+router.use(authenticate);
 
 const createPunchListSchema = z.object({
   title: z.string().min(1, 'Title is required'),

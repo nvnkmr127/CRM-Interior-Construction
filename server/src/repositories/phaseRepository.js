@@ -136,8 +136,15 @@ class PhaseRepository {
       DELETE FROM project_phases
       WHERE id = $1 AND tenant_id = $2
     `, [phaseId, tenantId]);
-
     if (rowCount === 0) throw new Error('NOT_FOUND');
+    return true;
+  }
+
+  async clearProjectPhases(projectId, tenantId) {
+    await pool.query(`
+      DELETE FROM project_phases
+      WHERE project_id = $1 AND tenant_id = $2
+    `, [projectId, tenantId]);
     return true;
   }
 }

@@ -35,6 +35,13 @@ async function updateProject({ tenantId, userId, projectId, data }) {
 
   const { contacts, measurements, vendors, consultants, site_team, changeReason, change_reason, template_id, enforce_dependencies, enforceDependencies, ...projectData } = data;
 
+  // Handle project_type / type normalization
+  if (data.project_type !== undefined || data.type !== undefined || data.projectType !== undefined) {
+    projectData.project_type = data.project_type || data.type || data.projectType || null;
+  }
+  delete projectData.type;
+  delete projectData.projectType;
+
   // Map legacy plural role keys to singular DB columns
   const roleFieldMap = [
     ['designer_ids', 'designer_id'],
