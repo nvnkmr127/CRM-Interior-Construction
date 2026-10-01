@@ -1,4 +1,4 @@
-﻿const pool = require('../../db/pool');
+const pool = require('../../db/pool');
 
 /**
  * Retrieves all active project templates for a tenant.
@@ -94,13 +94,45 @@ async function applyTemplate(projectId, templateId, tenantId, passedClient = nul
   }
   const isExternalClient = !!actualClient;
   const client = actualClient || (await pool.connect());
-    if (opts?.replaceExisting) {
-      await client.query('DELETE FROM project_phases WHERE project_id = $1 AND tenant_id = $2', [projectId, tenantId]);
-    }
   
   try {
     if (!isExternalClient) {
       await client.query('BEGIN');
+    }
+
+    if (opts?.replaceExisting) {
+      await client.query(`
+        DELETE FROM tasks
+        WHERE project_id = $1 AND tenant_id = $2
+          AND (
+            custom_fields LIKE '%"source":"phase_schedule"%'
+            OR (
+              milestone_id IN (
+                SELECT m.id FROM milestones m
+                JOIN project_phases p ON m.phase_id = p.id
+                WHERE p.project_id = $1 AND p.tenant_id = $2
+              )
+              AND (
+                (custom_fields IS NULL OR custom_fields = '' OR custom_fields NOT LIKE '%"source":"manual"%')
+                AND (custom_fields IS NULL OR custom_fields NOT LIKE '%"source":"payment"%')
+                AND (custom_fields IS NULL OR custom_fields NOT LIKE '%"source":"snag"%')
+              )
+            )
+          )
+      `, [projectId, tenantId]);
+
+      await client.query(`
+        UPDATE tasks
+        SET milestone_id = NULL
+        WHERE project_id = $1 AND tenant_id = $2
+          AND milestone_id IN (
+            SELECT m.id FROM milestones m
+            JOIN project_phases p ON m.phase_id = p.id
+            WHERE p.project_id = $1 AND p.tenant_id = $2
+          )
+      `, [projectId, tenantId]);
+
+      await client.query('DELETE FROM project_phases WHERE project_id = $1 AND tenant_id = $2', [projectId, tenantId]);
     }
 
     // 1. Fetch template
@@ -131,6 +163,7 @@ async function applyTemplate(projectId, templateId, tenantId, passedClient = nul
 
     let phasesCreated = 0;
     let milestonesCreated = 0;
+    let taskSortOrder = 0;
 
     // 2. Map schema and execute phase loop
     for (let i = 0; i < phases.length; i++) {
@@ -182,15 +215,18 @@ async function applyTemplate(projectId, templateId, tenantId, passedClient = nul
         milestonesCreated++;
 
         if (milestoneId) {
+          taskSortOrder++;
           await client.query(`
-            INSERT INTO tasks (tenant_id, project_id, milestone_id, title, status, priority, duration_days)
-            VALUES ($1, $2, $3, $4, 'todo', 'medium', $5)
+            INSERT INTO tasks (tenant_id, project_id, milestone_id, title, status, priority, duration_days, sort_order, custom_fields)
+            VALUES ($1, $2, $3, $4, 'todo', 'medium', $5, $6, $7)
           `, [
             tenantId,
             projectId,
             milestoneId,
             milestone.name || 'Untitled Task',
-            Number(phase.duration_days || phase.duration) || 1
+            Number(phase.duration_days || phase.duration) || 1,
+            taskSortOrder,
+            JSON.stringify({ source: 'phase_schedule', templateId })
           ]);
         }
       }

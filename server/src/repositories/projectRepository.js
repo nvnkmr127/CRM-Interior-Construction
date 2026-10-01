@@ -201,6 +201,11 @@ class ProjectRepository {
         ) as task_count,
         COALESCE(
           (
+            SELECT ROUND(COUNT(CASE WHEN m.status = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 2)
+            FROM milestones m
+            WHERE m.phase_id = pp.id AND m.tenant_id = $1
+          ),
+          (
             SELECT ROUND(COUNT(CASE WHEN pwa.status = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 2)
             FROM project_work_activities pwa
             WHERE pwa.phase_id = pp.id AND pwa.tenant_id = $1
@@ -520,6 +525,19 @@ class ProjectRepository {
   }
 
   async getProjectStats(tenantId, projectId) {
+    // Auto-sync any tasks linked to completed milestones if not yet marked done
+    await pool.query(`
+      UPDATE tasks t
+      SET status = 'done', updated_at = NOW()
+      FROM milestones m
+      WHERE (t.milestone_id = m.id OR (t.project_id = m.project_id AND LOWER(TRIM(t.title)) = LOWER(TRIM(m.name))))
+        AND t.project_id = $2
+        AND t.tenant_id = $1
+        AND m.status = 'completed'
+        AND t.status != 'done'
+        AND t.deleted_at IS NULL
+    `, [tenantId, projectId]).catch(() => {});
+
     const tasksQuery = `
       SELECT 
         COUNT(id)::int as total_tasks,

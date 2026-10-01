@@ -18,6 +18,7 @@ import AIInsightsPanel from '../../components/ui/AIInsightsPanel'
 import api from '../../api/axios'
 import EmployeeProfilePage from './EmployeeProfilePage'
 import EffectivePermissionViewer from './EffectivePermissionViewer'
+import usePersistedTab from '../../hooks/usePersistedTab'
 import PermissionAssignmentModal from './PermissionAssignmentModal'
 import { getMockTeamCredentials, updateMockTeamCredentials, useAuth } from '../../store/authContext'
 
@@ -51,7 +52,7 @@ export default function UsersManager() {
   const [roleChangeTarget, setRoleChangeTarget] = useState(null)
   const [statusChangeTarget, setStatusChangeTarget] = useState(null)
   const [approvalTarget, setApprovalTarget] = useState(null)
-  const [activeTab, setActiveTab] = useState('directory')
+  const [activeTab, setActiveTab] = usePersistedTab('tab', 'directory', 'config:users')
   const [selectedIds, setSelectedIds] = useState(new Set())
   const [bulkModalType, setBulkModalType] = useState(null) // 'role', 'status', 'add'
   const [showImportExport, setShowImportExport] = useState(false)

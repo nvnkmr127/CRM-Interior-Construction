@@ -10,6 +10,7 @@ import api from '../../api/axios'
 import { useConfirm } from '../../store/confirmContext'
 import { isSuperMasterDeveloper } from '../../utils/isSuperMasterDeveloper'
 import { format } from 'date-fns'
+import usePersistedTab from '../../hooks/usePersistedTab'
 
 import {
   FiUser,
@@ -83,7 +84,7 @@ export default function ProfilePage() {
                        user?.role?.id === 'superadmin' || 
                        user?.role?.id === 'role-mock'
 
-  const [activeTab, setActiveTab] = useState('overview')
+  const [activeTab, setActiveTab] = usePersistedTab('tab', 'overview', 'settings:profile')
 
   // Sub-data states
   const [projects, setProjects] = useState([])

@@ -3,9 +3,138 @@ const { getTenantThreshold, isUserSuperadmin } = require('../../utils/finance');
 const { buildApprovalChain } = require('../../utils/ApprovalChainBuilder');
 const { logAction } = require('../auditLog');
 
+function extractStageNumber(str) {
+  if (!str) return null;
+  const match = str.match(/stage\s*(\d+)/i);
+  return match ? parseInt(match[1], 10) : null;
+}
+
+async function syncScheduleToPaymentMilestones({ tenantId, projectId }) {
+  try {
+    // 1. Fetch site checkpoints that trigger payments
+    const siteMilestonesRes = await pool.query(`
+      SELECT m.id, m.name, m.due_date, m.status, m.phase_id, pp.name as phase_name, pp.sort_order as phase_order
+      FROM milestones m
+      JOIN project_phases pp ON m.phase_id = pp.id
+      WHERE m.project_id = $1 AND m.tenant_id = $2 AND m.triggers_payment = true
+      ORDER BY pp.sort_order ASC, m.sort_order ASC, m.created_at ASC
+    `, [projectId, tenantId]);
+    let siteMilestones = siteMilestonesRes.rows;
+
+    // 2. Fetch all payment milestones for this project
+    const pmRes = await pool.query(`
+      SELECT * FROM payment_milestones
+      WHERE tenant_id = $1 AND project_id = $2
+      ORDER BY due_date ASC, created_at ASC
+    `, [tenantId, projectId]);
+    let paymentMilestones = pmRes.rows;
+
+    if (paymentMilestones.length === 0) return paymentMilestones;
+
+    // 3. Deduplicate multiple site milestones sharing the same stage number
+    const siteStageGroups = {};
+    for (const sm of siteMilestones) {
+      const stageNum = extractStageNumber(sm.name);
+      if (stageNum !== null) {
+        if (!siteStageGroups[stageNum]) siteStageGroups[stageNum] = [];
+        siteStageGroups[stageNum].push(sm);
+      }
+    }
+
+    const removedSiteMilestoneIds = new Set();
+    for (const [stageNum, sms] of Object.entries(siteStageGroups)) {
+      if (sms.length > 1) {
+        // Keep the first one as the official payment trigger
+        // Unset triggers_payment on the duplicate ones in milestones table
+        const duplicateSms = sms.slice(1);
+        for (const dup of duplicateSms) {
+          await pool.query(
+            `UPDATE milestones SET triggers_payment = false WHERE id = $1 AND tenant_id = $2`,
+            [dup.id, tenantId]
+          ).catch(() => {});
+          removedSiteMilestoneIds.add(dup.id);
+        }
+      }
+    }
+    siteMilestones = siteMilestones.filter(sm => !removedSiteMilestoneIds.has(sm.id));
+
+    // 4. Deduplicate payment milestones sharing the same stage number
+    const stageGroups = {};
+    for (const pm of paymentMilestones) {
+      const stageNum = extractStageNumber(pm.name);
+      if (stageNum !== null) {
+        if (!stageGroups[stageNum]) stageGroups[stageNum] = [];
+        stageGroups[stageNum].push(pm);
+      }
+    }
+
+    for (const [stageNum, group] of Object.entries(stageGroups)) {
+      if (group.length > 1) {
+        // Find which one has activity (status != 'scheduled' or has entries or in approvals)
+        const approvalsRes = await pool.query(
+          `SELECT target_id FROM financial_approvals WHERE tenant_id = $1 AND target_id = ANY($2::text[])`,
+          [tenantId, group.map(g => g.id.toString())]
+        ).catch(() => ({ rows: [] }));
+        const activeTargetIds = new Set(approvalsRes.rows.map(r => r.target_id));
+
+        const keepCandidate = group.find(g => 
+          g.status === 'pending_approval' || 
+          g.status === 'paid' || 
+          Number(g.paid_amount || 0) > 0 ||
+          activeTargetIds.has(g.id.toString()) || 
+          (Array.isArray(g.payment_entries) && g.payment_entries.length > 0)
+        ) || group[0];
+
+        // Redundant duplicates: any duplicate with NO paid amount and NO pending approval requests
+        const redundantCandidates = group.filter(g => 
+          g.id !== keepCandidate.id &&
+          g.status !== 'paid' &&
+          g.status !== 'pending_approval' &&
+          Number(g.paid_amount || 0) === 0 &&
+          !activeTargetIds.has(g.id.toString()) &&
+          (!Array.isArray(g.payment_entries) || g.payment_entries.length === 0)
+        );
+
+        for (const red of redundantCandidates) {
+          await pool.query(`DELETE FROM payment_milestones WHERE id = $1 AND tenant_id = $2`, [red.id, tenantId]).catch(() => {});
+          paymentMilestones = paymentMilestones.filter(p => p.id !== red.id);
+        }
+      }
+    }
+
+    // 5. Link & Synchronize site milestones to payment milestones
+    for (const sm of siteMilestones) {
+      const smStage = extractStageNumber(sm.name);
+      
+      // Check if already linked
+      let linkedPm = paymentMilestones.find(p => p.milestone_id === sm.id);
+
+      // If not linked, find an unlinked payment milestone matching stage
+      if (!linkedPm && smStage !== null) {
+        linkedPm = paymentMilestones.find(p => (!p.milestone_id || removedSiteMilestoneIds.has(p.milestone_id)) && extractStageNumber(p.name) === smStage);
+      }
+
+      if (linkedPm) {
+        // Sync name and due date directly from site schedule
+        await pool.query(`
+          UPDATE payment_milestones
+          SET milestone_id = $1, name = $2, due_date = COALESCE($3, due_date), updated_at = NOW()
+          WHERE id = $4 AND tenant_id = $5
+        `, [sm.id, sm.name, sm.due_date, linkedPm.id, tenantId]).catch(() => {});
+        
+        linkedPm.milestone_id = sm.id;
+        linkedPm.name = sm.name;
+        if (sm.due_date) linkedPm.due_date = sm.due_date;
+      }
+    }
+  } catch (err) {
+    console.warn('[PaymentMilestoneService] Sync error:', err.message);
+  }
+}
+
 async function getPaymentMilestones({ tenantId, projectId }) {
   const query = `
-    SELECT pm.*, m.name as linked_milestone_name
+    SELECT pm.*, COALESCE(m.name, pm.name) as display_name, m.name as linked_milestone_name
     FROM payment_milestones pm
     LEFT JOIN milestones m ON pm.milestone_id = m.id
     WHERE pm.tenant_id = $1 AND pm.project_id = $2
@@ -24,6 +153,49 @@ async function createPaymentMilestone({ tenantId, userId, data, bypassApproval =
   );
   if (projCheck.rows.length === 0) {
     throw new Error('PROJECT_NOT_FOUND');
+  }
+
+  // Prevent duplicate: check if already linked to this milestoneId
+  if (milestoneId) {
+    const existing = await pool.query(
+      'SELECT id FROM payment_milestones WHERE tenant_id = $1 AND project_id = $2 AND milestone_id = $3',
+      [tenantId, projectId, milestoneId]
+    );
+    if (existing.rows.length > 0) {
+      return await updatePaymentMilestone({
+        tenantId,
+        userId,
+        milestoneId: existing.rows[0].id,
+        data: { name, amount, percentage, due_date: dueDate },
+        bypassApproval: true
+      });
+    }
+  }
+
+  // Prevent duplicate: check if an unlinked scheduled payment milestone exists with same stage
+  const stageNum = extractStageNumber(name);
+  if (stageNum !== null) {
+    const unlinked = await pool.query(
+      `SELECT id, name FROM payment_milestones 
+       WHERE tenant_id = $1 AND project_id = $2 AND milestone_id IS NULL AND status = 'scheduled'`,
+      [tenantId, projectId]
+    );
+    const matchedUnlinked = unlinked.rows.find(r => extractStageNumber(r.name) === stageNum);
+    if (matchedUnlinked) {
+      return await updatePaymentMilestone({
+        tenantId,
+        userId,
+        milestoneId: matchedUnlinked.id,
+        data: { 
+          name, 
+          amount: amount || undefined, 
+          percentage: percentage || undefined, 
+          due_date: dueDate || undefined,
+          milestone_id: milestoneId || null 
+        },
+        bypassApproval: true
+      });
+    }
   }
 
   const threshold = await getTenantThreshold(tenantId, 'finance_payment_threshold', 100000.00);
@@ -65,7 +237,7 @@ async function createPaymentMilestone({ tenantId, userId, data, bypassApproval =
 }
 
 async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, bypassApproval = false }) {
-  const { title, name, amount, due_date, proof_document, status, invoice_reference, paid_at, paid_amount, tds_rate, tds_amount, is_deferred, deferral_reference } = data;
+  const { title, name, amount, due_date, proof_document, status, invoice_reference, paid_at, paid_amount, tds_rate, tds_amount, is_deferred, deferral_reference, milestone_id, milestoneId: linkedMilestoneId, percentage, percent } = data;
 
   // Retrieve current to check transition
   const currentResult = await pool.query(`SELECT * FROM payment_milestones WHERE id = $1 AND tenant_id = $2`, [milestoneId, tenantId]);
@@ -174,6 +346,16 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
     updateFields.push(`deferral_reference = $${paramIdx++}`);
     values.push(deferral_reference);
   }
+  const targetMilestoneId = milestone_id !== undefined ? milestone_id : linkedMilestoneId;
+  if (targetMilestoneId !== undefined) {
+    updateFields.push(`milestone_id = $${paramIdx++}`);
+    values.push(targetMilestoneId);
+  }
+  const targetPct = percentage !== undefined ? percentage : percent;
+  if (targetPct !== undefined) {
+    updateFields.push(`percentage = $${paramIdx++}`);
+    values.push(targetPct);
+  }
 
   if (updateFields.length === 0) return current;
 
@@ -237,5 +419,6 @@ async function updatePaymentMilestone({ tenantId, userId, milestoneId, data, byp
 module.exports = {
   getPaymentMilestones,
   createPaymentMilestone,
-  updatePaymentMilestone
+  updatePaymentMilestone,
+  syncScheduleToPaymentMilestones
 };

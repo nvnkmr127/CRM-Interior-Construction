@@ -3,6 +3,7 @@ import styles from './RoleEditor.module.css';
 import { Button, Input } from '../../components/ui';
 
 import { useConfirm } from '../../store/confirmContext';
+import usePersistedTab from '../../hooks/usePersistedTab';
 
 const TimeSelect = ({ value, onChange }) => {
   const { confirm } = useConfirm();
@@ -92,7 +93,7 @@ export default function RoleEditor({
 }) {
   const { confirm } = useConfirm();
 
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = usePersistedTab('tab', 'general', 'config:roles');
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedCategories, setExpandedCategories] = useState({});
   const [isDirty, setIsDirty] = useState(false);

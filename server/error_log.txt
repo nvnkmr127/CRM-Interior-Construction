@@ -1227,4 +1227,13 @@
     at fail (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:23:14)
     at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:565:35\n\n2026-09-24T12:14:34.265Z\nTypeError: res.status is not a function
     at fail (D:\Digicloudify softwares\CRM-Interior-Construction\server\src\utils\response.js:23:14)
-    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:565:35\n\n
+    at D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:565:35\n\n2026-10-01T10:23:54.182Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:97:26\n\n2026-10-01T10:24:04.908Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:97:26\n\n2026-10-01T10:24:55.081Z\nError: getaddrinfo ENOTFOUND db.csjwmrgemorpnppvrtce.supabase.co
+    at D:\Digicloudify softwares\CRM-Interior-Construction\node_modules\pg-pool\index.js:45:11
+    at process.processTicksAndRejections (node:internal/process/task_queues:103:5)
+    at async D:\Digicloudify softwares\CRM-Interior-Construction\server\src\routes\auth.js:97:26\n\n

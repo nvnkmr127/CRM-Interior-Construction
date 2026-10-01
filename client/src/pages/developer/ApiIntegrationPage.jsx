@@ -36,6 +36,7 @@ import { useToast } from '../../store/toastContext';
 import { useConfirm } from '../../store/confirmContext';
 import { Modal, Button, Badge, EmptyState, Pagination, Spinner } from '../../components/ui';
 import styles from './ApiIntegrationPage.module.css';
+import usePersistedTab from '../../hooks/usePersistedTab';
 
 // Permission Categories & Scopes Definition
 const PERMISSION_CATEGORIES = [
@@ -84,7 +85,7 @@ export default function ApiIntegrationPage() {
   const toast = useToast();
 
   // Active navigation tab
-  const [activeTab, setActiveTab] = useState('tokens'); // 'tokens' | 'logs' | 'docs' | 'tester'
+  const [activeTab, setActiveTab] = usePersistedTab('tab', 'tokens', 'developer:api'); // 'tokens' | 'logs' | 'docs' | 'tester'
 
   // Data states
   const [tokens, setTokens] = useState([]);

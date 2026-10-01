@@ -139,6 +139,43 @@ class SiteReadinessRepository {
     await pool.query(query, [completedAt, userId, projectId, tenantId]);
     return this.findChecklist(tenantId, projectId);
   }
+
+  async createChecklistItem(tenantId, projectId, data) {
+    const projCheck = await pool.query(
+      'SELECT id FROM projects WHERE id = $1 AND tenant_id = $2',
+      [projectId, tenantId]
+    );
+    if (projCheck.rows.length === 0) {
+      throw new Error('PROJECT_NOT_FOUND');
+    }
+
+    const itemKey = 'custom_' + Date.now() + '_' + Math.random().toString(36).substring(2, 7);
+    const query = `
+      INSERT INTO project_site_readiness (
+        tenant_id, project_id, item_key, label, is_completed, notes
+      ) VALUES ($1, $2, $3, $4, FALSE, $5)
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [
+      tenantId,
+      projectId,
+      itemKey,
+      data.label.trim(),
+      data.notes ? data.notes.trim() : null
+    ]);
+    return rows[0];
+  }
+
+  async deleteChecklistItem(tenantId, itemId) {
+    const query = `
+      DELETE FROM project_site_readiness
+      WHERE id = $1 AND tenant_id = $2
+      RETURNING *
+    `;
+    const { rows } = await pool.query(query, [itemId, tenantId]);
+    if (rows.length === 0) throw new Error('NOT_FOUND');
+    return rows[0];
+  }
 }
 
 module.exports = new SiteReadinessRepository();

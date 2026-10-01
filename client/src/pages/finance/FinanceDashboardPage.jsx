@@ -16,23 +16,15 @@ const formatValue = (val) => {
 
 const CHART_COLORS = ['#3b82f6', '#22c55e', '#eab308', '#ef4444', '#8b5cf6', '#f97316'];
 
+import usePersistedTab from '../../hooks/usePersistedTab';
+
 export default function FinanceDashboardPage() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
   
-  const currentTabFromUrl = searchParams.get('tab') || 'overview';
   const [loading, setLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState(currentTabFromUrl);
+  const [activeSubTab, setActiveSubTab] = usePersistedTab('tab', 'overview', 'finance:dashboard');
   const subTabsRef = useRef(null);
-
-  useEffect(() => {
-    const tabParam = searchParams.get('tab');
-    if (tabParam) {
-      setActiveSubTab(tabParam);
-    } else {
-      setActiveSubTab('overview');
-    }
-  }, [searchParams]);
 
   const [projects, setProjects] = useState([]);
   const [invoices, setInvoices] = useState([]);

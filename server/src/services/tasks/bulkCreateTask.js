@@ -55,10 +55,23 @@ async function bulkCreateTasks({ tenantId, userId, projectId, tasks }) {
   }
 
   // 3. Delegate to Repository
-  const mappedTasks = tasks.map(t => ({
-    ...t,
-    created_by: userId
-  }));
+  const mappedTasks = tasks.map(t => {
+    let cf = t.custom_fields || t.customFields || {};
+    if (typeof cf === 'string') {
+      try { cf = JSON.parse(cf); } catch (e) { cf = {}; }
+    }
+    if (!cf || typeof cf !== 'object' || Array.isArray(cf)) {
+      cf = {};
+    }
+    if (!cf.source) {
+      cf.source = 'manual';
+    }
+    return {
+      ...t,
+      custom_fields: cf,
+      created_by: userId
+    };
+  });
 
   const createdTasks = await taskRepository.bulkCreateTasks(tenantId, projectId, mappedTasks);
 

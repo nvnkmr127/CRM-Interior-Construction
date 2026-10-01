@@ -8,6 +8,7 @@ import { getVendorCoordination, getExternalInspections, createExternalInspection
 import { getSnagsAnalytics } from '../../api/analytics'
 import { useConfirm } from '../../store/confirmContext'
 import api from '../../api/axios'
+import usePersistedTab from '../../hooks/usePersistedTab'
 
 function formatTimeAgo(dateStr) {
   if (!dateStr) return 'Recently';
@@ -28,7 +29,7 @@ function formatTimeAgo(dateStr) {
 const FILTERS = ['All', 'Open', 'Assigned', 'In Progress', 'Resolved', 'Verified'];
 
 export default function SnagsDashboard({ projectId, projectStatus }) {
-  const [activeTab, setActiveTab] = useState('internal') // 'internal' | 'external'
+  const [activeTab, setActiveTab] = usePersistedTab('subtab', 'internal', `proj:${projectId}:snags`) // 'internal' | 'external'
   const [activeFilter, setActiveFilter] = useState('All')
   const [snags, setSnags] = useState([])
   const [loading, setLoading] = useState(true)

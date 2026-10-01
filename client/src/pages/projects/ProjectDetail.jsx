@@ -618,10 +618,45 @@ export default function ProjectDetail() {
   const allowedTabs = ALL_PROJECT_TABS.filter(tab => canAccessPage(tab));
   const tabs = allowedTabs;
   const currentTabParam = searchParams.get('tab');
-  const activeTab = (currentTabParam && (allowedTabs.includes(currentTabParam) || canAccessPage(currentTabParam))) ? currentTabParam : 'Overview';
+  const savedMainTab = (() => {
+    try {
+      return sessionStorage.getItem(`tab:proj:${projectId}:main_tab`);
+    } catch (e) { return null; }
+  })();
+  const effectiveTab = currentTabParam || savedMainTab || 'Overview';
+  const activeTab = (allowedTabs.includes(effectiveTab) || canAccessPage(effectiveTab)) ? effectiveTab : 'Overview';
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(`tab:proj:${projectId}:main_tab`, activeTab);
+    } catch (e) {}
+    if (!currentTabParam && activeTab) {
+      setSearchParams(prev => {
+        const next = new URLSearchParams(prev);
+        next.set('tab', activeTab);
+        return next;
+      }, { replace: true });
+    }
+  }, [projectId, activeTab, currentTabParam, setSearchParams]);
   
   const setActiveTab = (tab) => {
-    setSearchParams({ tab });
+    setSearchParams(prev => {
+      const next = new URLSearchParams(prev);
+      next.set('tab', tab);
+      try {
+        const savedSub = sessionStorage.getItem(`tab:proj:${projectId}:${tab}:subtab`);
+        if (savedSub) {
+          next.set('subtab', savedSub);
+        } else {
+          next.delete('subtab');
+        }
+      } catch (e) {}
+      return next;
+    }, { replace: true });
+
+    try {
+      sessionStorage.setItem(`tab:proj:${projectId}:main_tab`, tab);
+    } catch (e) {}
   };
   
   useEffect(() => {
@@ -765,7 +800,7 @@ export default function ProjectDetail() {
   const renderTabContent = () => {
     switch (activeTab) {
       case 'Overview': return project ? <OverviewTab project={project} onRefresh={reloadProject} onEdit={(section = 'all') => { setEditingSection(section); setIsEditing(true); }} /> : null;
-      case 'Phases & Schedule': return <PhaseTimeline projectId={projectId} project={project} onNavigateTab={setActiveTab} />;
+      case 'Phases & Schedule': return <PhaseTimeline projectId={projectId} project={project} onNavigateTab={setActiveTab} onProjectUpdate={reloadProject} />;
       case 'Team & Roles': return <TeamAndRolesTab project={project} onRefresh={reloadProject} />;
       case 'Client Profile': return <ClientProfileTab project={project} onRefresh={reloadProject} />;
       case 'Site Details': return <SiteDetailsTab project={project} onRefresh={reloadProject} />;
@@ -801,7 +836,7 @@ export default function ProjectDetail() {
       case 'Coordination': return <CoordinationTab projectId={projectId} projectStatus={project?.status} onProjectUpdated={reloadProject} />;
       case 'Work Activities': return <WorkActivitiesTab projectId={projectId} project={project} />;
       case 'Room Progress': return <RoomProgressTab projectId={projectId} />;
-      case 'Tasks': return <ProjectTasksTab projectId={projectId} project={project} />;
+      case 'Tasks': return <ProjectTasksTab projectId={projectId} project={project} onTaskUpdated={reloadProject} />;
       case 'daily Site Reports':
       case 'Daily Site Reports': return <DailySiteReportsTab projectId={projectId} />;
       case 'Weekly Reports': return <WeeklyReportsTab projectId={projectId} />;
@@ -860,9 +895,11 @@ export default function ProjectDetail() {
     (m.status === 'paid' || Number(m.paid_amount || 0) > 0)
   );
   const effectiveStatus = (project.status === 'pending_booking' && isBookingPaid) ? 'active' : (project.status || 'active');
-  const currentPhase = project.phases?.find(p => p.status !== 'completed')?.name
-    || project.phases?.[project.phases.length - 1]?.name
-    || (effectiveStatus ? effectiveStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '—');
+  const currentPhase = project.status === 'completed'
+    ? 'Completed'
+    : (project.phases?.find(p => p.status !== 'completed')?.name
+       || project.phases?.[project.phases.length - 1]?.name
+       || (effectiveStatus ? effectiveStatus.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : '—'));
 
   if (!canAccessPage(activeTab)) {
     return (

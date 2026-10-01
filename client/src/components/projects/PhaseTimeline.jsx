@@ -25,7 +25,7 @@ function formatDate(d) {
   return new Date(d).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' });
 }
 
-export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
+export default function PhaseTimeline({ projectId, project, onNavigateTab, onProjectUpdate }) {
   const [activeView, setActiveView] = useState('roadmap'); // 'roadmap' | 'gantt'
   const toast = useToast();
   const [phases, setPhases] = useState([]);
@@ -56,6 +56,7 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
       await deletePhase(projectId, phase.id);
       toast.success(`Phase "${phase.name}" removed successfully`);
       loadPhases();
+      onProjectUpdate?.();
     } catch (err) {
       toast.error(err?.response?.data?.error?.message || 'Failed to delete phase');
     } finally {
@@ -72,6 +73,7 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
       await clearAllPhases(projectId);
       toast.success('Project schedule reset successfully');
       loadPhases();
+      onProjectUpdate?.();
     } catch (err) {
       toast.error(err?.response?.data?.error?.message || 'Failed to clear schedule');
     } finally {
@@ -111,6 +113,7 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
       toast.success(replaceExisting ? 'Project template applied! Previous schedule replaced.' : 'Project template applied successfully!');
       setShowApplyModal(false);
       loadPhases();
+      onProjectUpdate?.();
     } catch (err) {
       toast.error(err?.response?.data?.error?.message || 'Failed to apply template');
     } finally {
@@ -118,8 +121,8 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
     }
   };
 
-  const loadPhases = () => {
-    setLoading(true);
+  const loadPhases = (isSilent = false) => {
+    if (!isSilent) setLoading(true);
     getPhases(projectId)
       .then(async res => {
         const _r = res.data?.data || res.data;
@@ -145,8 +148,12 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
         );
         setPhases(withMilestones);
       })
-      .catch(() => setPhases([]))
-      .finally(() => setLoading(false));
+      .catch(() => {
+        if (!isSilent) setPhases([]);
+      })
+      .finally(() => {
+        if (!isSilent) setLoading(false);
+      });
   };
 
   useEffect(() => {
@@ -158,7 +165,7 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
   const toggleMilestone = async (phaseId, milestoneId) => {
     const phase = phases.find(p => p.id === phaseId);
     const milestone = phase?.milestones.find(m => m.id === milestoneId);
-    if (!milestone || phase?.status === 'completed') return;
+    if (!milestone) return;
 
     const newDone = !milestone.done;
     setPhases(prev => prev.map(p => {
@@ -183,6 +190,8 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
         await updateMilestone(phaseId, milestoneId, { status: 'pending' });
         toast.info('Milestone marked as pending.');
       }
+      await loadPhases(true);
+      onProjectUpdate?.();
     } catch {
       // Revert on failure
       setPhases(prev => prev.map(p => {
@@ -211,7 +220,8 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
     try {
       await signOffPhase(projectId, phase.id);
       toast.success(`${phase.name} signed off`);
-      loadPhases();
+      loadPhases(true);
+      onProjectUpdate?.();
     } catch (err) {
       const msg = err?.response?.data?.error?.message || 'Failed to sign off phase';
       setPhases(prev => prev.map(p => p.id === phase.id ? { ...p, error: msg } : p));
@@ -333,7 +343,7 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
                 <SiteReadinessCard
                   projectId={projectId}
                   executionPhase={executionPhase}
-                  onReadinessUpdate={loadPhases}
+                  onReadinessUpdate={() => loadPhases(true)}
                 />
               )}
               {phases.map((phase, idx) => {
@@ -364,7 +374,7 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
                           </Badge>
                         </div>
                         <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {isActive && (
+                          {!isCompleted && (isActive || allDone) && (
                             <Button
                               variant="primary"
                               size="sm"
@@ -637,7 +647,10 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
         projectId={projectId}
         project={project}
         existingPhasesCount={phases.length}
-        onSuccess={loadPhases}
+        onSuccess={() => {
+          loadPhases();
+          onProjectUpdate?.();
+        }}
       />
 
       {/* Add Single Checkpoint Modal */}
@@ -647,7 +660,10 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab }) {
         phase={addingMilestonePhase}
         projectId={projectId}
         project={project}
-        onSuccess={loadPhases}
+        onSuccess={() => {
+          loadPhases(true);
+          onProjectUpdate?.();
+        }}
       />
     </div>
   );

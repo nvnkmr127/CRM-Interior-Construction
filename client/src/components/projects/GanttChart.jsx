@@ -66,6 +66,8 @@ export default function GanttChart({ projectId, project }) {
   const [editingTask, setEditingTask] = useState(null); // Task ID or object being edited in modal
   const [revisions, setRevisions] = useState([]);
   const [showRevisionModal, setShowRevisionModal] = useState(false);
+  const [showApplyModal, setShowApplyModal] = useState(false);
+  const [revisionReason, setRevisionReason] = useState('');
   
   // Timeline dates
   const [timelineStart, setTimelineStart] = useState(new Date());
@@ -417,7 +419,7 @@ export default function GanttChart({ projectId, project }) {
   };
 
   // Save changes
-  const handleSaveSchedule = async () => {
+  const handleSaveSchedule = async (customReason) => {
     setSaving(true);
     try {
       // 1. Save Tasks
@@ -429,8 +431,10 @@ export default function GanttChart({ projectId, project }) {
         }
       }
 
+      const finalReason = customReason?.trim() || 'Schedule adjusted via Gantt Chart';
+
       if (tasksToUpdate.length > 0) {
-        await bulkUpdateTasks(projectId, tasksToUpdate);
+        await bulkUpdateTasks(projectId, tasksToUpdate, finalReason);
       }
 
       // 2. Save Dependencies
@@ -439,12 +443,19 @@ export default function GanttChart({ projectId, project }) {
         await bulkUpdateTaskDependencies(projectId, dependencies);
       }
 
-      toast.success('Project schedule updated successfully!');
+      toast.success('Project schedule updated & revision logged successfully!');
       
       // Update original states
       setOriginalTasks(JSON.parse(JSON.stringify(tasks)));
       setOriginalDependencies(JSON.parse(JSON.stringify(dependencies)));
       setIsWhatIfMode(false);
+      setShowApplyModal(false);
+      setRevisionReason('');
+
+      // Refresh schedule revisions log in background
+      getScheduleRevisions(projectId).then(res => {
+        setRevisions(res.data?.data || res.data || []);
+      }).catch(() => {});
     } catch (e) {
       console.error(e);
       toast.error(e.response?.data?.error?.message || 'Failed to save schedule changes');
@@ -670,7 +681,7 @@ export default function GanttChart({ projectId, project }) {
               <button 
                 className={`${styles.actionBtn} ${styles.btnSuccess}`}
                 disabled={!hasChanges || saving}
-                onClick={handleSaveSchedule}
+                onClick={() => setShowApplyModal(true)}
               >
                 {saving ? 'Saving...' : 'Apply Schedule'}
               </button>
@@ -1219,6 +1230,53 @@ export default function GanttChart({ projectId, project }) {
             </div>
             <div className={styles.modalFooter}>
               <Button onClick={() => setShowRevisionModal(false)}>Close</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Apply Schedule & Reason Modal */}
+      {showApplyModal && (
+        <div className={styles.modal}>
+          <div className={styles.modalContent} style={{ width: '480px', maxWidth: '95%' }}>
+            <div className={styles.modalHeader}>
+              <h3>Apply Schedule & Log Revision</h3>
+              <button 
+                onClick={() => setShowApplyModal(false)}
+                style={{ border: 'none', background: 'none', fontSize: '20px', cursor: 'pointer' }}
+              >
+                &times;
+              </button>
+            </div>
+            <div className={styles.modalBody}>
+              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', marginBottom: '16px', lineHeight: 1.5 }}>
+                You are about to save modified dates and durations to the live project schedule. This timeline update will be permanently recorded in the <b>Project Schedule Revision Log</b>.
+              </p>
+              <div className={styles.formGroup}>
+                <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, marginBottom: '6px' }}>
+                  Reason for Revision / Schedule Shift
+                </label>
+                <textarea
+                  className={styles.inputField}
+                  rows={3}
+                  value={revisionReason}
+                  onChange={(e) => setRevisionReason(e.target.value)}
+                  placeholder="e.g. Client requested design modification, Site civil work extended, Factory production delayed..."
+                  style={{ width: '100%', resize: 'vertical' }}
+                />
+              </div>
+            </div>
+            <div className={styles.modalFooter} style={{ display: 'flex', justifyContent: 'flex-end', gap: '8px' }}>
+              <Button variant="outline" onClick={() => setShowApplyModal(false)}>
+                Cancel
+              </Button>
+              <Button 
+                variant="primary" 
+                disabled={saving}
+                onClick={() => handleSaveSchedule(revisionReason)}
+              >
+                {saving ? 'Applying...' : 'Confirm & Apply'}
+              </Button>
             </div>
           </div>
         </div>

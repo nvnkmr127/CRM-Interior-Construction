@@ -62,7 +62,7 @@ async function completePhase({ tenantId, userId, phaseId }) {
 
     await pool.query(`
       UPDATE project_phases
-      SET status = 'in_progress', updated_at = NOW()
+      SET status = 'in_progress'
       WHERE id = $1 AND tenant_id = $2
     `, [nextPhase.id, tenantId]);
   }
@@ -102,6 +102,13 @@ async function completePhase({ tenantId, userId, phaseId }) {
     phase: updatedPhase, 
     project 
   }).catch(error => logger.error('[Webhook Dispatch Error] phase_completed:', error));
+
+  const { clearCachePrefix } = require('../../utils/cache');
+  await clearCachePrefix('cache:').catch(() => {});
+  await clearCachePrefix('/api/projects').catch(() => {});
+  if (phase.project_id) {
+    await clearCachePrefix(phase.project_id).catch(() => {});
+  }
 
   // 7. Return completed phase object
   return updatedPhase;

@@ -117,6 +117,21 @@ router.get('/', authorize(['projects:read', 'tasks:read', 'tasks:view']), dataSc
     const isAll = limit === 'all' || allTasks === 'true';
     const parsedLimit = isAll ? 10000 : (parseInt(limit, 10) || 20);
 
+    // Auto-sync any tasks linked to completed milestones for this project
+    if (req.params.projectId) {
+      await pool.query(`
+        UPDATE tasks t
+        SET status = 'done', updated_at = NOW()
+        FROM milestones m
+        WHERE (t.milestone_id = m.id OR (t.project_id = m.project_id AND LOWER(TRIM(t.title)) = LOWER(TRIM(m.name))))
+          AND t.project_id = $1
+          AND t.tenant_id = $2
+          AND m.status = 'completed'
+          AND t.status != 'done'
+          AND t.deleted_at IS NULL
+      `, [req.params.projectId, req.tenantId]).catch(() => {});
+    }
+
     let result = await taskRepository.findTasks(req.tenantId, {
       projectId: req.params.projectId,
       milestoneId,
@@ -134,15 +149,31 @@ router.get('/', authorize(['projects:read', 'tasks:read', 'tasks:view']), dataSc
     if (result.total === 0 && req.params.projectId) {
       try {
         const mRes = await pool.query(
-          'SELECT id, name FROM milestones WHERE project_id = $1 AND tenant_id = $2',
+          `SELECT m.id, m.name, m.status, m.due_date, m.sort_order as milestone_order, p.sort_order as phase_order
+           FROM milestones m
+           JOIN project_phases p ON m.phase_id = p.id
+           WHERE m.project_id = $1 AND m.tenant_id = $2
+           ORDER BY p.sort_order ASC, m.sort_order ASC, m.created_at ASC`,
           [req.params.projectId, req.tenantId]
         );
         if (mRes.rows.length > 0) {
+          let orderIdx = 0;
           for (const m of mRes.rows) {
+            orderIdx++;
+            const initialStatus = (m.status === 'completed' || m.status === 'done') ? 'done' : 'todo';
             await pool.query(
-              `INSERT INTO tasks (tenant_id, project_id, milestone_id, title, status, priority)
-               VALUES ($1, $2, $3, $4, 'todo', 'medium')`,
-              [req.tenantId, req.params.projectId, m.id, m.name || 'Untitled Task']
+              `INSERT INTO tasks (tenant_id, project_id, milestone_id, title, status, priority, due_date, sort_order, custom_fields)
+               VALUES ($1, $2, $3, $4, $5, 'medium', $6, $7, $8)`,
+              [
+                req.tenantId,
+                req.params.projectId,
+                m.id,
+                m.name || 'Untitled Task',
+                initialStatus,
+                m.due_date || null,
+                orderIdx,
+                JSON.stringify({ source: 'phase_schedule' })
+              ]
             );
           }
           // Refetch tasks
@@ -225,12 +256,20 @@ router.patch('/reorder', authorize('projects:manage'), validate(reorderSchema), 
 router.patch('/bulk-update', authorize('projects:manage'), async (req, res, next) => {
   const client = await pool.connect();
   try {
-    const { tasks } = req.body;
+    const { tasks, reason } = req.body;
     if (!Array.isArray(tasks)) {
       return fail(res, 'VALIDATION_ERROR', 'tasks must be an array', 400);
     }
 
     await client.query('BEGIN');
+
+    // 1. Fetch current project dates to track baseline shift
+    const { rows: projRows } = await client.query(
+      'SELECT id, start_date, target_date FROM projects WHERE id = $1 AND tenant_id = $2',
+      [req.params.projectId, req.tenantId]
+    );
+    const currentProj = projRows[0];
+
     for (const t of tasks) {
       const updates = {};
       if (t.startDate !== undefined) updates.start_date = t.startDate;
@@ -258,7 +297,60 @@ router.patch('/bulk-update', authorize('projects:manage'), async (req, res, next
         await client.query(query, values);
       }
     }
+
+    // 2. Check overall project schedule bounds and log revision
+    if (currentProj) {
+      const { rows: boundRows } = await client.query(
+        `SELECT MIN(start_date) as min_start, MAX(due_date) as max_due 
+         FROM tasks 
+         WHERE project_id = $1 AND tenant_id = $2 AND deleted_at IS NULL`,
+        [req.params.projectId, req.tenantId]
+      );
+      const newStart = boundRows[0]?.min_start || currentProj.start_date;
+      const newTarget = boundRows[0]?.max_due || currentProj.target_date;
+
+      const revReason = reason?.trim() || 'Schedule adjusted via Gantt Chart';
+
+      // Find next revision number
+      const { rows: revRows } = await client.query(
+        'SELECT MAX(revision_number) as max_rev FROM project_schedule_revisions WHERE project_id = $1 AND tenant_id = $2',
+        [req.params.projectId, req.tenantId]
+      );
+      const nextRev = (revRows[0]?.max_rev || 0) + 1;
+
+      await client.query(`
+        INSERT INTO project_schedule_revisions (
+          tenant_id, project_id, revised_by, previous_start_date, previous_target_date, 
+          new_start_date, new_target_date, reason, revision_number
+        ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+      `, [
+        req.tenantId,
+        req.params.projectId,
+        req.user?.userId || null,
+        currentProj.start_date,
+        currentProj.target_date,
+        newStart,
+        newTarget,
+        revReason,
+        nextRev
+      ]);
+
+      // If newTarget extends beyond current target date, update projects.target_date
+      if (newTarget && (!currentProj.target_date || new Date(newTarget) > new Date(currentProj.target_date))) {
+        await client.query(
+          'UPDATE projects SET target_date = $1, updated_at = NOW() WHERE id = $2 AND tenant_id = $3',
+          [newTarget, req.params.projectId, req.tenantId]
+        );
+      }
+    }
+
     await client.query('COMMIT');
+
+    const { clearCachePrefix } = require('../utils/cache');
+    await clearCachePrefix('cache:').catch(() => {});
+    await clearCachePrefix('/api/projects').catch(() => {});
+    await clearCachePrefix('/api/tasks').catch(() => {});
+
     return success(res, { message: 'Tasks updated successfully' });
   } catch (error) {
     await client.query('ROLLBACK');

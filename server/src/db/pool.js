@@ -8,10 +8,6 @@ types.setTypeParser(1114, function(stringValue) {
 });
 const dns = require('dns');
 
-if (typeof dns.setDefaultResultOrder === 'function') {
-  dns.setDefaultResultOrder('ipv4first');
-}
-
 if (process.env.NODE_ENV === 'test') {
   require('dotenv').config({ path: path.resolve(__dirname, '../../.env.test'), override: true });
 } else {
@@ -19,6 +15,13 @@ if (process.env.NODE_ENV === 'test') {
   if (!process.env.DATABASE_URL) {
     require('dotenv').config({ path: path.resolve(__dirname, '../../../.env') });
   }
+}
+
+// Direct Supabase database hosts (*.supabase.co) only have IPv6 AAAA records.
+// Forcing 'ipv4first' on Windows causes 'getaddrinfo ENOTFOUND'.
+const isSupabaseDirect = (process.env.DATABASE_URL || '').includes('.supabase.co');
+if (typeof dns.setDefaultResultOrder === 'function') {
+  dns.setDefaultResultOrder(isSupabaseDirect ? 'verbatim' : 'ipv4first');
 }
 
 const sanitizeDbUrl = (urlStr) => {

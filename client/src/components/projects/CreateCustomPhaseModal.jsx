@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import styles from './CreateCustomPhaseModal.module.css';
 import { Button, Modal, Input, Select, Badge } from '../ui';
 import { createPhase, createMilestone } from '../../api/projects';
-import { createPaymentMilestone, getPaymentMilestones } from '../../api/paymentMilestones';
+import { createPaymentMilestone, updatePaymentMilestone, getPaymentMilestones } from '../../api/paymentMilestones';
 import { configApi } from '../../api/config';
 import { DEFAULT_PROJECT_TYPES } from '../../constants/projectTypes';
 import { DEFAULT_PAYMENT_TEMPLATES, fetchPaymentTemplates } from '../../constants/paymentTemplates';
@@ -170,18 +170,73 @@ export default function CreateCustomPhaseModal({
 
   // Resolve ONLY the payment terms defined for this project during creation or conversion
   const projectAgreedTerm = useMemo(() => {
-    // 1. Check existing payment milestones created for this project
-    if (Array.isArray(projectPaymentMilestones) && projectPaymentMilestones.length > 0) {
-      // Sort milestones by their true chronological stage sequence first!
-      const sortedMilestones = [...projectPaymentMilestones].sort((a, b) => {
-        const orderA = getMilestoneSequenceOrder(a.name || a.title, 0);
-        const orderB = getMilestoneSequenceOrder(b.name || b.title, 0);
-        if (orderA !== orderB) return orderA - orderB;
-        if (a.due_date && b.due_date) return new Date(a.due_date) - new Date(b.due_date);
-        return 0;
+    const termsKey = project?.payment_terms || project?.paymentTerms;
+    const allTpls = [...(paymentTemplates || []), ...DEFAULT_PAYMENT_TEMPLATES];
+    const matchedTemplate = termsKey ? allTpls.find(t => t.id === termsKey || t.name === termsKey) : null;
+
+    // Helper to format/match with existing payment milestones
+    const existingPMs = Array.isArray(projectPaymentMilestones) ? projectPaymentMilestones : [];
+
+    // Sort existing milestones by chronological stage sequence
+    const sortedMilestones = [...existingPMs].sort((a, b) => {
+      const orderA = getMilestoneSequenceOrder(a.name || a.title, 0);
+      const orderB = getMilestoneSequenceOrder(b.name || b.title, 0);
+      if (orderA !== orderB) return orderA - orderB;
+      if (a.due_date && b.due_date) return new Date(a.due_date) - new Date(b.due_date);
+      return 0;
+    });
+
+    // Deduplicate any repeated stage sequence order to prevent double-counting
+    const seenStages = new Set();
+    const dedupedMilestones = [];
+    for (const pm of sortedMilestones) {
+      const stageOrder = getMilestoneSequenceOrder(pm.name || pm.title, 0);
+      if (!seenStages.has(stageOrder)) {
+        seenStages.add(stageOrder);
+        dedupedMilestones.push(pm);
+      }
+    }
+
+    const totalPct = dedupedMilestones.reduce((acc, pm) => acc + (Number(pm.percentage || pm.percent) || 0), 0);
+
+    // Case 1: If project has defined payment_terms template that matches known template
+    if (matchedTemplate && Array.isArray(matchedTemplate.milestones) && matchedTemplate.milestones.length > 0) {
+      const sortedMatchedMilestones = [...matchedTemplate.milestones].sort((a, b) => {
+        const orderA = getMilestoneSequenceOrder(a.name, 0);
+        const orderB = getMilestoneSequenceOrder(b.name, 0);
+        return orderA - orderB;
       });
 
-      const pcts = sortedMilestones.map(pm => Number(pm.percentage || pm.percent) || 0);
+      const pcts = sortedMatchedMilestones.map(m => Number(m.percentage));
+      let label = matchedTemplate.name || `${pcts.join('% - ')}%`;
+      label = label.replace(/5-Month/gi, '5-Stage');
+      if (pcts.length === 5 && pcts.every(p => p === 20)) {
+        label = '20% x 5 (5-Stage Equal Plan)';
+      } else if (pcts.length === 4 && pcts[0] === 10 && pcts[1] === 40 && pcts[2] === 40 && pcts[3] === 10) {
+        label = '10-40-40-10 (Commercial 4-Stage)';
+      } else if (pcts.length === 3 && pcts[0] === 20 && pcts[1] === 50 && pcts[2] === 30) {
+        label = '20-50-30 (Standard 3-Stage)';
+      }
+
+      return {
+        label,
+        percentages: pcts,
+        milestones: sortedMatchedMilestones.map((m, idx) => {
+          // If we have an existing milestone for this stage in DB, borrow its due_date
+          const matchedPM = dedupedMilestones[idx];
+          return {
+            name: formatStageMilestoneName(m.name, idx, sortedMatchedMilestones.length),
+            pct: Number(m.percentage),
+            amount: contractBudget > 0 ? Math.round((contractBudget * Number(m.percentage)) / 100) : 0,
+            dueDate: matchedPM?.due_date ? String(matchedPM.due_date).split('T')[0] : ''
+          };
+        })
+      };
+    }
+
+    // Case 2: If we have valid deduped payment milestones created in DB summing to ~100%
+    if (dedupedMilestones.length > 0 && totalPct > 0 && totalPct <= 105) {
+      const pcts = dedupedMilestones.map(pm => Number(pm.percentage || pm.percent) || 0);
       let label = `${pcts.join('% - ')}% (${pcts.length} Stages)`;
       if (pcts.length === 5 && pcts.every(p => Math.abs(p - 20) < 0.1)) {
         label = '20% x 5 (5-Stage Equal Plan)';
@@ -196,50 +251,17 @@ export default function CreateCustomPhaseModal({
       return {
         label,
         percentages: pcts,
-        milestones: sortedMilestones.map((pm, idx) => ({
-          name: formatStageMilestoneName(pm.name || pm.title, idx, sortedMilestones.length),
-          pct: Number(pm.percentage || pm.percent) || Number((100 / sortedMilestones.length).toFixed(1)),
+        milestones: dedupedMilestones.map((pm, idx) => ({
+          name: formatStageMilestoneName(pm.name || pm.title, idx, dedupedMilestones.length),
+          pct: Number(pm.percentage || pm.percent) || Number((100 / dedupedMilestones.length).toFixed(1)),
           amount: Number(pm.amount) || (contractBudget > 0 ? Math.round((contractBudget * (Number(pm.percentage || pm.percent) || 0)) / 100) : 0),
           dueDate: pm.due_date ? String(pm.due_date).split('T')[0] : ''
         }))
       };
     }
 
-    // 2. Check project.payment_terms or project.paymentTerms from project record
-    const termsKey = project?.payment_terms || project?.paymentTerms;
+    // Case 3: Check underscore/hyphen format like '10_40_40_10' or '20_20_20_20_20'
     if (termsKey) {
-      const allTpls = [...(paymentTemplates || []), ...DEFAULT_PAYMENT_TEMPLATES];
-      const matched = allTpls.find(t => t.id === termsKey || t.name === termsKey);
-      if (matched && Array.isArray(matched.milestones) && matched.milestones.length > 0) {
-        const sortedMatchedMilestones = [...matched.milestones].sort((a, b) => {
-          const orderA = getMilestoneSequenceOrder(a.name, 0);
-          const orderB = getMilestoneSequenceOrder(b.name, 0);
-          return orderA - orderB;
-        });
-
-        const pcts = sortedMatchedMilestones.map(m => Number(m.percentage));
-        let label = matched.name || `${pcts.join('% - ')}%`;
-        label = label.replace(/5-Month/gi, '5-Stage');
-        if (pcts.length === 5 && pcts.every(p => p === 20)) {
-          label = '20% x 5 (5-Stage Equal Plan)';
-        } else if (pcts.length === 4 && pcts[0] === 10 && pcts[1] === 40 && pcts[2] === 40 && pcts[3] === 10) {
-          label = '10-40-40-10 (Commercial 4-Stage)';
-        } else if (pcts.length === 3 && pcts[0] === 20 && pcts[1] === 50 && pcts[2] === 30) {
-          label = '20-50-30 (Standard 3-Stage)';
-        }
-
-        return {
-          label,
-          percentages: pcts,
-          milestones: sortedMatchedMilestones.map((m, idx) => ({
-            name: formatStageMilestoneName(m.name, idx, sortedMatchedMilestones.length),
-            pct: Number(m.percentage),
-            amount: contractBudget > 0 ? Math.round((contractBudget * Number(m.percentage)) / 100) : 0
-          }))
-        };
-      }
-
-      // Check underscore/hyphen format like '10_40_40_10' or '20_20_20_20_20'
       const parts = String(termsKey).split(/[-_]/).map(Number).filter(n => !isNaN(n) && n > 0);
       if (parts.length >= 2) {
         let label = `${parts.join('% - ')}% (${parts.length} Stages)`;
@@ -260,7 +282,7 @@ export default function CreateCustomPhaseModal({
       }
     }
 
-    // 3. Default fallback if not specified: 5-Stage plan
+    // 4. Default fallback if not specified: 5-Stage plan
     return {
       label: '20% x 5 (5-Stage Equal Plan)',
       percentages: [20, 20, 20, 20, 20],
@@ -634,6 +656,18 @@ export default function CreateCustomPhaseModal({
       let createdMilestonesCount = 0;
       let createdPaymentsCount = 0;
 
+      // Prepare existing payment milestones to link against
+      const existingPMList = Array.isArray(projectPaymentMilestones) ? [...projectPaymentMilestones] : [];
+      const sortedExistingPMs = existingPMList.sort((a, b) => {
+        const orderA = getMilestoneSequenceOrder(a.name || a.title, 0);
+        const orderB = getMilestoneSequenceOrder(b.name || b.title, 0);
+        if (orderA !== orderB) return orderA - orderB;
+        if (a.due_date && b.due_date) return new Date(a.due_date) - new Date(b.due_date);
+        return 0;
+      });
+
+      let paymentStageIndex = 0;
+
       for (let pIdx = 0; pIdx < draft.phases.length; pIdx++) {
         const p = draft.phases[pIdx];
         const sortOrder = existingPhasesCount + pIdx + 1;
@@ -643,6 +677,7 @@ export default function CreateCustomPhaseModal({
           name: p.name.trim(),
           duration_days: Number(p.duration) || 0,
           is_execution: p.is_execution !== false,
+          status: (existingPhasesCount === 0 && pIdx === 0) ? 'in_progress' : 'pending',
           sort_order: sortOrder
         });
 
@@ -667,7 +702,7 @@ export default function CreateCustomPhaseModal({
           const createdMilestone = mRes.data?.data || mRes.data;
           createdMilestonesCount++;
 
-          // 3. Create Payment Milestone if triggersPayment
+          // 3. Create or Link Payment Milestone if triggersPayment
           if (m.triggersPayment && createdMilestone?.id) {
             const finalPercent = m.paymentPercent ? Number(m.paymentPercent) : null;
             let finalAmount = m.paymentAmount ? Number(m.paymentAmount) : null;
@@ -675,18 +710,34 @@ export default function CreateCustomPhaseModal({
               finalAmount = Math.round((contractBudget * finalPercent) / 100);
             }
 
-            await createPaymentMilestone({
-              projectId,
-              name: m.paymentName?.trim() || m.name.trim(),
-              amount: finalAmount,
-              percent: finalPercent,
-              dueDate: m.dueDate || null,
-              milestoneId: createdMilestone.id,
-              notes: `Linked to checkpoint: ${m.name.trim()} (${p.name.trim()})`
-            }).catch(err => {
-              console.warn('Payment milestone creation notice:', err);
-            });
-            createdPaymentsCount++;
+            const existingPM = sortedExistingPMs[paymentStageIndex];
+            paymentStageIndex++;
+
+            if (existingPM?.id) {
+              // Update and link existing payment milestone (preserves paid status, prevents duplicate records)
+              await updatePaymentMilestone(existingPM.id, {
+                milestoneId: createdMilestone.id,
+                due_date: m.dueDate || existingPM.due_date || null,
+                dueDate: m.dueDate || existingPM.due_date || null
+              }).catch(err => {
+                console.warn('Payment milestone link notice:', err);
+              });
+              createdPaymentsCount++;
+            } else {
+              // Create new payment milestone only if none exists for this stage
+              await createPaymentMilestone({
+                projectId,
+                name: m.paymentName?.trim() || m.name.trim(),
+                amount: finalAmount,
+                percent: finalPercent,
+                dueDate: m.dueDate || null,
+                milestoneId: createdMilestone.id,
+                notes: `Linked to checkpoint: ${m.name.trim()} (${p.name.trim()})`
+              }).catch(err => {
+                console.warn('Payment milestone creation notice:', err);
+              });
+              createdPaymentsCount++;
+            }
           }
         }
       }

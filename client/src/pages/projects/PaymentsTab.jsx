@@ -5,7 +5,7 @@ import {
 } from 'recharts';
 import { Badge, Button, Modal, Input, Select, PermissionButton } from '../../components/ui';
 import styles from './PaymentsTab.module.css';
-import { getPaymentMilestones, updatePaymentMilestone } from '../../api/paymentMilestones';
+import { getPaymentMilestones, updatePaymentMilestone, syncPaymentMilestones } from '../../api/paymentMilestones';
 import { getPaymentEscalations } from '../../api/projects';
 import { getInvoiceDraft, createInvoice, getInvoicesByProject, deleteInvoice } from '../../api/invoices';
 import { getCreditNotes, getRefunds, createCreditNote, createRefund, getReceiptsByProject } from '../../api/financials';
@@ -14,6 +14,7 @@ import { useToast } from '../../store/toastContext';
 import PaymentEscalationModal from '../../components/projects/PaymentEscalationModal';
 import DocumentPreviewModal from '../../components/finance/DocumentPreviewModal';
 import FinancialOverviewPanel from '../../components/projects/FinancialOverviewPanel';
+import usePersistedTab from '../../hooks/usePersistedTab';
 
 import { useConfirm } from '../../store/confirmContext';
 
@@ -77,7 +78,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
   const [payments, setPayments] = useState([]);
   const [escalations, setEscalations] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [activeSubTab, setActiveSubTab] = useState('dashboard'); // breakdown, logs, milestones, credits, approvals
+  const [activeSubTab, setActiveSubTab] = usePersistedTab('subtab', 'dashboard', `proj:${projectId}:Payments`);
   
   const subTabsRef = useRef(null);
 
@@ -206,6 +207,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
 
         return {
           id: item.id,
+          target_id: item.target_id || payload?.selectedPayment?.id || changes?.target_id,
           date: item.created_at || item.createdAt || item.date || new Date().toISOString(),
           requester_name: item.requester_name || item.requested_by_name || 'System User',
           type: (item.transaction_type || item.type || 'Payment Update').replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()),
@@ -976,6 +978,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
         type,
         amount: Number(amount),
         reason,
+        target_id: payload?.selectedPayment?.id || payload?.id || null,
         payload: { ...payload, projectId },
         project_name: project?.name,
         customer_name: project?.client_name || project?.customer_name,
@@ -1473,7 +1476,7 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
 
         return {
           id: p.id,
-          milestone: p.title || p.milestone || p.name,
+          milestone: p.linked_milestone_name || p.display_name || p.title || p.milestone || p.name,
           phase: p.phase_name || p.phase || '—',
           amountValue,
           collectedAmount,
@@ -1545,14 +1548,23 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
     let daysOverdue = 0;
     
     // Check if there is an active pending finance approval for this milestone
-    const isPendingApproval = Array.isArray(financeApprovals) && financeApprovals.some(a => 
-      a.status === 'pending' && (
-        (a.target_id && String(a.target_id) === String(p.id)) ||
-        (a.payload?.selectedPayment?.id && String(a.payload.selectedPayment.id) === String(p.id)) ||
-        (a.target_number && (a.target_number === p.milestone || a.target_number.toLowerCase() === (p.milestone || '').toLowerCase())) ||
-        (a.payload?.selectedPayment?.milestone && (a.payload.selectedPayment.milestone === p.milestone || a.payload.selectedPayment.milestone.toLowerCase() === (p.milestone || '').toLowerCase()))
-      )
-    );
+    const isPendingApproval = Array.isArray(financeApprovals) && financeApprovals.some(a => {
+      const statusLower = (a.status || '').toLowerCase();
+      if (statusLower !== 'pending') return false;
+
+      const pIdStr = String(p.id || '');
+      const aTargetId = String(a.target_id || a.payload?.selectedPayment?.id || a.requested_changes?.payload?.selectedPayment?.id || '');
+      if (pIdStr && aTargetId && pIdStr === aTargetId) return true;
+
+      const pName = (p.milestone || '').toLowerCase().trim();
+      const aTargetNum = (a.target_number || '').toLowerCase().trim();
+      const aSelectedMilestone = (a.payload?.selectedPayment?.milestone || a.requested_changes?.payload?.selectedPayment?.milestone || '').toLowerCase().trim();
+
+      if (pName && (pName === aTargetNum || pName === aSelectedMilestone)) return true;
+      if (pName && aTargetNum && (pName.includes(aTargetNum) || aTargetNum.includes(pName))) return true;
+
+      return false;
+    });
 
     const effectiveStatus = (isPendingApproval || p.status === 'pending_approval') ? 'pending_approval' : p.status;
 
@@ -1673,6 +1685,12 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
         status: 'pending_approval',
         proofDocument: proofDocument || p.proofDocument || null 
       } : p));
+
+      if (!(selectedPayment.id === 'mock_booking_01' || String(selectedPayment.id).startsWith('mock_m_'))) {
+        updatePaymentMilestone(selectedPayment.id, { 
+          status: 'pending_approval' 
+        }).catch(e => console.error('Failed to update milestone status:', e));
+      }
 
       // Send to Finance Approval instead of executing directly
       requestFinanceApproval('Manual Payment', totalSplitAmount, `Payment for ${selectedPayment.milestone}`, {
@@ -3182,17 +3200,35 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
                     }).join(', ')})
                   </div>
                 </div>
-                {hasPermission('Update') && (
+                <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
                   <Button 
                     variant="outline" 
                     size="sm"
-                    onClick={() => {
-                      setShowChangeScheduleModal(true);
+                    onClick={async () => {
+                      try {
+                        await syncPaymentMilestones(projectId);
+                        toast.success('Payment milestones synchronized with project schedule!');
+                        await fetchProjectMilestones();
+                        if (onProjectUpdated) onProjectUpdated();
+                      } catch (err) {
+                        toast.error('Failed to sync milestones with schedule');
+                      }
                     }}
                   >
-                    ⚙️ Change Payment Terms / Stages
+                    🔄 Sync with Schedule
                   </Button>
-                )}
+                  {hasPermission('Update') && (
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={() => {
+                        setShowChangeScheduleModal(true);
+                      }}
+                    >
+                      ⚙️ Change Payment Terms / Stages
+                    </Button>
+                  )}
+                </div>
               </div>
               <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
                 {processedPayments.map((p) => (
@@ -3224,9 +3260,13 @@ const PaymentsTab = React.memo(function PaymentsTab({ projectId, project, onProj
 
                 const targetIdMatches = String(fa.target_id || '') === String(p.id);
                 const selectedPaymentIdMatches = String(payload?.selectedPayment?.id || payload?.milestoneId || '') === String(p.id);
+                const pMilestoneLower = (p.milestone || '').toLowerCase().trim();
+                const faTargetLower = (fa.target_number || '').toLowerCase().trim();
+                const faSelectedLower = (payload?.selectedPayment?.milestone || '').toLowerCase().trim();
+
                 const milestoneNameMatches = 
-                  (fa.target_number && fa.target_number.toLowerCase() === (p.milestone || '').toLowerCase()) ||
-                  (payload?.selectedPayment?.milestone && payload.selectedPayment.milestone.toLowerCase() === (p.milestone || '').toLowerCase());
+                  (faTargetLower && (faTargetLower === pMilestoneLower || pMilestoneLower.includes(faTargetLower) || faTargetLower.includes(pMilestoneLower))) ||
+                  (faSelectedLower && (faSelectedLower === pMilestoneLower || pMilestoneLower.includes(faSelectedLower) || faSelectedLower.includes(pMilestoneLower)));
 
                 return targetIdMatches || selectedPaymentIdMatches || milestoneNameMatches;
               });

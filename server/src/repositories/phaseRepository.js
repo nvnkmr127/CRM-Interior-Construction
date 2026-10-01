@@ -13,6 +13,11 @@ class PhaseRepository {
         ) as task_count,
         COALESCE(
           (
+            SELECT ROUND(COUNT(CASE WHEN m.status = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 2)
+            FROM milestones m
+            WHERE m.phase_id = pp.id AND m.tenant_id = $1
+          ),
+          (
             SELECT ROUND(COUNT(CASE WHEN pwa.status = 'completed' THEN 1 END) * 100.0 / NULLIF(COUNT(*), 0), 2)
             FROM project_work_activities pwa
             WHERE pwa.phase_id = pp.id AND pwa.tenant_id = $1
@@ -132,6 +137,35 @@ class PhaseRepository {
   }
 
   async deletePhase(phaseId, tenantId) {
+    // 1. Delete all tasks created from this phase & its milestones
+    // Strictly preserve manual tasks and tasks from other tabs (source = 'manual', payment, snag, etc.)
+    await pool.query(`
+      DELETE FROM tasks
+      WHERE tenant_id = $2
+        AND milestone_id IN (
+          SELECT id FROM milestones WHERE phase_id = $1 AND tenant_id = $2
+        )
+        AND (
+          custom_fields LIKE '%"source":"phase_schedule"%'
+          OR (
+            (custom_fields IS NULL OR custom_fields = '' OR custom_fields NOT LIKE '%"source":"manual"%')
+            AND (custom_fields IS NULL OR custom_fields NOT LIKE '%"source":"payment"%')
+            AND (custom_fields IS NULL OR custom_fields NOT LIKE '%"source":"snag"%')
+          )
+        )
+    `, [phaseId, tenantId]);
+
+    // 2. Unlink any manually created tasks that were associated with this phase's milestones so they remain safe
+    await pool.query(`
+      UPDATE tasks
+      SET milestone_id = NULL
+      WHERE tenant_id = $2
+        AND milestone_id IN (
+          SELECT id FROM milestones WHERE phase_id = $1 AND tenant_id = $2
+        )
+    `, [phaseId, tenantId]);
+
+    // 3. Delete the phase (cascades to milestones)
     const { rowCount } = await pool.query(`
       DELETE FROM project_phases
       WHERE id = $1 AND tenant_id = $2
@@ -141,6 +175,41 @@ class PhaseRepository {
   }
 
   async clearProjectPhases(projectId, tenantId) {
+    // 1. Delete all tasks created from the phases & schedule for this project
+    // Strictly preserve manual tasks and tasks from other tabs (source = 'manual', payment, snag, etc.)
+    await pool.query(`
+      DELETE FROM tasks
+      WHERE project_id = $1 AND tenant_id = $2
+        AND (
+          custom_fields LIKE '%"source":"phase_schedule"%'
+          OR (
+            milestone_id IN (
+              SELECT m.id FROM milestones m
+              JOIN project_phases p ON m.phase_id = p.id
+              WHERE p.project_id = $1 AND p.tenant_id = $2
+            )
+            AND (
+              (custom_fields IS NULL OR custom_fields = '' OR custom_fields NOT LIKE '%"source":"manual"%')
+              AND (custom_fields IS NULL OR custom_fields NOT LIKE '%"source":"payment"%')
+              AND (custom_fields IS NULL OR custom_fields NOT LIKE '%"source":"snag"%')
+            )
+          )
+        )
+    `, [projectId, tenantId]);
+
+    // 2. Unlink any manually created tasks that were associated with milestones so they remain safe as standalone project tasks
+    await pool.query(`
+      UPDATE tasks
+      SET milestone_id = NULL
+      WHERE project_id = $1 AND tenant_id = $2
+        AND milestone_id IN (
+          SELECT m.id FROM milestones m
+          JOIN project_phases p ON m.phase_id = p.id
+          WHERE p.project_id = $1 AND p.tenant_id = $2
+        )
+    `, [projectId, tenantId]);
+
+    // 3. Delete all phases for this project (cascades to milestones)
     await pool.query(`
       DELETE FROM project_phases
       WHERE project_id = $1 AND tenant_id = $2

@@ -71,7 +71,7 @@ export const updateTask = (projectId, tid, data) => api.patch(`/projects/${proje
 export const deleteTask = (projectId, tid) => api.delete(`/projects/${projectId}/tasks/${tid}`);
 
 export const bulkCreateTasks = (projectId, tasks) => api.post(`/projects/${projectId}/tasks/bulk`, { tasks });
-export const bulkUpdateTasks = (projectId, tasks) => api.patch(`/projects/${projectId}/tasks/bulk-update`, { tasks });
+export const bulkUpdateTasks = (projectId, tasks, reason) => api.patch(`/projects/${projectId}/tasks/bulk-update`, { tasks, reason });
 
 // Task Dependencies
 export const getTaskDependencies = (projectId) => api.get(`/projects/${projectId}/task-dependencies`);

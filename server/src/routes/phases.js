@@ -1,4 +1,4 @@
-﻿const logger = require('../utils/logger');
+const logger = require('../utils/logger');
 const express = require('express');
 const { z } = require('zod');
 const { success, fail } = require('../utils/response');
@@ -12,6 +12,7 @@ const router = express.Router({ mergeParams: true });
 const createPhaseSchema = z.object({
   name: z.string().min(1, 'Phase name is required'),
   sort_order: z.number().optional(),
+  status: z.string().optional(),
   duration_days: z.number().optional().nullable(),
   sign_off_required: z.boolean().optional(),
   sign_off_by: z.string().optional(),
@@ -100,11 +101,14 @@ router.put('/:phaseId', authorize('projects:manage'), validate(updatePhaseSchema
   }
 });
 
+const { clearCachePrefix } = require('../utils/cache');
+
 // DELETE /api/projects/:projectId/phases (Clear all phases for this project)
 router.delete('/', authorize('projects:manage'), async (req, res, next) => {
   try {
     const projectId = req.params.projectId || req.params.id;
     await phaseRepository.clearProjectPhases(projectId, req.tenantId);
+    await clearCachePrefix('cache:').catch(() => {});
     return success(res, { message: 'All project phases and milestones removed' });
   } catch (error) {
     logger.error('[Phases Router] Clear all error:', error);
@@ -116,6 +120,7 @@ router.delete('/', authorize('projects:manage'), async (req, res, next) => {
 router.delete('/:phaseId', authorize('projects:manage'), async (req, res, next) => {
   try {
     await phaseRepository.deletePhase(req.params.phaseId, req.tenantId);
+    await clearCachePrefix('cache:').catch(() => {});
     return res.status(204).send();
   } catch (error) {
     if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Phase not found', 404);

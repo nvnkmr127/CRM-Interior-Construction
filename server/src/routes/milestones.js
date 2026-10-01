@@ -89,11 +89,65 @@ router.patch('/:mid', authorize('projects:manage'), validate(updateMilestoneSche
 // DELETE /api/phases/:phaseId/milestones/:mid
 router.delete('/:mid', authorize('projects:manage'), async (req, res, next) => {
   try {
+    // 1. Delete tasks generated from phase/schedule for this milestone
+    await pool.query(`
+      DELETE FROM tasks
+      WHERE milestone_id = $1 AND tenant_id = $2
+        AND (
+          custom_fields LIKE '%"source":"phase_schedule"%'
+          OR (
+            (custom_fields IS NULL OR custom_fields = '' OR custom_fields NOT LIKE '%"source":"manual"%')
+            AND (custom_fields IS NULL OR custom_fields NOT LIKE '%"source":"payment"%')
+            AND (custom_fields IS NULL OR custom_fields NOT LIKE '%"source":"snag"%')
+          )
+        )
+    `, [req.params.mid, req.tenantId]);
+
+    // 2. Unlink any manual tasks linked to this milestone
+    await pool.query(`
+      UPDATE tasks
+      SET milestone_id = NULL
+      WHERE milestone_id = $1 AND tenant_id = $2
+    `, [req.params.mid, req.tenantId]);
+
+    // 2b. Clean up linked scheduled payment milestone if no payments or approvals
+    await pool.query(`
+      DELETE FROM payment_milestones
+      WHERE milestone_id = $1 AND tenant_id = $2 AND status = 'scheduled'
+        AND id NOT IN (SELECT target_id::uuid FROM financial_approvals WHERE target_id IS NOT NULL AND tenant_id = $2)
+    `, [req.params.mid, req.tenantId]).catch(() => {});
+
+    // 3. Delete the milestone
     const { rowCount } = await pool.query(
       'DELETE FROM milestones WHERE id = $1 AND tenant_id = $2 AND phase_id = $3',
       [req.params.mid, req.tenantId, req.params.phaseId]
     );
     if (rowCount === 0) return fail(res, 'NOT_FOUND', 'Milestone not found.', 404);
+
+    // Sync phase status if remaining milestones are all done
+    const stats = await pool.query(`
+      SELECT 
+        COUNT(*)::int as total_milestones,
+        COUNT(CASE WHEN status = 'completed' THEN 1 END)::int as completed_milestones
+      FROM milestones
+      WHERE phase_id = $1 AND tenant_id = $2
+    `, [req.params.phaseId, req.tenantId]);
+
+    if (stats.rows.length > 0 && stats.rows[0].total_milestones > 0) {
+      const { total_milestones, completed_milestones } = stats.rows[0];
+      if (completed_milestones === total_milestones) {
+        await pool.query(`
+          UPDATE project_phases
+          SET status = 'completed'
+          WHERE id = $1 AND tenant_id = $2
+        `, [req.params.phaseId, req.tenantId]);
+      }
+    }
+
+    const { clearCachePrefix } = require('../utils/cache');
+    await clearCachePrefix('cache:').catch(() => {});
+    await clearCachePrefix('/api/projects').catch(() => {});
+
     return res.status(204).send();
   } catch (error) {
     logger.error('[Milestones Router] Delete error:', error);

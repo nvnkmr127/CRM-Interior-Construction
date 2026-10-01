@@ -18,6 +18,7 @@ import AiTaskCreationModal from '../../components/tasks/AiTaskCreationModal'
 import GlobalTaskFormModal from '../../components/tasks/GlobalTaskFormModal'
 import TaskAnalyticsModal from '../../components/tasks/TaskAnalyticsModal'
 import TaskGovernanceModal from '../../components/tasks/TaskGovernanceModal'
+import usePersistedTab from '../../hooks/usePersistedTab'
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { useToast } from '../../store/toastContext'
@@ -56,7 +57,7 @@ export default function MyTasksPage() {
   useBreadcrumbs(selectedTask ? [{ label: 'Task Details' }] : [{ label: 'My Tasks' }])
   const toast = useToast()
 
-  const [activeTab, setActiveTab] = useState('all')
+  const [activeTab, setActiveTab] = usePersistedTab('tab', 'all', 'mytasks')
   const [tasks, setTasks] = useState([])
   const [loading, setLoading] = useState(true)
   const [updatingTaskId, setUpdatingTaskId] = useState(null)

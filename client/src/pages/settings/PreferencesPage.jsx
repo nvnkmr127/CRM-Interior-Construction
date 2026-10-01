@@ -7,6 +7,7 @@ import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { FiBell, FiMonitor, FiSettings, FiMoon, FiSun, FiLayout, FiClock, FiSmartphone, FiMail } from 'react-icons/fi';
 import { usePreferences } from '../../store/PreferencesContext';
+import usePersistedTab from '../../hooks/usePersistedTab';
 
 export default function PreferencesPage() {
   usePageTitle('Preferences');
@@ -25,7 +26,7 @@ export default function PreferencesPage() {
   });
 
   const [loading, setLoading] = useState(false);
-  const [activeTab, setActiveTab] = useState('general');
+  const [activeTab, setActiveTab] = usePersistedTab('tab', 'general', 'settings:preferences');
 
   useEffect(() => {
     fetchPreferences();

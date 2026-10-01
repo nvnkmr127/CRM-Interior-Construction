@@ -6,12 +6,13 @@ import Button from '../../components/ui/Button';
 import Modal from '../../components/ui/Modal';
 import styles from './WarehousePage.module.css';
 import { useToast } from '../../store/toastContext';
+import usePersistedTab from '../../hooks/usePersistedTab';
 
 export default function WarehousePage() {
   const toast = useToast();
   const [warehouses, setWarehouses] = useState([]);
   const [selectedWarehouse, setSelectedWarehouse] = useState(null);
-  const [activeTab, setActiveTab] = useState('inventory'); // inventory, quarantined, transactions
+  const [activeTab, setActiveTab] = usePersistedTab('tab', 'inventory', 'warehouse'); // inventory, quarantined, transactions
   const [projects, setProjects] = useState([]);
 
   // Data States

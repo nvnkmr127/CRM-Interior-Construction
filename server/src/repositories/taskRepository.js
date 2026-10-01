@@ -276,13 +276,14 @@ class TaskRepository {
         const { rows } = await client.query(`
           INSERT INTO tasks (
             tenant_id, project_id, milestone_id, parent_task_id,
-            title, description, assignee_id, due_date, priority, status, sort_order
-          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+            title, description, assignee_id, due_date, priority, status, sort_order, custom_fields
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
           RETURNING *
         `, [
           tenantId, projectId, t.milestone_id || null, t.parent_task_id || null,
           t.title, t.description || null, t.assignee_id || null, t.due_date || null,
-          t.priority || 'medium', t.status || 'todo', t.sort_order || 0
+          t.priority || 'medium', t.status || 'todo', t.sort_order || 0,
+          t.custom_fields || { source: 'manual' }
         ]);
         createdTasks.push(rows[0]);
       }

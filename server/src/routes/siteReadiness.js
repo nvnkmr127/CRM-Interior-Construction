@@ -15,6 +15,11 @@ const updateItemSchema = z.object({
   photo_key: z.string().optional().nullable()
 });
 
+const createItemSchema = z.object({
+  label: z.string().min(1, 'Label is required'),
+  notes: z.string().optional().nullable()
+});
+
 // GET /api/projects/:projectId/site-readiness
 router.get('/', authorize('projects:read'), async (req, res) => {
   try {
@@ -45,6 +50,39 @@ router.patch('/:itemId', authorize('projects:manage'), validate(updateItemSchema
     if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Checklist item not found.', 404);
     logger.error('[SiteReadiness Router] Update error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to update checklist item.', 500);
+  }
+});
+
+// POST /api/projects/:projectId/site-readiness
+router.post('/', authorize('projects:manage'), validate(createItemSchema), async (req, res, next) => {
+  try {
+    const item = await siteReadinessRepository.createChecklistItem(
+      req.tenantId,
+      req.params.projectId,
+      req.body
+    );
+    return success(res, item, {}, 201);
+  } catch (error) {
+    if (error.message === 'PROJECT_NOT_FOUND') {
+      return fail(res, 'NOT_FOUND', 'Project not found.', 404);
+    }
+    logger.error('[SiteReadiness Router] Create error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to create checklist item.', 500);
+  }
+});
+
+// DELETE /api/projects/:projectId/site-readiness/:itemId
+router.delete('/:itemId', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    const deleted = await siteReadinessRepository.deleteChecklistItem(
+      req.tenantId,
+      req.params.itemId
+    );
+    return success(res, deleted);
+  } catch (error) {
+    if (error.message === 'NOT_FOUND') return fail(res, 'NOT_FOUND', 'Checklist item not found.', 404);
+    logger.error('[SiteReadiness Router] Delete error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to delete checklist item.', 500);
   }
 });
 

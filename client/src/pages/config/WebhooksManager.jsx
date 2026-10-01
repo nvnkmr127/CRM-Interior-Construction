@@ -10,9 +10,10 @@ import eventRegistry from '../../utils/eventRegistry';
 import KPICard from '../../components/finance/KPICard';
 import InboundSourceEditor from './InboundSourceEditor';
 import InboundWebhookTesterModal from './InboundWebhookTesterModal';
+import usePersistedTab from '../../hooks/usePersistedTab';
 
 export default function WebhooksManager() {
-  const [activeTab, setActiveTab] = useState('inbound'); // 'inbound' | 'outbound'
+  const [activeTab, setActiveTab] = usePersistedTab('tab', 'inbound', 'config:webhooks'); // 'inbound' | 'outbound'
   
   // Outbound Webhooks State
   const [webhooks, setWebhooks] = useState([]);

@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import usePersistedTab from '../../hooks/usePersistedTab';
 import DesignStageHeader from './DesignStageHeader';
 import DesignRequirements from './DesignRequirements';
 import DesignAssetsTab from './DesignAssetsTab';
@@ -8,7 +9,7 @@ import ProjectQuotationsTab from './ProjectQuotationsTab';
 import CommercialApprovalTab from '../../pages/projects/CommercialApprovalTab';
 
 export default function DesignPhaseTab({ projectId, project, onRefresh }) {
-  const [activeSubTab, setActiveSubTab] = useState('Design Brief');
+  const [activeSubTab, setActiveSubTab] = usePersistedTab('subtab', 'Design Brief', `proj:${projectId}:design`);
 
   const subTabs = [
     { id: 'Design Brief', icon: '📐', label: 'Design Brief' },

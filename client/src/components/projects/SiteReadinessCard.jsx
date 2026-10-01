@@ -1,8 +1,14 @@
 /* eslint-disable no-unused-vars, react-hooks/set-state-in-effect, react-hooks/exhaustive-deps, no-undef */
 import React, { useState, useEffect } from 'react';
-import { Button } from '../ui';
+import { Button, Badge, Modal, Input } from '../ui';
 import { useToast } from '../../store/toastContext';
-import { getSiteReadiness, updateSiteReadinessItem, signOffSiteReadiness } from '../../api/siteReadiness';
+import { 
+  getSiteReadiness, 
+  updateSiteReadinessItem, 
+  signOffSiteReadiness, 
+  createSiteReadinessItem, 
+  deleteSiteReadinessItem 
+} from '../../api/siteReadiness';
 
 import { useConfirm } from '../../store/confirmContext';
 
@@ -14,6 +20,12 @@ export default function SiteReadinessCard({ projectId, executionPhase, onReadine
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [expandedItem, setExpandedItem] = useState(null);
+
+  // Add Item Modal State
+  const [isAddModalOpen, setIsAddModalOpen] = useState(false);
+  const [newItemLabel, setNewItemLabel] = useState('');
+  const [newItemNotes, setNewItemNotes] = useState('');
+  const [addingItem, setAddingItem] = useState(false);
 
   const fetchChecklist = async () => {
     try {
@@ -69,6 +81,47 @@ export default function SiteReadinessCard({ projectId, executionPhase, onReadine
     }
   };
 
+  const handleAddItem = async (e) => {
+    if (e) e.preventDefault();
+    if (!newItemLabel.trim()) {
+      toast.error('Please enter a checklist item description.');
+      return;
+    }
+
+    setAddingItem(true);
+    try {
+      const res = await createSiteReadinessItem(projectId, {
+        label: newItemLabel.trim(),
+        notes: newItemNotes.trim() || null
+      });
+      const created = res.data?.data || res.data;
+      if (created) {
+        setChecklist(prev => [...prev, created]);
+        toast.success(`Checklist item "${newItemLabel.trim()}" added!`);
+        setNewItemLabel('');
+        setNewItemNotes('');
+        setIsAddModalOpen(false);
+        if (onReadinessUpdate) onReadinessUpdate();
+      }
+    } catch (err) {
+      toast.error(err?.response?.data?.error?.message || 'Failed to add checklist item.');
+    } finally {
+      setAddingItem(false);
+    }
+  };
+
+  const handleDeleteItem = async (itemId, label) => {
+    if (!await confirm(`Are you sure you want to remove "${label}" from the checklist?`)) return;
+    try {
+      await deleteSiteReadinessItem(projectId, itemId);
+      setChecklist(prev => prev.filter(i => i.id !== itemId));
+      toast.success('Checklist item removed.');
+      if (onReadinessUpdate) onReadinessUpdate();
+    } catch {
+      toast.error('Failed to remove checklist item.');
+    }
+  };
+
   const handleSignOffAll = async () => {
     if (!await confirm('Are you sure you want to sign off and complete all site readiness items?')) return;
     setSubmitting(true);
@@ -101,9 +154,9 @@ export default function SiteReadinessCard({ projectId, executionPhase, onReadine
       boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.05)'
     }}>
       {/* Header alert if locked */}
-      {isExecutionLocked ? (
+      {isExecutionLocked && (
         <div style={{
-          padding: '16px 20px',
+          padding: '12px 20px',
           background: 'var(--color-warning-bg, #fef3c7)',
           color: 'var(--color-warning, #d97706)',
           borderBottom: '1px solid var(--color-border)',
@@ -118,42 +171,49 @@ export default function SiteReadinessCard({ projectId, executionPhase, onReadine
             <strong>Execution Phase Locked:</strong> The execution phase cannot start until all site readiness checklist items are completed and signed off.
           </div>
         </div>
-      ) : allCompleted ? (
-        <div style={{
-          padding: '16px 20px',
-          background: 'var(--color-success-bg, #f0fdf4)',
-          color: 'var(--color-success, #22c55e)',
-          borderBottom: '1px solid var(--color-border)',
-          fontWeight: 600,
-          fontSize: 'var(--text-sm)',
-          display: 'flex',
-          alignItems: 'center',
-          gap: 12
-        }}>
-          <span style={{ fontSize: 18 }}>✅</span>
-          <div>
-            <strong>Site Ready:</strong> All site readiness prerequisites are complete. The execution phase is unlocked.
-          </div>
-        </div>
-      ) : (
-        <div style={{
-          padding: '16px 20px',
-          background: 'var(--color-surface-hover, #f8fafc)',
-          borderBottom: '1px solid var(--color-border)',
-          fontWeight: 600,
-          fontSize: 'var(--text-sm)',
-          color: 'var(--color-text)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span>📋</span>
-            <span>Pre-Execution Site Readiness Checklist</span>
-          </div>
-          <Badge variant="warning">Incomplete</Badge>
-        </div>
       )}
+
+      {/* Main Header Bar with Title, + Add Checklist Item Button, and Incomplete / Site Ready Badge */}
+      <div style={{
+        padding: '16px 20px',
+        background: 'var(--color-surface-hover, #f8fafc)',
+        borderBottom: '1px solid var(--color-border)',
+        fontWeight: 600,
+        fontSize: 'var(--text-sm)',
+        color: 'var(--color-text)',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        flexWrap: 'wrap',
+        gap: 10
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <span>📋</span>
+          <span>Pre-Execution Site Readiness Checklist</span>
+        </div>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setIsAddModalOpen(true)}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 4,
+              fontSize: 'var(--text-xs)',
+              padding: '5px 12px',
+              borderRadius: 'var(--radius-md)'
+            }}
+          >
+            + Add Checklist Item
+          </Button>
+          {allCompleted ? (
+            <Badge variant="success">✅ Site Ready</Badge>
+          ) : (
+            <Badge variant="warning">Incomplete</Badge>
+          )}
+        </div>
+      </div>
 
       {/* Checklist items list */}
       <div style={{ display: 'flex', flexDirection: 'column' }}>
@@ -202,19 +262,38 @@ export default function SiteReadinessCard({ projectId, executionPhase, onReadine
                   </div>
                 </div>
 
-                <button
-                  onClick={async () => setExpandedItem(isExpanded ? null : item.id)}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: 'var(--color-accent)',
-                    fontSize: 'var(--text-xs)',
-                    cursor: 'pointer',
-                    fontWeight: 500
-                  }}
-                >
-                  {isExpanded ? 'Hide Notes' : 'Edit Notes'}
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+                  <button
+                    onClick={async () => setExpandedItem(isExpanded ? null : item.id)}
+                    style={{
+                      background: 'none',
+                      border: 'none',
+                      color: 'var(--color-accent)',
+                      fontSize: 'var(--text-xs)',
+                      cursor: 'pointer',
+                      fontWeight: 500
+                    }}
+                  >
+                    {isExpanded ? 'Hide Notes' : 'Edit Notes'}
+                  </button>
+                  {item.item_key?.startsWith('custom_') && (
+                    <button
+                      onClick={() => handleDeleteItem(item.id, item.label)}
+                      title="Remove custom item"
+                      style={{
+                        background: 'none',
+                        border: 'none',
+                        color: 'var(--color-danger, #ef4444)',
+                        fontSize: 'var(--text-xs)',
+                        cursor: 'pointer',
+                        fontWeight: 600,
+                        padding: '2px 4px'
+                      }}
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
               </div>
 
               {/* Notes expandable textarea */}
@@ -229,7 +308,8 @@ export default function SiteReadinessCard({ projectId, executionPhase, onReadine
                       border: '1px solid var(--color-border)',
                       fontSize: 'var(--text-xs)',
                       fontFamily: 'inherit',
-                      background: 'var(--color-surface)'
+                      background: 'var(--color-surface)',
+                      color: 'var(--color-text)'
                     }}
                     placeholder="Enter site verification notes, civil checklist confirmations, or dimensions check details..."
                     value={item.notes || ''}
@@ -264,6 +344,80 @@ export default function SiteReadinessCard({ projectId, executionPhase, onReadine
             {submitting ? 'Signing off...' : 'Sign Off All Items'}
           </Button>
         </div>
+      )}
+
+      {/* Modal to Add Extra Checklist Item */}
+      {isAddModalOpen && (
+        <Modal
+          isOpen={isAddModalOpen}
+          onClose={() => {
+            setIsAddModalOpen(false);
+            setNewItemLabel('');
+            setNewItemNotes('');
+          }}
+          title="Add Site Readiness Checklist Item"
+          size="md"
+        >
+          <form onSubmit={handleAddItem} style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <div>
+              <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
+                Checklist Item Description <span style={{ color: 'var(--color-danger)' }}>*</span>
+              </label>
+              <Input
+                placeholder="e.g. Society Service Lift Permission, Site Water & Power Active..."
+                value={newItemLabel}
+                onChange={e => setNewItemLabel(e.target.value)}
+                autoFocus
+              />
+            </div>
+
+            <div>
+              <label style={{ display: 'block', fontSize: 'var(--text-xs)', fontWeight: 600, color: 'var(--color-text)', marginBottom: 6 }}>
+                Notes / Instructions (Optional)
+              </label>
+              <textarea
+                style={{
+                  width: '100%',
+                  minHeight: 70,
+                  padding: '8px 12px',
+                  borderRadius: 'var(--radius-md)',
+                  border: '1px solid var(--color-border)',
+                  fontSize: 'var(--text-xs)',
+                  fontFamily: 'inherit',
+                  background: 'var(--color-surface)',
+                  color: 'var(--color-text)',
+                  boxSizing: 'border-box'
+                }}
+                placeholder="Add any specific requirements, contact persons, or verification instructions..."
+                value={newItemNotes}
+                onChange={e => setNewItemNotes(e.target.value)}
+              />
+            </div>
+
+            <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 10, marginTop: 8 }}>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  setIsAddModalOpen(false);
+                  setNewItemLabel('');
+                  setNewItemNotes('');
+                }}
+              >
+                Cancel
+              </Button>
+              <Button
+                type="submit"
+                variant="primary"
+                size="sm"
+                disabled={addingItem || !newItemLabel.trim()}
+              >
+                {addingItem ? 'Adding…' : '+ Add Item'}
+              </Button>
+            </div>
+          </form>
+        </Modal>
       )}
     </div>
   );

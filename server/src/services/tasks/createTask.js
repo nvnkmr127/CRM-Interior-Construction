@@ -4,6 +4,18 @@ const { logAction } = require('../auditLog');
 const { enqueueAutomation } = require('../../queues/automationQueue');
 
 async function createTask({ tenantId, userId, data }) {
+  // Normalize and preserve source tag, default to manual if not specified
+  let customFields = data.customFields || data.custom_fields || {};
+  if (typeof customFields === 'string') {
+    try { customFields = JSON.parse(customFields); } catch (e) { customFields = {}; }
+  }
+  if (!customFields || typeof customFields !== 'object' || Array.isArray(customFields)) {
+    customFields = {};
+  }
+  if (!customFields.source) {
+    customFields.source = 'manual';
+  }
+
   // Map incoming camelCase variables to snake_case for the repository if necessary
   const mappedData = {
     project_id: data.projectId || data.project_id,
@@ -18,7 +30,7 @@ async function createTask({ tenantId, userId, data }) {
     duration_days: data.durationDays || data.duration_days,
     priority: data.priority,
     tags: data.tags,
-    custom_fields: data.customFields || data.custom_fields,
+    custom_fields: customFields,
     room_name: data.roomName || data.room_name
   };
 

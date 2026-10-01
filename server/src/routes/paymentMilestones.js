@@ -88,6 +88,11 @@ const updateSchema = z.object({
   name: z.string().optional(),
   amount: z.number().optional(),
   due_date: z.string().optional().nullable(),
+  dueDate: z.string().optional().nullable(),
+  milestone_id: z.string().uuid().optional().nullable(),
+  milestoneId: z.string().uuid().optional().nullable(),
+  percentage: z.number().optional().nullable(),
+  percent: z.number().optional().nullable(),
   proof_document: z.any().optional().nullable(),
   status: z.string().optional(),
   invoice_reference: z.string().optional().nullable(),
@@ -102,13 +107,19 @@ const updateSchema = z.object({
 // PATCH /api/payment-milestones/:id
 router.patch('/:id', authorize('payments:edit'), validate(updateSchema), async (req, res, next) => {
   try {
-    const data  = req.body;
+    const data = req.body;
+    const mappedData = {
+      ...data,
+      due_date: data.due_date || data.dueDate,
+      milestone_id: data.milestone_id || data.milestoneId,
+      percentage: data.percentage !== undefined ? data.percentage : data.percent
+    };
     
     const milestone = await updatePaymentMilestone({
       tenantId: req.tenantId,
       userId: req.user.userId,
       milestoneId: req.params.id,
-      data
+      data: mappedData
     });
     
     return success(res, milestone);

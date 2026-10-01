@@ -7,3 +7,5 @@ export const createPaymentMilestone = (data) => api.post('/payment-milestones', 
 export const updatePaymentMilestone = (id, data) => api.patch(`/payment-milestones/${id}`, data);
 
 export const getAllPaymentMilestones = () => api.get('/payment-milestones');
+
+export const syncPaymentMilestones = (projectId) => api.post(`/projects/${projectId}/sync-payment-milestones`);

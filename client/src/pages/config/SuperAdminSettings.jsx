@@ -8,6 +8,7 @@ import { useConfirm } from '../../store/confirmContext';
 import { usePageTitle } from '../../hooks/usePageTitle';
 import { useBreadcrumbs } from '../../hooks/useBreadcrumbs';
 import { Button, Input, Badge, Card, Modal, PageHeader, Toggle, Select } from '../../components/ui';
+import usePersistedTab from '../../hooks/usePersistedTab';
 
 export default function SuperAdminSettings() {
   usePageTitle('Platform Command Center');
@@ -28,7 +29,7 @@ export default function SuperAdminSettings() {
   const [tenants, setTenants] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
-  const [activeTab, setActiveTab] = useState('workspaces');
+  const [activeTab, setActiveTab] = usePersistedTab('tab', 'workspaces', 'superadmin:settings');
 
   // Sidebar config states
   const [sidebarPlanConfigs, setSidebarPlanConfigs] = useState([]);

@@ -207,6 +207,31 @@ async function updateTask({ tenantId, userId, taskId, data }) {
     });
   }
 
+  // 5b. Synchronize linked milestone status if task status changed
+  if (data.status && data.status !== currentTask.status) {
+    try {
+      const milestoneRepo = require('../../repositories/milestoneRepository');
+      let targetMilestoneId = currentTask.milestone_id;
+      if (!targetMilestoneId && currentTask.project_id && currentTask.title) {
+        const { rows: mFound } = await pool.query(
+          'SELECT id FROM milestones WHERE project_id = $1 AND tenant_id = $2 AND LOWER(TRIM(name)) = LOWER(TRIM($3)) LIMIT 1',
+          [currentTask.project_id, tenantId, currentTask.title]
+        );
+        targetMilestoneId = mFound[0]?.id;
+      }
+
+      if (targetMilestoneId) {
+        if (data.status === 'done') {
+          await milestoneRepo.completeMilestone(targetMilestoneId, userId, tenantId);
+        } else if (currentTask.status === 'done') {
+          await milestoneRepo.updateMilestone(targetMilestoneId, { status: 'pending' }, tenantId);
+        }
+      }
+    } catch (mSyncErr) {
+      logger.error('[UpdateTask] Error syncing milestone status:', mSyncErr);
+    }
+  }
+
   // 6. Output fresh database row
   if (data.due_date && data.due_date !== currentTask.due_date) {
     const { recalculateSchedule } = require('../projects/scheduleRecalculator');

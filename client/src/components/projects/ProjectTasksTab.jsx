@@ -17,6 +17,7 @@ import GlobalTaskFormModal from '../tasks/GlobalTaskFormModal';
 import TaskAnalyticsModal from '../tasks/TaskAnalyticsModal';
 import TaskGovernanceModal from '../tasks/TaskGovernanceModal';
 import { useToast } from '../../store/toastContext';
+import usePersistedTab from '../../hooks/usePersistedTab';
 import { useTaskAutomationStore } from '../../store/useTaskAutomationStore';
 import { useTaskGovernanceStore } from '../../store/useTaskGovernanceStore';
 import { useTaskNotifications } from '../../store/TaskNotificationContext';
@@ -49,11 +50,11 @@ const STATUSES = {
 
 const PRIORITY_COLORS = { low: 'info', medium: 'warning', high: 'danger', urgent: 'danger' };
 
-export default function ProjectTasksTab({ projectId, project }) {
+export default function ProjectTasksTab({ projectId, project, onTaskUpdated }) {
   const [selectedTask, setSelectedTask] = useState(null);
   const toast = useToast();
 
-  const [activeTab, setActiveTab] = useState('all');
+  const [activeTab, setActiveTab] = usePersistedTab('subtab', 'all', `proj:${projectId}:tasks`);
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [updatingTaskId, setUpdatingTaskId] = useState(null);
@@ -137,6 +138,7 @@ export default function ProjectTasksTab({ projectId, project }) {
           parent_id: t.parent_id || null,
           milestone: t.milestone_name || t.milestone || null,
           checklist: Array.isArray(t.checklist) ? t.checklist : (Array.isArray(t.subtasks) ? t.subtasks : []),
+          sort_order: Number(t.sort_order || 0),
         };
       });
 
@@ -170,6 +172,7 @@ export default function ProjectTasksTab({ projectId, project }) {
         runAutomations('status_changed', updated, task, { toast, addNotification });
       }
       runAutomations('task_updated', updated, task, { toast, addNotification });
+      onTaskUpdated?.();
     } catch (err) {
       console.error('Failed to update task:', err);
       setTasks(prev => prev.map(t => t.id === task.id ? { ...t, status: prevStatus } : t));
@@ -195,6 +198,7 @@ export default function ProjectTasksTab({ projectId, project }) {
     try {
       await updateTask(projectId, taskId, updates);
       runAutomations('task_updated', { ...task, ...updates }, task, { toast, addNotification });
+      onTaskUpdated?.();
     } catch (err) {
       console.error('Failed to update task:', err);
       toast.error(err?.response?.data?.error?.message || 'Failed to update task');
@@ -274,13 +278,54 @@ export default function ProjectTasksTab({ projectId, project }) {
       return true;
     });
 
+    const getStageOrder = (title) => {
+      if (!title) return 9999;
+      const match = String(title).match(/(?:Stage|Phase|Milestone|Month)\s*(\d+)/i);
+      if (match) return parseInt(match[1], 10);
+      return 9999;
+    };
+
     filtered.sort((a, b) => {
-      if (sortBy === 'due_asc') return new Date(a.dueDate) - new Date(b.dueDate);
-      if (sortBy === 'due_desc') return new Date(b.dueDate) - new Date(a.dueDate);
-      if (sortBy === 'priority') {
-        const pMap = { urgent: 4, high: 3, medium: 2, low: 1 };
-        return pMap[b.priority] - pMap[a.priority];
+      // 1. If explicit sort_order exists and differs
+      const orderA = Number(a.sort_order || 0);
+      const orderB = Number(b.sort_order || 0);
+      if (orderA !== 0 && orderB !== 0 && orderA !== orderB) {
+        return orderA - orderB;
       }
+
+      // 2. Natural Stage / Milestone sequence (e.g. Stage 1, Stage 2, Stage 3, Stage 4, Stage 5)
+      const stageA = getStageOrder(a.title);
+      const stageB = getStageOrder(b.title);
+      if (stageA !== stageB && (stageA !== 9999 || stageB !== 9999)) {
+        return stageA - stageB;
+      }
+
+      // 3. User chosen criteria
+      if (sortBy === 'due_asc') {
+        if (a.dueDate && b.dueDate) {
+          const diff = new Date(a.dueDate) - new Date(b.dueDate);
+          if (diff !== 0) return diff;
+        } else if (a.dueDate && !b.dueDate) {
+          return -1;
+        } else if (!a.dueDate && b.dueDate) {
+          return 1;
+        }
+      } else if (sortBy === 'due_desc') {
+        if (a.dueDate && b.dueDate) {
+          const diff = new Date(b.dueDate) - new Date(a.dueDate);
+          if (diff !== 0) return diff;
+        } else if (a.dueDate && !b.dueDate) {
+          return -1;
+        } else if (!a.dueDate && b.dueDate) {
+          return 1;
+        }
+      } else if (sortBy === 'priority') {
+        const pMap = { urgent: 4, high: 3, medium: 2, low: 1 };
+        const diff = (pMap[b.priority] || 0) - (pMap[a.priority] || 0);
+        if (diff !== 0) return diff;
+      }
+
+      if (orderA !== orderB) return orderA - orderB;
       return 0;
     });
 

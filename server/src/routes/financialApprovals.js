@@ -168,6 +168,17 @@ router.post('/', async (req, res, next) => {
       reqPriority
     ]);
 
+    if (validTargetId && (standardType === 'payment_update' || standardType === 'manual_payment' || rawType.toLowerCase().includes('payment'))) {
+      try {
+        await pool.query(
+          `UPDATE payment_milestones SET status = 'pending_approval' WHERE id = $1 AND tenant_id = $2`,
+          [validTargetId, tenantId]
+        );
+      } catch (err) {
+        console.warn('[FINANCIAL APPROVAL MILESTONE STATUS UPDATE]:', err.message);
+      }
+    }
+
     logActivity(req, 'financial_approval', rows[0].id, 'Created', null, JSON.stringify({ type: standardType, amount: reqAmount }));
 
     return success(res, rows[0], 201);

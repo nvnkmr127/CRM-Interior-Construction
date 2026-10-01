@@ -33,7 +33,7 @@ const { clearCachePrefix } = require('../utils/cache');
 const { applyTemplate } = require('../services/config/templateService');
 const { createProject } = require('../services/projects/createProject');
 const { updateProject } = require('../services/projects/updateProject');
-const { getPaymentMilestones } = require('../services/projects/paymentMilestoneService');
+const { getPaymentMilestones, syncScheduleToPaymentMilestones } = require('../services/projects/paymentMilestoneService');
 const { getChecklistByProjectId, createChecklist, addItem } = require('../services/postSale/handoverService');
 const projectRepository = require('../repositories/projectRepository');
 const phasesRoutes = require('./phases');
@@ -998,6 +998,25 @@ router.get('/:id/payment-milestones', authorize('projects:read'), async (req, re
   } catch (error) {
     logger.error('[Projects Router] Get Payment Milestones error:', error);
     return fail(res, 'INTERNAL_ERROR', 'Failed to retrieve payment milestones.', 500);
+  }
+});
+
+// POST /api/projects/:id/sync-payment-milestones
+router.post('/:id/sync-payment-milestones', authorize('projects:manage'), async (req, res, next) => {
+  try {
+    await syncScheduleToPaymentMilestones({
+      tenantId: req.tenantId,
+      projectId: req.params.id
+    });
+    await clearCachePrefix('/api/projects').catch(() => {});
+    const paymentMilestones = await getPaymentMilestones({
+      tenantId: req.tenantId,
+      projectId: req.params.id
+    });
+    return success(res, paymentMilestones);
+  } catch (error) {
+    logger.error('[Projects Router] Sync Payment Milestones error:', error);
+    return fail(res, 'INTERNAL_ERROR', 'Failed to sync payment milestones with schedule.', 500);
   }
 });
 
