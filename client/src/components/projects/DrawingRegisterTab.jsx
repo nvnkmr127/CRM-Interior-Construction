@@ -35,10 +35,30 @@ const LAYOUT_LABELS = {
   electrical: 'Electrical Layout',
   plumbing: 'Plumbing Layout',
   civil: 'Civil Layout',
-  false_ceiling: 'False Ceiling',
+  false_ceiling: 'False Ceiling Layout',
   furniture: 'Furniture Layout',
-  flooring: 'Flooring Layout'
+  flooring: 'Flooring Layout',
+  hvac: 'HVAC / Air Conditioning Layout',
+  elevations: 'Elevations & Sections',
+  woodwork: 'Woodwork / Joinery Details',
+  fire_safety: 'Fire & Life Safety',
+  other: 'Other Layout'
 };
+
+const LAYOUT_OPTIONS = [
+  { value: '', label: 'General (No Layout Classification)' },
+  { value: 'electrical', label: 'Electrical Layout' },
+  { value: 'plumbing', label: 'Plumbing Layout' },
+  { value: 'civil', label: 'Civil Layout' },
+  { value: 'false_ceiling', label: 'False Ceiling Layout' },
+  { value: 'furniture', label: 'Furniture Layout' },
+  { value: 'flooring', label: 'Flooring Layout' },
+  { value: 'hvac', label: 'HVAC / Air Conditioning Layout' },
+  { value: 'elevations', label: 'Elevations & Sections' },
+  { value: 'woodwork', label: 'Woodwork / Joinery Details' },
+  { value: 'fire_safety', label: 'Fire & Life Safety' },
+  { value: 'other', label: 'Other (Specify Custom Layout...)' }
+];
 
 export default function DrawingRegisterTab({ projectId }) {
   const { confirm } = useConfirm();
@@ -90,6 +110,10 @@ export default function DrawingRegisterTab({ projectId }) {
     documentId: null,
     layoutType: ''
   });
+
+  const [customLayoutRegister, setCustomLayoutRegister] = useState('');
+  const [customLayoutRevision, setCustomLayoutRevision] = useState('');
+  const [customLayoutEdit, setCustomLayoutEdit] = useState('');
 
   const fetchDrawings = async () => {
     setLoading(true);
@@ -189,6 +213,10 @@ export default function DrawingRegisterTab({ projectId }) {
         documentId = doc.id;
       }
 
+      const finalLayout = registerForm.layoutType === 'other'
+        ? (customLayoutRegister.trim() || 'other')
+        : (registerForm.layoutType || null);
+
       const payload = {
         drawingNumber: registerForm.drawingNumber.trim(),
         revisionCode: registerForm.revisionCode.trim(),
@@ -196,13 +224,14 @@ export default function DrawingRegisterTab({ projectId }) {
         status: registerForm.status,
         issuedDate: registerForm.issuedDate,
         documentId,
-        layoutType: registerForm.layoutType || null
+        layoutType: finalLayout
       };
 
       const res = await createDrawingRegisterEntry(projectId, payload);
       if (res.data?.success) {
         toast.success(`Drawing ${payload.drawingNumber} registered successfully!`);
         setIsRegisterModalOpen(false);
+        setCustomLayoutRegister('');
         setRegisterForm({
           drawingNumber: '',
           revisionCode: '',
@@ -228,6 +257,9 @@ export default function DrawingRegisterTab({ projectId }) {
 
   const handleRevisionOpen = (group) => {
     const active = group.activeRevision;
+    const lt = active.layout_type || '';
+    const isStd = Boolean(lt && LAYOUT_OPTIONS.some(o => o.value && o.value !== 'other' && o.value.toLowerCase() === lt.toLowerCase()));
+    const isOther = Boolean(lt && !isStd);
     setRevisionForm({
       drawingNumber: active.drawing_number,
       revisionCode: '',
@@ -235,8 +267,9 @@ export default function DrawingRegisterTab({ projectId }) {
       status: 'issued_for_approval',
       issuedDate: new Date().toISOString().split('T')[0],
       file: null,
-      layoutType: active.layout_type || ''
+      layoutType: isOther ? 'other' : lt
     });
+    setCustomLayoutRevision(isOther ? lt : '');
     setIsRevisionModalOpen(true);
   };
 
@@ -259,6 +292,10 @@ export default function DrawingRegisterTab({ projectId }) {
         documentId = doc.id;
       }
 
+      const finalLayout = revisionForm.layoutType === 'other'
+        ? (customLayoutRevision.trim() || 'other')
+        : (revisionForm.layoutType || null);
+
       const payload = {
         drawingNumber: revisionForm.drawingNumber,
         revisionCode: revisionForm.revisionCode.trim(),
@@ -266,13 +303,14 @@ export default function DrawingRegisterTab({ projectId }) {
         status: revisionForm.status,
         issuedDate: revisionForm.issuedDate,
         documentId,
-        layoutType: revisionForm.layoutType || null
+        layoutType: finalLayout
       };
 
       const res = await createDrawingRegisterEntry(projectId, payload);
       if (res.data?.success) {
         toast.success(`New revision ${payload.revisionCode} added to drawing ${payload.drawingNumber}!`);
         setIsRevisionModalOpen(false);
+        setCustomLayoutRevision('');
         fetchDrawings();
       }
     } catch (err) {
@@ -288,6 +326,9 @@ export default function DrawingRegisterTab({ projectId }) {
   };
 
   const handleEditOpen = (drawing) => {
+    const lt = drawing.layout_type || '';
+    const isStd = Boolean(lt && LAYOUT_OPTIONS.some(o => o.value && o.value !== 'other' && o.value.toLowerCase() === lt.toLowerCase()));
+    const isOther = Boolean(lt && !isStd);
     setEditForm({
       id: drawing.id,
       drawingNumber: drawing.drawing_number,
@@ -296,14 +337,19 @@ export default function DrawingRegisterTab({ projectId }) {
       status: drawing.status,
       issuedDate: drawing.issued_date ? new Date(drawing.issued_date).toISOString().split('T')[0] : '',
       documentId: drawing.document_id,
-      layoutType: drawing.layout_type || ''
+      layoutType: isOther ? 'other' : lt
     });
+    setCustomLayoutEdit(isOther ? lt : '');
     setIsEditModalOpen(true);
   };
 
   const handleEditSubmit = async (e) => {
     e.preventDefault();
     try {
+      const finalLayout = editForm.layoutType === 'other'
+        ? (customLayoutEdit.trim() || 'other')
+        : (editForm.layoutType || null);
+
       const payload = {
         drawingNumber: editForm.drawingNumber.trim(),
         revisionCode: editForm.revisionCode.trim(),
@@ -311,13 +357,14 @@ export default function DrawingRegisterTab({ projectId }) {
         status: editForm.status,
         issuedDate: editForm.issuedDate,
         documentId: editForm.documentId,
-        layoutType: editForm.layoutType || null
+        layoutType: finalLayout
       };
 
       const res = await updateDrawingRegisterEntry(projectId, editForm.id, payload);
       if (res.data?.success) {
         toast.success('Drawing entry updated successfully!');
         setIsEditModalOpen(false);
+        setCustomLayoutEdit('');
         fetchDrawings();
       }
     } catch (err) {
@@ -809,18 +856,27 @@ export default function DrawingRegisterTab({ projectId }) {
             <label>Layout Type Classification</label>
             <select
               value={registerForm.layoutType}
-              onChange={(e) => setRegisterForm({ ...registerForm, layoutType: e.target.value })}
+              onChange={(e) => {
+                setRegisterForm({ ...registerForm, layoutType: e.target.value });
+                if (e.target.value !== 'other') setCustomLayoutRegister('');
+              }}
               className={styles.modalSelect}
               disabled={uploading}
             >
-              <option value="">General (No Layout Classification)</option>
-              <option value="electrical">Electrical Layout</option>
-              <option value="plumbing">Plumbing Layout</option>
-              <option value="civil">Civil Layout</option>
-              <option value="false_ceiling">False Ceiling Layout</option>
-              <option value="furniture">Furniture Layout</option>
-              <option value="flooring">Flooring Layout</option>
+              {LAYOUT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
+            {registerForm.layoutType === 'other' && (
+              <Input
+                placeholder="Specify custom layout type (e.g. Acoustic Paneling, Landscaping)"
+                style={{ marginTop: '8px' }}
+                value={customLayoutRegister}
+                onChange={e => setCustomLayoutRegister(e.target.value)}
+                disabled={uploading}
+                autoFocus
+              />
+            )}
           </div>
 
           <div className={styles.formGroup}>
@@ -910,18 +966,27 @@ export default function DrawingRegisterTab({ projectId }) {
             <label>Layout Type Classification</label>
             <select
               value={revisionForm.layoutType}
-              onChange={(e) => setRevisionForm({ ...revisionForm, layoutType: e.target.value })}
+              onChange={(e) => {
+                setRevisionForm({ ...revisionForm, layoutType: e.target.value });
+                if (e.target.value !== 'other') setCustomLayoutRevision('');
+              }}
               className={styles.modalSelect}
               disabled={uploading}
             >
-              <option value="">General (No Layout Classification)</option>
-              <option value="electrical">Electrical Layout</option>
-              <option value="plumbing">Plumbing Layout</option>
-              <option value="civil">Civil Layout</option>
-              <option value="false_ceiling">False Ceiling Layout</option>
-              <option value="furniture">Furniture Layout</option>
-              <option value="flooring">Flooring Layout</option>
+              {LAYOUT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
+            {revisionForm.layoutType === 'other' && (
+              <Input
+                placeholder="Specify custom layout type (e.g. Acoustic Paneling, Landscaping)"
+                style={{ marginTop: '8px' }}
+                value={customLayoutRevision}
+                onChange={e => setCustomLayoutRevision(e.target.value)}
+                disabled={uploading}
+                autoFocus
+              />
+            )}
           </div>
 
           <div className={styles.formGroup}>
@@ -1005,17 +1070,25 @@ export default function DrawingRegisterTab({ projectId }) {
             <label>Layout Type Classification</label>
             <select
               value={editForm.layoutType}
-              onChange={(e) => setEditForm({ ...editForm, layoutType: e.target.value })}
+              onChange={(e) => {
+                setEditForm({ ...editForm, layoutType: e.target.value });
+                if (e.target.value !== 'other') setCustomLayoutEdit('');
+              }}
               className={styles.modalSelect}
             >
-              <option value="">General (No Layout Classification)</option>
-              <option value="electrical">Electrical Layout</option>
-              <option value="plumbing">Plumbing Layout</option>
-              <option value="civil">Civil Layout</option>
-              <option value="false_ceiling">False Ceiling Layout</option>
-              <option value="furniture">Furniture Layout</option>
-              <option value="flooring">Flooring Layout</option>
+              {LAYOUT_OPTIONS.map(opt => (
+                <option key={opt.value} value={opt.value}>{opt.label}</option>
+              ))}
             </select>
+            {editForm.layoutType === 'other' && (
+              <Input
+                placeholder="Specify custom layout type (e.g. Acoustic Paneling, Landscaping)"
+                style={{ marginTop: '8px' }}
+                value={customLayoutEdit}
+                onChange={e => setCustomLayoutEdit(e.target.value)}
+                autoFocus
+              />
+            )}
           </div>
 
           <div className={styles.formGrid}>

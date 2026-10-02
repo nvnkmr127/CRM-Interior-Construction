@@ -15,6 +15,22 @@ import {
   getQuotation
 } from '../../api/projects';
 
+const MATERIAL_CATEGORIES = [
+  { value: 'general', label: 'General' },
+  { value: 'plywood', label: 'Plywood & Boards' },
+  { value: 'hardware', label: 'Hardware & Fittings' },
+  { value: 'laminate', label: 'Laminate & Veneer' },
+  { value: 'paint', label: 'Paint & Finishes' },
+  { value: 'electrical', label: 'Electrical & Lighting' },
+  { value: 'plumbing', label: 'Plumbing & Sanitary' },
+  { value: 'modular', label: 'Modular & Carcass' },
+  { value: 'tiles_stone', label: 'Tiles, Marble & Granite' },
+  { value: 'glass_metal', label: 'Glass, Mirror & Metal' },
+  { value: 'furnishing', label: 'Furnishing & Fabrics' },
+  { value: 'civil', label: 'Civil & Masonry' },
+  { value: 'other', label: 'Other (Specify Custom...)' }
+];
+
 export default function PurchaseRequestsTab({ projectId }) {
   const { confirm } = useConfirm();
 
@@ -177,6 +193,19 @@ export default function PurchaseRequestsTab({ projectId }) {
     }));
   };
 
+  const handleItemCustomCategoryChange = (boqItemId, val) => {
+    setForm(prev => ({
+      ...prev,
+      selectedItems: {
+        ...prev.selectedItems,
+        [boqItemId]: {
+          ...prev.selectedItems[boqItemId],
+          customCategory: val
+        }
+      }
+    }));
+  };
+
   const handleCreatePR = async (e) => {
     e.preventDefault();
     if (!form.requiredByDate) return toast.error('Please specify a required-by date.');
@@ -193,7 +222,9 @@ export default function PurchaseRequestsTab({ projectId }) {
           unitPrice: Number(data.unitPrice) || 0,
           brand: data.brand,
           materialSpecifications: data.materialSpecifications,
-          materialCategory: data.materialCategory || 'general'
+          materialCategory: data.materialCategory === 'other'
+            ? (data.customCategory?.trim() || 'Other')
+            : (data.materialCategory || 'general')
         });
       }
     });
@@ -637,15 +668,29 @@ export default function PurchaseRequestsTab({ projectId }) {
                           onChange={e => handleItemCategoryChange(id, e.target.value)}
                           disabled={!itemData.selected}
                         >
-                          <option value="general">General</option>
-                          <option value="plywood">Plywood</option>
-                          <option value="hardware">Hardware</option>
-                          <option value="laminate">Laminate</option>
-                          <option value="paint">Paint</option>
-                          <option value="electrical">Electrical</option>
-                          <option value="plumbing">Plumbing</option>
-                          <option value="modular">Modular</option>
+                          {MATERIAL_CATEGORIES.map(cat => (
+                            <option key={cat.value} value={cat.value}>{cat.label}</option>
+                          ))}
                         </select>
+                        {itemData.materialCategory === 'other' && (
+                          <input
+                            type="text"
+                            placeholder="Specify custom category..."
+                            value={itemData.customCategory || ''}
+                            onChange={e => handleItemCustomCategoryChange(id, e.target.value)}
+                            disabled={!itemData.selected}
+                            style={{
+                              marginTop: '4px',
+                              width: '100%',
+                              padding: '3px 6px',
+                              fontSize: '11px',
+                              borderRadius: '4px',
+                              border: '1px solid var(--color-accent, #3b82f6)',
+                              background: 'var(--color-surface, #ffffff)',
+                              color: 'var(--color-text)'
+                            }}
+                          />
+                        )}
                       </div>
                       <div>
                         <input

@@ -50,6 +50,18 @@ export default function WarrantiesTab({ projectId }) {
     "Accidental Damage by User"
   ];
 
+  const STANDARD_WARRANTY_CATEGORIES = [
+    'modular_kitchen',
+    'hardware',
+    'appliances',
+    'tiles',
+    'sanitaryware',
+    'electrical_lighting',
+    'woodwork',
+    'glass_metal',
+    'general'
+  ];
+
   // Filters & Search
   const [activeFilter, setActiveFilter] = useState('All');
   const [searchTerm, setSearchTerm] = useState('');
@@ -219,6 +231,7 @@ export default function WarrantiesTab({ projectId }) {
       notes: '',
       handoverItemId: '',
       productCategory: 'general',
+      customCategory: '',
       vendorName: '',
       vendorContact: '',
       vendorWarrantyMonths: 12,
@@ -228,6 +241,7 @@ export default function WarrantiesTab({ projectId }) {
   };
 
   const handleOpenEdit = (w) => {
+    const isStandardCat = STANDARD_WARRANTY_CATEGORIES.includes(w.product_category);
     setSelectedWarranty(w);
     setFormData({
       productName: w.product_name || '',
@@ -240,7 +254,8 @@ export default function WarrantiesTab({ projectId }) {
       warrantyDocument: w.warranty_document || '',
       notes: w.notes || '',
       handoverItemId: w.handover_item_id || '',
-      productCategory: w.product_category || 'general',
+      productCategory: isStandardCat ? (w.product_category || 'general') : 'other',
+      customCategory: !isStandardCat ? (w.product_category || '') : '',
       vendorName: w.vendor_name || '',
       vendorContact: w.vendor_contact || '',
       vendorWarrantyMonths: w.vendor_warranty_months || 0,
@@ -277,7 +292,9 @@ export default function WarrantiesTab({ projectId }) {
         warrantyDocument: formData.warrantyDocument || null,
         notes: formData.notes || null,
         handoverItemId: formData.handoverItemId || null,
-        productCategory: formData.productCategory || 'general',
+        productCategory: formData.productCategory === 'other'
+          ? (formData.customCategory?.trim() || 'Other')
+          : (formData.productCategory || 'general'),
         vendorName: formData.vendorName || null,
         vendorContact: formData.vendorContact || null,
         vendorWarrantyMonths: parseInt(formData.vendorWarrantyMonths) || 0,
@@ -928,8 +945,22 @@ export default function WarrantiesTab({ projectId }) {
                   <option value="hardware">Hardware & Fittings</option>
                   <option value="appliances">Appliances</option>
                   <option value="tiles">Tiles & Countertops</option>
+                  <option value="sanitaryware">Sanitaryware & Plumbing</option>
+                  <option value="electrical_lighting">Electrical & Lighting</option>
+                  <option value="woodwork">Woodwork & Furniture</option>
+                  <option value="glass_metal">Glass & Aluminum</option>
                   <option value="general">General Interior</option>
+                  <option value="other">Other (Specify Custom...)</option>
                 </select>
+                {formData.productCategory === 'other' && (
+                  <Input
+                    style={{ marginTop: '8px' }}
+                    placeholder="Specify custom product category..."
+                    value={formData.customCategory || ''}
+                    onChange={(e) => setFormData(prev => ({ ...prev, customCategory: e.target.value }))}
+                    required
+                  />
+                )}
               </FormField>
             </div>
 

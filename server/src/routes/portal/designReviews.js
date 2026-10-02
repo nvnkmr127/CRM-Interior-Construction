@@ -81,6 +81,36 @@ router.post('/drawings/:documentId/approve', async (req, res, next) => {
 
     const { rows } = await pool.query(query, [documentId, projectId, tenantId]);
 
+    // Complete matching design milestone in site schedule if present (e.g. "3D Design Approved", "Detailed Design")
+    const matchingMilestones = await pool.query(`
+      SELECT id, triggers_payment, name FROM milestones
+      WHERE project_id = $1 AND tenant_id = $2
+        AND status != 'completed'
+        AND (
+          LOWER(name) LIKE '%3d%design%' 
+          OR LOWER(name) LIKE '%design%approv%' 
+          OR LOWER(name) LIKE '%drawing%approv%'
+          OR LOWER(name) LIKE '%concept%approv%'
+        )
+    `, [projectId, tenantId]).catch(() => ({ rows: [] }));
+
+    for (const m of (matchingMilestones.rows || [])) {
+      await pool.query(`
+        UPDATE milestones
+        SET status = 'completed', completion_date = CURRENT_DATE
+        WHERE id = $1 AND tenant_id = $2
+      `, [m.id, tenantId]).catch(() => {});
+
+      if (m.triggers_payment) {
+        await pool.query(`
+          UPDATE payment_milestones
+          SET status = 'invoice_raised'
+          WHERE tenant_id = $2 AND status = 'scheduled'
+            AND (milestone_id = $1 OR (project_id = $3 AND LOWER(TRIM(name)) = LOWER(TRIM($4))))
+        `, [m.id, tenantId, projectId, m.name]).catch(() => {});
+      }
+    }
+
     // Notify staff members in CRM
     await pool.query(
       `INSERT INTO notifications (tenant_id, user_id, title, message, type, link)
@@ -223,6 +253,35 @@ router.post('/freeze-design', async (req, res, next) => {
     if (rows.length === 0) {
       return res.status(404).json({ success: false, message: 'Project not found' });
     }
+
+    // Complete all design phase milestones and cascade payment triggers
+    const designPhaseRes = await pool.query(
+      `SELECT id FROM project_phases WHERE project_id = $1 AND tenant_id = $2 AND (sort_order = 1 OR LOWER(name) LIKE '%design%') ORDER BY sort_order ASC LIMIT 1`,
+      [projectId, tenantId]
+    ).catch(() => ({ rows: [] }));
+
+    if (designPhaseRes.rows.length > 0) {
+      const designPhaseId = designPhaseRes.rows[0].id;
+      const designMilestones = await pool.query(
+        `SELECT id, triggers_payment, name FROM milestones WHERE phase_id = $1 AND tenant_id = $2 AND status != 'completed'`,
+        [designPhaseId, tenantId]
+      ).catch(() => ({ rows: [] }));
+
+      for (const dm of (designMilestones.rows || [])) {
+        await pool.query(
+          `UPDATE milestones SET status = 'completed', completion_date = CURRENT_DATE WHERE id = $1 AND tenant_id = $2`,
+          [dm.id, tenantId]
+        ).catch(() => {});
+
+        if (dm.triggers_payment) {
+          await pool.query(
+            `UPDATE payment_milestones SET status = 'invoice_raised' WHERE tenant_id = $1 AND status = 'scheduled' AND (milestone_id = $2 OR (project_id = $3 AND LOWER(TRIM(name)) = LOWER(TRIM($4))))`,
+            [tenantId, dm.id, projectId, dm.name]
+          ).catch(() => {});
+        }
+      }
+    }
+
     res.json({ success: true, data: rows[0], message: 'Design scope frozen successfully.' });
   } catch (error) {
     next(error);

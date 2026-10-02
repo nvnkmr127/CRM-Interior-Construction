@@ -230,6 +230,34 @@ router.post('/freeze-design', authorize('design:manage'), async (req, res, next)
     if (rows.length === 0) {
       return fail(res, 'NOT_FOUND', 'Project not found.', 404);
     }
+
+    // Complete all design phase milestones and cascade payment triggers
+    const designPhaseRes = await pool.query(
+      `SELECT id FROM project_phases WHERE project_id = $1 AND tenant_id = $2 AND (sort_order = 1 OR LOWER(name) LIKE '%design%') ORDER BY sort_order ASC LIMIT 1`,
+      [projectId, tenantId]
+    ).catch(() => ({ rows: [] }));
+
+    if (designPhaseRes.rows.length > 0) {
+      const designPhaseId = designPhaseRes.rows[0].id;
+      const designMilestones = await pool.query(
+        `SELECT id, triggers_payment, name FROM milestones WHERE phase_id = $1 AND tenant_id = $2 AND status != 'completed'`,
+        [designPhaseId, tenantId]
+      ).catch(() => ({ rows: [] }));
+
+      for (const dm of (designMilestones.rows || [])) {
+        await pool.query(
+          `UPDATE milestones SET status = 'completed', completion_date = CURRENT_DATE WHERE id = $1 AND tenant_id = $2`,
+          [dm.id, tenantId]
+        ).catch(() => {});
+
+        if (dm.triggers_payment) {
+          await pool.query(
+            `UPDATE payment_milestones SET status = 'invoice_raised' WHERE tenant_id = $1 AND status = 'scheduled' AND (milestone_id = $2 OR (project_id = $3 AND LOWER(TRIM(name)) = LOWER(TRIM($4))))`,
+            [tenantId, dm.id, projectId, dm.name]
+          ).catch(() => {});
+        }
+      }
+    }
     
     // Trigger CSAT survey for design phase completion
     notifyUser({

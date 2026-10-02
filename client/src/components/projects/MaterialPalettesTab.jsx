@@ -23,7 +23,7 @@ const SAMPLE_CATEGORIES = [
   { value: 'Glass / Mirror', label: 'Glass / Mirror' },
   { value: 'Wallpaper', label: 'Wallpaper' },
   { value: 'Wood / Plywood', label: 'Wood / Plywood' },
-  { value: 'Other', label: 'Other' }
+  { value: 'Other', label: 'Other (Specify Custom...)' }
 ];
 
 const DECISIONS = [
@@ -60,6 +60,8 @@ export default function MaterialPalettesTab({ projectId }) {
     approved_by_signature: '',
     boq_item_id: ''
   });
+  const [customCategoryCreate, setCustomCategoryCreate] = useState('');
+  const [customCategoryEdit, setCustomCategoryEdit] = useState('');
   const [isUploading, setIsUploading] = useState(false);
 
   // Swatch Zoom overlay
@@ -99,8 +101,13 @@ export default function MaterialPalettesTab({ projectId }) {
     }
 
     try {
+      const finalCategory = createForm.sample_category === 'Other'
+        ? (customCategoryCreate.trim() || 'Other')
+        : createForm.sample_category;
+
       const payload = {
         ...createForm,
+        sample_category: finalCategory,
         date_presented: createForm.date_presented || null,
         boq_item_id: createForm.boq_item_id || null
       };
@@ -112,6 +119,7 @@ export default function MaterialPalettesTab({ projectId }) {
           setPaletteItems(paletteRes.data.data || []);
         }
         setIsCreateOpen(false);
+        setCustomCategoryCreate('');
         setCreateForm({
           room_name: '',
           item_name: '',
@@ -141,8 +149,13 @@ export default function MaterialPalettesTab({ projectId }) {
     }
 
     try {
+      const finalCategory = editingItem.sample_category === 'Other'
+        ? (customCategoryEdit.trim() || 'Other')
+        : editingItem.sample_category;
+
       const payload = {
         ...editingItem,
+        sample_category: finalCategory,
         date_presented: editingItem.date_presented || null,
         boq_item_id: editingItem.boq_item_id || null
       };
@@ -155,6 +168,7 @@ export default function MaterialPalettesTab({ projectId }) {
         }
         setIsEditOpen(false);
         setEditingItem(null);
+        setCustomCategoryEdit('');
         toast.success('Material sample specification updated.');
       }
     } catch (err) {
@@ -351,7 +365,22 @@ export default function MaterialPalettesTab({ projectId }) {
                       </div>
 
                       <div className={styles.actions}>
-                        <Button variant="outline" size="sm" onClick={async () => { setEditingItem(item); setIsEditOpen(true); }} title="Edit specification">
+                        <Button 
+                          variant="outline" 
+                          size="sm" 
+                          onClick={async () => {
+                            const cat = item.sample_category || '';
+                            const isStandard = SAMPLE_CATEGORIES.some(c => c.value && c.value !== 'Other' && c.value.toLowerCase() === cat.toLowerCase());
+                            const isOther = Boolean(cat && !isStandard);
+                            setEditingItem({
+                              ...item,
+                              sample_category: isOther ? 'Other' : cat
+                            });
+                            setCustomCategoryEdit(isOther ? cat : '');
+                            setIsEditOpen(true);
+                          }} 
+                          title="Edit specification"
+                        >
                           ✏️
                         </Button>
                         <Button variant="outline" size="sm" onClick={async () => handleDeleteItem(item.id)} title="Delete selection">
@@ -398,12 +427,24 @@ export default function MaterialPalettesTab({ projectId }) {
               <select
                 style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
                 value={createForm.sample_category}
-                onChange={e => setCreateForm({ ...createForm, sample_category: e.target.value })}
+                onChange={e => {
+                  setCreateForm({ ...createForm, sample_category: e.target.value });
+                  if (e.target.value !== 'Other') setCustomCategoryCreate('');
+                }}
               >
                 {SAMPLE_CATEGORIES.map(cat => (
                   <option key={cat.value} value={cat.value}>{cat.label}</option>
                 ))}
               </select>
+              {createForm.sample_category === 'Other' && (
+                <Input
+                  placeholder="Specify custom category (e.g. Acoustic Panels, Metal Inlay)"
+                  style={{ marginTop: '8px' }}
+                  value={customCategoryCreate}
+                  onChange={e => setCustomCategoryCreate(e.target.value)}
+                  autoFocus
+                />
+              )}
             </div>
 
             <div className={styles.formGroup}>
@@ -554,12 +595,24 @@ export default function MaterialPalettesTab({ projectId }) {
                 <select
                   style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
                   value={editingItem.sample_category || ''}
-                  onChange={e => setEditingItem({ ...editingItem, sample_category: e.target.value })}
+                  onChange={e => {
+                    setEditingItem({ ...editingItem, sample_category: e.target.value });
+                    if (e.target.value !== 'Other') setCustomCategoryEdit('');
+                  }}
                 >
                   {SAMPLE_CATEGORIES.map(cat => (
                     <option key={cat.value} value={cat.value}>{cat.label}</option>
                   ))}
                 </select>
+                {editingItem.sample_category === 'Other' && (
+                  <Input
+                    placeholder="Specify custom category (e.g. Acoustic Panels, Metal Inlay)"
+                    style={{ marginTop: '8px' }}
+                    value={customCategoryEdit}
+                    onChange={e => setCustomCategoryEdit(e.target.value)}
+                    autoFocus
+                  />
+                )}
               </div>
 
               <div className={styles.formGroup}>

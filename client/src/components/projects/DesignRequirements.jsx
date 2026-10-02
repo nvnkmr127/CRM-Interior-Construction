@@ -23,7 +23,8 @@ const INTERIOR_STYLES = [
   { id: 'Industrial', label: 'Industrial' },
   { id: 'Bohemian', label: 'Bohemian' },
   { id: 'Scandinavian', label: 'Scandinavian' },
-  { id: 'Transitional', label: 'Transitional' }
+  { id: 'Transitional', label: 'Transitional' },
+  { id: '__custom__', label: '＋ Other (Specify Custom Style...)' }
 ];
 
 const KITCHEN_STYLES = [
@@ -33,7 +34,8 @@ const KITCHEN_STYLES = [
   { id: 'U-Shaped', label: 'U-Shaped' },
   { id: 'Parallel', label: 'Parallel' },
   { id: 'Straight', label: 'Straight' },
-  { id: 'Island', label: 'Island' }
+  { id: 'Island', label: 'Island' },
+  { id: '__custom__', label: '＋ Other (Specify Custom Kitchen Layout...)' }
 ];
 
 const WARDROBE_STYLES = [
@@ -41,7 +43,8 @@ const WARDROBE_STYLES = [
   { id: 'N/A', label: 'Not Applicable / None' },
   { id: 'Sliding Door', label: 'Sliding Door' },
   { id: 'Hinged Door', label: 'Hinged Door' },
-  { id: 'Walk-in Wardrobe', label: 'Walk-in Wardrobe' }
+  { id: 'Walk-in Wardrobe', label: 'Walk-in Wardrobe' },
+  { id: '__custom__', label: '＋ Other (Specify Custom Mechanism...)' }
 ];
 
 const PRIORITIES = [
@@ -49,7 +52,8 @@ const PRIORITIES = [
   { id: 'Nice-to-have', label: 'Nice-to-have' },
   { id: 'High', label: 'High Priority' },
   { id: 'Medium', label: 'Medium Priority' },
-  { id: 'Low', label: 'Low Priority' }
+  { id: 'Low', label: 'Low Priority' },
+  { id: '__custom__', label: '＋ Other (Specify Custom Priority...)' }
 ];
 
 const BRAND_FLEXIBILITIES = [
@@ -70,7 +74,7 @@ const BUDGET_CATEGORIES = [
   { key: 'appliances', label: 'Appliances / Home Automation' }
 ];
 
-export default function DesignRequirements({ projectId }) {
+export default function DesignRequirements({ projectId, project }) {
   const { confirm } = useConfirm();
 
   const toast = useToast();
@@ -100,6 +104,14 @@ export default function DesignRequirements({ projectId }) {
   const [inspirations, setInspirations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [savingStyles, setSavingStyles] = useState(false);
+
+  // Custom flag states for user-defined styles/mechanisms
+  const [customFlags, setCustomFlags] = useState({
+    interior: false,
+    kitchen: false,
+    wardrobe: false,
+    roomPriority: false
+  });
 
   // UI state for Room Modal
   const [isRoomModalOpen, setIsRoomModalOpen] = useState(false);
@@ -133,12 +145,27 @@ export default function DesignRequirements({ projectId }) {
       if (res.data?.success) {
         const { designRequirements, roomRequirements, inspirations } = res.data.data;
         if (designRequirements) {
+          const intStyle = designRequirements.interior_style || '';
+          const kitchStyle = designRequirements.kitchen_style || '';
+          const wardStyle = designRequirements.wardrobe_style || '';
+
+          const isIntCustom = Boolean(intStyle && !INTERIOR_STYLES.some(s => s.id && s.id !== '__custom__' && s.id.toLowerCase() === intStyle.toLowerCase()));
+          const isKitchCustom = Boolean(kitchStyle && !KITCHEN_STYLES.some(s => s.id && s.id !== '__custom__' && s.id.toLowerCase() === kitchStyle.toLowerCase()));
+          const isWardCustom = Boolean(wardStyle && !WARDROBE_STYLES.some(s => s.id && s.id !== '__custom__' && s.id.toLowerCase() === wardStyle.toLowerCase()));
+
+          setCustomFlags(prev => ({
+            ...prev,
+            interior: isIntCustom,
+            kitchen: isKitchCustom,
+            wardrobe: isWardCustom
+          }));
+
           setStylesData({
-            interior_style: designRequirements.interior_style || '',
+            interior_style: intStyle,
             color_theme: designRequirements.color_theme || '',
             material_preference: designRequirements.material_preference || '',
-            kitchen_style: designRequirements.kitchen_style || '',
-            wardrobe_style: designRequirements.wardrobe_style || '',
+            kitchen_style: kitchStyle,
+            wardrobe_style: wardStyle,
             lighting_preference: designRequirements.lighting_preference || '',
             flooring_preference: designRequirements.flooring_preference || '',
             lifestyle_inputs: designRequirements.lifestyle_inputs || '',
@@ -188,6 +215,7 @@ export default function DesignRequirements({ projectId }) {
   // 2. Room Action Handlers
   const openAddRoomModal = () => {
     setEditingRoom(null);
+    setCustomFlags(prev => ({ ...prev, roomPriority: false }));
     setRoomForm({
       room_name: '',
       priority: 'Must-have',
@@ -199,9 +227,12 @@ export default function DesignRequirements({ projectId }) {
 
   const openEditRoomModal = (room) => {
     setEditingRoom(room);
+    const prio = room.priority || 'Must-have';
+    const isPrioCustom = Boolean(prio && !PRIORITIES.some(p => p.id && p.id !== '__custom__' && p.id.toLowerCase() === prio.toLowerCase()));
+    setCustomFlags(prev => ({ ...prev, roomPriority: isPrioCustom }));
     setRoomForm({
       room_name: room.room_name || '',
-      priority: room.priority || 'Must-have',
+      priority: prio,
       functional_requirements: room.functional_requirements || '',
       remarks: room.remarks || ''
     });
@@ -330,6 +361,52 @@ export default function DesignRequirements({ projectId }) {
   return (
     <div className={styles.container}>
       
+      {/* Site & Client Context Bar (Connected to Overview & Site Details) */}
+      {project && (
+        <div style={{
+          background: 'var(--color-surface)',
+          border: '1px solid var(--color-border)',
+          borderRadius: 'var(--radius-lg, 12px)',
+          padding: '14px 20px',
+          display: 'flex',
+          justifyContent: 'space-between',
+          alignItems: 'center',
+          flexWrap: 'wrap',
+          gap: '12px'
+        }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', flexWrap: 'wrap' }}>
+            <div>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Client</div>
+              <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-text)' }}>{project.client_name || project.name || 'Client'}</div>
+            </div>
+            {(project.carpet_area_sqft || project.carpetArea || project.area) && (
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Carpet Area</div>
+                <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--color-accent, #3b82f6)' }}>
+                  {project.carpet_area_sqft || project.carpetArea || project.area} sq.ft.
+                </div>
+              </div>
+            )}
+            {(project.site_address || project.building_name || project.flat_number) && (
+              <div>
+                <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Site Location</div>
+                <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>
+                  {[project.flat_number, project.building_name, project.city].filter(Boolean).join(', ') || project.site_address}
+                </div>
+              </div>
+            )}
+          </div>
+          {(project.contract_value || project.budget) && (
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '11px', color: 'var(--color-text-muted)', fontWeight: 600, textTransform: 'uppercase' }}>Estimated Budget</div>
+              <div style={{ fontSize: '14px', fontWeight: 700, color: 'var(--color-success, #10b981)' }}>
+                ₹{Number(project.contract_value || project.budget).toLocaleString('en-IN')}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* 1. Aesthetic & Style Preferences */}
       <div className={styles.section}>
         <div className={styles.sectionHeader}>
@@ -347,13 +424,32 @@ export default function DesignRequirements({ projectId }) {
             <label className={styles.formLabel}>Interior Style</label>
             <select
               className={styles.select}
-              value={stylesData.interior_style}
-              onChange={e => setStylesData({ ...stylesData, interior_style: e.target.value })}
+              value={customFlags.interior ? '__custom__' : (stylesData.interior_style || '')}
+              onChange={e => {
+                if (e.target.value === '__custom__') {
+                  setCustomFlags(prev => ({ ...prev, interior: true }));
+                  setStylesData(prev => ({ ...prev, interior_style: '' }));
+                } else {
+                  setCustomFlags(prev => ({ ...prev, interior: false }));
+                  setStylesData(prev => ({ ...prev, interior_style: e.target.value }));
+                }
+              }}
             >
               {INTERIOR_STYLES.map(s => (
                 <option key={s.id} value={s.id}>{s.label}</option>
               ))}
             </select>
+            {customFlags.interior && (
+              <input
+                type="text"
+                placeholder="Specify custom interior style (e.g. Art Deco, Wabi-Sabi, Contemporary Classic)"
+                className={styles.input}
+                style={{ marginTop: '8px' }}
+                value={stylesData.interior_style}
+                onChange={e => setStylesData({ ...stylesData, interior_style: e.target.value })}
+                autoFocus
+              />
+            )}
           </div>
 
           <div className={styles.formField}>
@@ -371,26 +467,64 @@ export default function DesignRequirements({ projectId }) {
             <label className={styles.formLabel}>Kitchen Layout Style</label>
             <select
               className={styles.select}
-              value={stylesData.kitchen_style}
-              onChange={e => setStylesData({ ...stylesData, kitchen_style: e.target.value })}
+              value={customFlags.kitchen ? '__custom__' : (stylesData.kitchen_style || '')}
+              onChange={e => {
+                if (e.target.value === '__custom__') {
+                  setCustomFlags(prev => ({ ...prev, kitchen: true }));
+                  setStylesData(prev => ({ ...prev, kitchen_style: '' }));
+                } else {
+                  setCustomFlags(prev => ({ ...prev, kitchen: false }));
+                  setStylesData(prev => ({ ...prev, kitchen_style: e.target.value }));
+                }
+              }}
             >
               {KITCHEN_STYLES.map(s => (
                 <option key={s.id} value={s.id}>{s.label}</option>
               ))}
             </select>
+            {customFlags.kitchen && (
+              <input
+                type="text"
+                placeholder="Specify custom kitchen layout (e.g. Peninsula with Breakfast Counter, Galley)"
+                className={styles.input}
+                style={{ marginTop: '8px' }}
+                value={stylesData.kitchen_style}
+                onChange={e => setStylesData({ ...stylesData, kitchen_style: e.target.value })}
+                autoFocus
+              />
+            )}
           </div>
 
           <div className={styles.formField}>
             <label className={styles.formLabel}>Wardrobe Mechanism Prefer.</label>
             <select
               className={styles.select}
-              value={stylesData.wardrobe_style}
-              onChange={e => setStylesData({ ...stylesData, wardrobe_style: e.target.value })}
+              value={customFlags.wardrobe ? '__custom__' : (stylesData.wardrobe_style || '')}
+              onChange={e => {
+                if (e.target.value === '__custom__') {
+                  setCustomFlags(prev => ({ ...prev, wardrobe: true }));
+                  setStylesData(prev => ({ ...prev, wardrobe_style: '' }));
+                } else {
+                  setCustomFlags(prev => ({ ...prev, wardrobe: false }));
+                  setStylesData(prev => ({ ...prev, wardrobe_style: e.target.value }));
+                }
+              }}
             >
               {WARDROBE_STYLES.map(s => (
                 <option key={s.id} value={s.id}>{s.label}</option>
               ))}
             </select>
+            {customFlags.wardrobe && (
+              <input
+                type="text"
+                placeholder="Specify custom wardrobe mechanism (e.g. Bi-fold Door, Pocket Door, Open Capsule)"
+                className={styles.input}
+                style={{ marginTop: '8px' }}
+                value={stylesData.wardrobe_style}
+                onChange={e => setStylesData({ ...stylesData, wardrobe_style: e.target.value })}
+                autoFocus
+              />
+            )}
           </div>
 
           <div className={styles.formField}>
@@ -637,11 +771,32 @@ export default function DesignRequirements({ projectId }) {
             <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '16px' }}>
               <div className={styles.formField}>
                 <label className={styles.formLabel}>Priority</label>
-                <Select
-                  value={roomForm.priority}
-                  onChange={e => setRoomForm({ ...roomForm, priority: e.target.value })}
-                  options={PRIORITIES}
-                />
+                <select
+                  className={styles.select}
+                  value={customFlags.roomPriority ? '__custom__' : (roomForm.priority || 'Must-have')}
+                  onChange={e => {
+                    if (e.target.value === '__custom__') {
+                      setCustomFlags(prev => ({ ...prev, roomPriority: true }));
+                      setRoomForm({ ...roomForm, priority: '' });
+                    } else {
+                      setCustomFlags(prev => ({ ...prev, roomPriority: false }));
+                      setRoomForm({ ...roomForm, priority: e.target.value });
+                    }
+                  }}
+                >
+                  {PRIORITIES.map(p => (
+                    <option key={p.id} value={p.id}>{p.label}</option>
+                  ))}
+                </select>
+                {customFlags.roomPriority && (
+                  <Input
+                    placeholder="Specify custom priority (e.g. Critical Milestone, Phase 2 Preference)"
+                    value={roomForm.priority}
+                    onChange={e => setRoomForm({ ...roomForm, priority: e.target.value })}
+                    style={{ marginTop: '8px' }}
+                    autoFocus
+                  />
+                )}
               </div>
             </div>
 

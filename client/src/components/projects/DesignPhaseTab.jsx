@@ -22,7 +22,7 @@ export default function DesignPhaseTab({ projectId, project, onRefresh }) {
 
   const renderContent = () => {
     switch (activeSubTab) {
-      case 'Design Brief': return <DesignRequirements projectId={projectId} />;
+      case 'Design Brief': return <DesignRequirements projectId={projectId} project={project} />;
       case 'Design Assets': return <DesignAssetsTab projectId={projectId} />;
       case 'Design Reviews': return <DesignReviewsTab projectId={projectId} />;
       case 'Material Palettes': return <MaterialPalettesTab projectId={projectId} />;

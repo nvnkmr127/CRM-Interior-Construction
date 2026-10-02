@@ -17,7 +17,10 @@ import {
 const ASSET_TYPES = [
   { value: 'mood_board', label: 'Mood Board' },
   { value: 'concept_board', label: 'Concept Board' },
-  { value: 'reference_collection', label: 'Reference Collection' }
+  { value: 'reference_collection', label: 'Reference Collection' },
+  { value: '3d_renders', label: '3D Realistic Renders' },
+  { value: '2d_layout', label: '2D Layout / CAD Plans' },
+  { value: 'other', label: 'Other (Specify Custom...)' }
 ];
 
 export default function DesignAssetsTab({ projectId }) {
@@ -42,6 +45,8 @@ export default function DesignAssetsTab({ projectId }) {
     asset_type: 'mood_board',
     is_visible_to_client: false
   });
+  const [customAssetTypeCreate, setCustomAssetTypeCreate] = useState('');
+  const [customAssetTypeEdit, setCustomAssetTypeEdit] = useState('');
 
   // Item Form State
   const [isAddItemOpen, setIsAddItemOpen] = useState(false);
@@ -94,10 +99,15 @@ export default function DesignAssetsTab({ projectId }) {
     if (!assetForm.title.trim()) return toast.error('Title is required');
 
     try {
-      const res = await createDesignAsset(projectId, assetForm);
+      const finalType = assetForm.asset_type === 'other'
+        ? (customAssetTypeCreate.trim() || 'other')
+        : assetForm.asset_type;
+
+      const res = await createDesignAsset(projectId, { ...assetForm, asset_type: finalType });
       if (res.data?.success) {
         setAssets([res.data.data, ...assets]);
         setIsCreateModalOpen(false);
+        setCustomAssetTypeCreate('');
         setAssetForm({
           title: '',
           description: '',
@@ -117,7 +127,11 @@ export default function DesignAssetsTab({ projectId }) {
     if (!editingAsset?.title.trim()) return toast.error('Title is required');
 
     try {
-      const res = await updateDesignAsset(projectId, editingAsset.id, editingAsset);
+      const finalType = editingAsset.asset_type === 'other'
+        ? (customAssetTypeEdit.trim() || 'other')
+        : editingAsset.asset_type;
+
+      const res = await updateDesignAsset(projectId, editingAsset.id, { ...editingAsset, asset_type: finalType });
       if (res.data?.success) {
         setAssets(assets.map(a => a.id === editingAsset.id ? { ...a, ...res.data.data } : a));
         if (selectedAsset && selectedAsset.id === editingAsset.id) {
@@ -125,6 +139,7 @@ export default function DesignAssetsTab({ projectId }) {
         }
         setIsEditModalOpen(false);
         setEditingAsset(null);
+        setCustomAssetTypeEdit('');
         toast.success('Design asset updated successfully.');
       }
     } catch (err) {
@@ -276,7 +291,9 @@ export default function DesignAssetsTab({ projectId }) {
       case 'mood_board': return 'Mood Board';
       case 'concept_board': return 'Concept Board';
       case 'reference_collection': return 'Reference Collection';
-      default: return type;
+      case '3d_renders': return '3D Realistic Renders';
+      case '2d_layout': return '2D Layout / CAD Plans';
+      default: return (type ? type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase()) : 'Asset');
     }
   };
 
@@ -333,7 +350,21 @@ export default function DesignAssetsTab({ projectId }) {
           </div>
 
           <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
-            <Button variant="outline" size="sm" onClick={async () => { setEditingAsset(selectedAsset); setIsEditModalOpen(true); }}>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={async () => {
+                const t = selectedAsset.asset_type || '';
+                const isStd = ASSET_TYPES.some(opt => opt.value && opt.value !== 'other' && opt.value.toLowerCase() === t.toLowerCase());
+                const isOther = Boolean(t && !isStd);
+                setEditingAsset({
+                  ...selectedAsset,
+                  asset_type: isOther ? 'other' : t
+                });
+                setCustomAssetTypeEdit(isOther ? t : '');
+                setIsEditModalOpen(true);
+              }}
+            >
               ✏️ Edit Details
             </Button>
             
@@ -620,14 +651,27 @@ export default function DesignAssetsTab({ projectId }) {
 
           <div className={styles.formGroup}>
             <label className={styles.formLabel}>Asset Type</label>
-            <Select
+            <select
+              style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
               value={assetForm.asset_type}
-              onChange={e => setAssetForm({ ...assetForm, asset_type: e.target.value })}
+              onChange={e => {
+                setAssetForm({ ...assetForm, asset_type: e.target.value });
+                if (e.target.value !== 'other') setCustomAssetTypeCreate('');
+              }}
             >
               {ASSET_TYPES.map(opt => (
                 <option key={opt.value} value={opt.value}>{opt.label}</option>
               ))}
-            </Select>
+            </select>
+            {assetForm.asset_type === 'other' && (
+              <Input
+                placeholder="Specify custom asset type (e.g. Elevation Drawings, Joinery Details)"
+                style={{ marginTop: '8px' }}
+                value={customAssetTypeCreate}
+                onChange={e => setCustomAssetTypeCreate(e.target.value)}
+                autoFocus
+              />
+            )}
           </div>
 
           <div className={styles.formGroup}>
@@ -674,14 +718,27 @@ export default function DesignAssetsTab({ projectId }) {
 
             <div className={styles.formGroup}>
               <label className={styles.formLabel}>Asset Type</label>
-              <Select
+              <select
+                style={{ width: '100%', padding: '8px 12px', border: '1px solid var(--color-border)', borderRadius: '6px', fontSize: '0.9rem', outline: 'none' }}
                 value={editingAsset.asset_type}
-                onChange={e => setEditingAsset({ ...editingAsset, asset_type: e.target.value })}
+                onChange={e => {
+                  setEditingAsset({ ...editingAsset, asset_type: e.target.value });
+                  if (e.target.value !== 'other') setCustomAssetTypeEdit('');
+                }}
               >
                 {ASSET_TYPES.map(opt => (
                   <option key={opt.value} value={opt.value}>{opt.label}</option>
                 ))}
-              </Select>
+              </select>
+              {editingAsset.asset_type === 'other' && (
+                <Input
+                  placeholder="Specify custom asset type (e.g. Elevation Drawings, Joinery Details)"
+                  style={{ marginTop: '8px' }}
+                  value={customAssetTypeEdit}
+                  onChange={e => setCustomAssetTypeEdit(e.target.value)}
+                  autoFocus
+                />
+              )}
             </div>
 
             <div className={styles.formGroup}>

@@ -15,8 +15,22 @@ import {
 const REASON_LABELS = {
   'client-requested': 'Client Requested',
   'design-required': 'Design Required',
-  'site-required': 'Site Required'
+  'site-required': 'Site Required',
+  'material-unavailability': 'Material Unavailability / Discontinued',
+  'mep-constraint': 'Structural / MEP Constraint',
+  'vendor-default': 'Vendor / Contractor Default',
+  'other': 'Other (Custom Reason)'
 };
+
+const REASON_OPTIONS = [
+  { value: 'client-requested', label: 'Client Requested' },
+  { value: 'design-required', label: 'Design Required' },
+  { value: 'site-required', label: 'Site Required' },
+  { value: 'material-unavailability', label: 'Material Unavailability / Discontinued' },
+  { value: 'mep-constraint', label: 'Structural / MEP Constraint' },
+  { value: 'vendor-default', label: 'Vendor / Contractor Default' },
+  { value: 'other', label: 'Other (Specify Custom Reason...)' }
+];
 
 export default function ChangeOrdersTab({ projectId }) {
   const { confirm } = useConfirm();
@@ -38,6 +52,7 @@ export default function ChangeOrdersTab({ projectId }) {
     material_impact: '',
     procurement_impact: ''
   });
+  const [customReason, setCustomReason] = useState('');
 
   useEffect(() => {
     if (projectId) {
@@ -71,6 +86,7 @@ export default function ChangeOrdersTab({ projectId }) {
 
   const handleOpenCreateModal = () => {
     setEditId(null);
+    setCustomReason('');
     setForm({
       title: '',
       description: '',
@@ -86,10 +102,14 @@ export default function ChangeOrdersTab({ projectId }) {
 
   const handleOpenEditModal = (co) => {
     setEditId(co.id);
+    const r = co.reason || '';
+    const isStd = REASON_OPTIONS.some(opt => opt.value && opt.value !== 'other' && opt.value.toLowerCase() === r.toLowerCase());
+    const isOther = Boolean(r && !isStd);
+    setCustomReason(isOther ? r : '');
     setForm({
       title: co.title,
       description: co.description || '',
-      reason: co.reason || '',
+      reason: isOther ? 'other' : r,
       timeline_impact_days: String(co.timeline_impact_days ?? 0),
       amount: String(co.amount),
       design_cost: String(co.design_cost ?? 0),
@@ -109,10 +129,14 @@ export default function ChangeOrdersTab({ projectId }) {
       return toast.error('Timeline impact is required and must be an integer (days added or removed)');
     }
 
+    const finalReason = form.reason === 'other'
+      ? (customReason.trim() || 'other')
+      : form.reason;
+
     const payload = {
       title: form.title.trim(),
       description: form.description.trim() || null,
-      reason: form.reason.trim() || null,
+      reason: finalReason ? finalReason.trim() : null,
       timeline_impact_days: Number(form.timeline_impact_days),
       amount: Number(form.amount),
       design_cost: Number(form.design_cost) || 0,
@@ -435,13 +459,22 @@ export default function ChangeOrdersTab({ projectId }) {
             label="Reason for Change"
             placeholder="Select reason..."
             value={form.reason}
-            onChange={val => setForm({ ...form, reason: val })}
-            options={[
-              { value: 'client-requested', label: 'Client Requested' },
-              { value: 'design-required', label: 'Design Required' },
-              { value: 'site-required', label: 'Site Required' }
-            ]}
+            onChange={val => {
+              setForm({ ...form, reason: val });
+              if (val !== 'other') setCustomReason('');
+            }}
+            options={REASON_OPTIONS}
           />
+          {form.reason === 'other' && (
+            <Input
+              label="Specify Custom Reason *"
+              placeholder="e.g. Society restriction on wet drilling, structural beam obstacle"
+              value={customReason}
+              onChange={e => setCustomReason(e.target.value)}
+              required
+              autoFocus
+            />
+          )}
           
           {form.reason === 'design-required' && (
             <>

@@ -8,15 +8,16 @@ import api from '../../api/axios';
 import { useConfirm } from '../../store/confirmContext';
 
 const TRADES = [
-  { value: 'carpentry', label: 'Carpentry' },
-  { value: 'painting', label: 'Painting' },
-  { value: 'electrical', label: 'Electrical' },
-  { value: 'plumbing', label: 'Plumbing' },
-  { value: 'flooring', label: 'Flooring' },
-  { value: 'civil', label: 'Civil Work' },
-  { value: 'false_ceiling', label: 'False Ceiling' },
-  { value: 'glass', label: 'Glass Work' },
-  { value: 'soft_furnishing', label: 'Soft Furnishing' }
+  { value: 'carpentry', label: 'Carpentry & Woodwork' },
+  { value: 'painting', label: 'Painting & Polishing' },
+  { value: 'electrical', label: 'Electrical & Lighting' },
+  { value: 'plumbing', label: 'Plumbing & Sanitary' },
+  { value: 'flooring', label: 'Flooring & Tiling' },
+  { value: 'civil', label: 'Civil Work & Masonry' },
+  { value: 'false_ceiling', label: 'False Ceiling & Gypsum' },
+  { value: 'glass', label: 'Glass & Aluminum Work' },
+  { value: 'soft_furnishing', label: 'Soft Furnishing & Upholstery' },
+  { value: 'other', label: 'Other (Specify Custom Trade...)' }
 ];
 
 export default function PunchListTab({ projectId, projectStatus }) {
@@ -35,6 +36,7 @@ export default function PunchListTab({ projectId, projectStatus }) {
   const [showItemModal, setShowItemModal] = useState(false);
   const [itemRoom, setItemRoom] = useState('');
   const [itemTrade, setItemTrade] = useState('carpentry');
+  const [customTrade, setCustomTrade] = useState('');
   const [itemDesc, setItemDesc] = useState('');
   const [itemAssignee, setItemAssignee] = useState('');
 
@@ -126,7 +128,7 @@ export default function PunchListTab({ projectId, projectStatus }) {
     try {
       await api.post(`/projects/${projectId}/punch-lists/${selectedList.id}/items`, {
         room_name: itemRoom.trim(),
-        trade: itemTrade,
+        trade: itemTrade === 'other' ? (customTrade.trim() || 'Other') : itemTrade,
         item_description: itemDesc.trim(),
         assignee_id: itemAssignee || null
       });
@@ -134,6 +136,7 @@ export default function PunchListTab({ projectId, projectStatus }) {
       setItemRoom('');
       setItemDesc('');
       setItemAssignee('');
+      setCustomTrade('');
       setShowItemModal(false);
       loadSingleList(selectedList.id);
     } catch {
@@ -604,6 +607,15 @@ export default function PunchListTab({ projectId, projectStatus }) {
                     <option key={t.value} value={t.value}>{t.label}</option>
                   ))}
                 </select>
+                {itemTrade === 'other' && (
+                  <Input 
+                    style={{ marginTop: '8px' }}
+                    placeholder="Specify custom trade (e.g. HVAC, Metal Fabricator, Wallpaper)..."
+                    value={customTrade}
+                    onChange={e => setCustomTrade(e.target.value)}
+                    required
+                  />
+                )}
               </div>
               <div className={styles.formGroup}>
                 <label>Defect Description *</label>

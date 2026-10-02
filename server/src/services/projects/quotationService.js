@@ -574,7 +574,14 @@ class QuotationService {
       RETURNING *
     `;
     const result = await pool.query(query, [quotationId, tenantId]);
-    return result.rows[0];
+    const quotation = result.rows[0];
+    if (quotation && quotation.project_id && Number(quotation.total_amount) > 0) {
+      await pool.query(
+        `UPDATE projects SET contract_value = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 AND tenant_id = $3`,
+        [Number(quotation.total_amount), quotation.project_id, tenantId]
+      ).catch(() => {});
+    }
+    return quotation;
   }
 
   async rejectQuotation(tenantId, quotationId) {

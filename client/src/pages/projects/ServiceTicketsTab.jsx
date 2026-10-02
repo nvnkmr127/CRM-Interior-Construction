@@ -32,6 +32,7 @@ export default function ServiceTicketsTab({ projectId }) {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [category, setCategory] = useState('Installation');
+  const [customCategory, setCustomCategory] = useState('');
   const [affectedItem, setAffectedItem] = useState('');
   const [priority, setPriority] = useState('medium');
   const [warrantyEligibility, setWarrantyEligibility] = useState('checking');
@@ -130,7 +131,7 @@ export default function ServiceTicketsTab({ projectId }) {
       const res = await createServiceTicket(projectId, {
         title,
         description: description || null,
-        category,
+        category: category === 'other' ? (customCategory.trim() || 'General') : category,
         affectedItem: affectedItem || null,
         priority,
         warrantyEligibility,
@@ -141,6 +142,7 @@ export default function ServiceTicketsTab({ projectId }) {
       setDescription('');
       setAffectedItem('');
       setCategory('Installation');
+      setCustomCategory('');
       setPriority('medium');
       setWarrantyEligibility('checking');
       setAssignedEngineerId('');
@@ -650,8 +652,23 @@ export default function ServiceTicketsTab({ projectId }) {
               <option value="Electrical">Electrical</option>
               <option value="Hardware">Hardware & Fittings</option>
               <option value="Modular Furniture">Modular Woodwork</option>
-              <option value="General">General / Others</option>
+              <option value="Painting">Painting & Polishing</option>
+              <option value="Civil & Tile">Civil & Tile Work</option>
+              <option value="Appliances">Appliances</option>
+              <option value="General">General Support</option>
+              <option value="other">Other (Specify Custom...)</option>
             </select>
+            {category === 'other' && (
+              <input
+                type="text"
+                className={styles.input}
+                style={{ marginTop: '8px' }}
+                placeholder="Specify custom support category..."
+                value={customCategory}
+                onChange={(e) => setCustomCategory(e.target.value)}
+                required
+              />
+            )}
           </div>
 
           <div className={styles.formGroup}>
