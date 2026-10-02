@@ -435,37 +435,84 @@ export default function PhaseTimeline({ projectId, project, onNavigateTab, onPro
                         )}
                         {phase.milestones.map(m => {
                           const hasError = phase.error && !m.done;
-                          return (
-                            <div
-                              key={m.id}
-                              className={`${styles.milestoneRow} ${hasError ? styles.milestoneRowIncomplete : ''}`}
-                            >
-                              <input
-                                type="checkbox"
-                                checked={m.done}
-                                onChange={() => toggleMilestone(phase.id, m.id)}
-                                disabled={isCompleted}
-                              />
-                              <span
-                                className={styles.milestoneName}
-                                style={{ textDecoration: m.done ? 'line-through' : 'none', opacity: m.done ? 0.6 : 1 }}
+                          const isStage = /^stage\s*[\d:]/i.test((m.name || '').trim());
+
+                          if (isStage) {
+                            return (
+                              <div
+                                key={m.id}
+                                className={`${styles.stageRow} ${hasError ? styles.stageRowIncomplete : ''}`}
                               >
-                                {m.name}
-                              </span>
-                              {m.triggersPayment && (
+                                <input
+                                  type="checkbox"
+                                  checked={m.done}
+                                  onChange={() => toggleMilestone(phase.id, m.id)}
+                                  disabled={isCompleted}
+                                  style={{ cursor: isCompleted ? 'default' : 'pointer', width: '16px', height: '16px' }}
+                                />
                                 <span
-                                  className={styles.paymentIcon}
-                                  onClick={(e) => {
-                                    e.stopPropagation();
-                                    if (onNavigateTab) onNavigateTab('Payments');
-                                  }}
-                                  style={{ cursor: onNavigateTab ? 'pointer' : 'default' }}
-                                  title={onNavigateTab ? "Click to view linked invoice in Payments tab" : "Payment milestone"}
+                                  className={styles.milestoneName}
+                                  style={{ fontWeight: 600, textDecoration: m.done ? 'line-through' : 'none', opacity: m.done ? 0.6 : 1 }}
                                 >
-                                  ₹ Payment
+                                  {m.name}
                                 </span>
-                              )}
-                              {m.dueDate && <span className={styles.dueDate}>{m.dueDate}</span>}
+                                {m.triggersPayment && (
+                                  <span
+                                    className={styles.paymentIcon}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (onNavigateTab) onNavigateTab('Payments');
+                                    }}
+                                    style={{ cursor: onNavigateTab ? 'pointer' : 'default' }}
+                                    title={onNavigateTab ? "Click to view linked invoice in Payments tab" : "Payment milestone"}
+                                  >
+                                    ₹ Payment
+                                  </span>
+                                )}
+                                {m.dueDate && <span className={styles.dueDate}>{m.dueDate}</span>}
+                              </div>
+                            );
+                          }
+
+                          return (
+                            <div key={m.id} className={styles.checkpointContainer}>
+                              <span className={styles.checkpointConnector}>↳</span>
+                              <div
+                                className={`${styles.checkpointRow} ${hasError ? styles.checkpointRowIncomplete : ''}`}
+                              >
+                                <input
+                                  type="checkbox"
+                                  checked={m.done}
+                                  onChange={() => toggleMilestone(phase.id, m.id)}
+                                  disabled={isCompleted}
+                                  style={{ cursor: isCompleted ? 'default' : 'pointer', width: '15px', height: '15px' }}
+                                />
+                                {m.triggersPayment ? (
+                                  <span className={styles.checkpointBadgePayment}>💰 Payment Alert</span>
+                                ) : (
+                                  <span className={styles.checkpointBadge}>🚩 Checkpoint</span>
+                                )}
+                                <span
+                                  className={styles.milestoneName}
+                                  style={{ fontSize: '13px', textDecoration: m.done ? 'line-through' : 'none', opacity: m.done ? 0.6 : 1 }}
+                                >
+                                  {m.name}
+                                </span>
+                                {m.triggersPayment && (
+                                  <span
+                                    className={styles.paymentIcon}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      if (onNavigateTab) onNavigateTab('Payments');
+                                    }}
+                                    style={{ cursor: onNavigateTab ? 'pointer' : 'default' }}
+                                    title={onNavigateTab ? "Click to view linked invoice in Payments tab" : "Payment milestone"}
+                                  >
+                                    ₹ Payment
+                                  </span>
+                                )}
+                                {m.dueDate && <span className={styles.dueDate}>{m.dueDate}</span>}
+                              </div>
                             </div>
                           );
                         })}

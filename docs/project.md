@@ -1,237 +1,166 @@
-# Project Module Documentation
+# Project Execution & Delivery Suite Documentation
 
-This document describes the architectural layout, database schemas, API interfaces, business rules, and service workflows for the **Project Execution & Delivery Module** of the CRM.
-
----
-
-## 1. Module Overview
-
-The **Project Module** handles the execution lifecycle of interior design and construction projects. A project is created in one of two ways:
-1. **Directly**: Via `POST /api/projects` (with an optional template).
-2. **Via Lead Conversion**: Automated creation when a qualified lead is won via `POST /api/leads/:id/convert-to-project`.
-
-Once a project becomes active, it manages the execution phase through a hierarchical structure of **Phases → Milestones → Tasks**, alongside financial tracking via **Payment Milestones** and **Quotations (BOQ)**, and delivery validation via a **Handover Checklist**.
+This document describes the architectural layout, database models, lifecycle states, API endpoints, business logic, and the complete 36-tab execution workflow for the **Project Execution & Delivery Suite** of the CRM.
 
 ---
 
-## 2. Entity Relationship Diagram
+## 1. Module Overview & Lifecycle States
 
-The following diagram illustrates the relationship between a Project and its sub-entities:
+The **Project Module** orchestrates the complete end-to-end execution lifecycle of interior design, turnkey architecture, and construction projects. 
+
+### Creation Modes
+1. **Lead Conversion**: Automated creation when a qualified lead is converted via `POST /api/leads/:id/convert-to-project`. All linked estimates, client details, floor plans, and custom parameters are seamlessly migrated.
+2. **Direct Project Creation**: Manual setup via `POST /api/projects`, with the option to hydrate phases and milestones from a pre-configured **Project Template**.
+
+### Lifecycle Status State Machine
+A project transitions through defined lifecycle states, controlled by explicit modal actions and audit-logged endpoints:
 
 ```mermaid
-erDiagram
-    PROJECTS ||--o{ PROJECT_PHASES : "contains (project_id)"
-    PROJECTS ||--o{ PAYMENT_MILESTONES : "tracks (project_id)"
-    PROJECTS ||--o{ QUOTATIONS : "has (project_id)"
-    PROJECTS ||--o{ TASKS : "contains (project_id)"
-    PROJECTS ||--o| HANDOVER_CHECKLISTS : "requires (project_id)"
-    
-    PROJECT_PHASES ||--o{ MILESTONES : "organizes (phase_id)"
-    MILESTONES ||--o{ TASKS : "groups (milestone_id)"
-    MILESTONES ||--o| PAYMENT_MILESTONES : "triggers invoice (milestone_id)"
-    
-    QUOTATIONS ||--o{ QUOTATION_ITEMS : "details (quotation_id)"
-    HANDOVER_CHECKLISTS ||--o{ HANDOVER_ITEMS : "details (checklist_id)"
+stateDiagram-v2
+    [*] --> Active : Direct Creation / Lead Conversion
+    Active --> Paused : Pause Action (PauseProjectModal)
+    Paused --> Active : Resume Action (ResumeProjectModal)
+    Active --> Completed : All Phases Signed-Off & Handover Accepted
+    Active --> Cancelled : Cancel Action (CancelProjectModal)
+    Completed --> Reopened : Reopen Action (ReopenProjectModal)
+    Cancelled --> Reopened : Reopen Action (ReopenProjectModal)
+    Reopened --> Active : Resumed Execution
+    Completed --> Archived : Archive Action (ArchiveProjectModal)
+    Cancelled --> Archived : Archive Action (ArchiveProjectModal)
+    Active --> Deleted : Soft / Hard Delete (DeleteProjectModal)
 ```
 
----
-
-## 3. Database Schema Definitions
-
-### Core Project Table (`projects`)
-Defined in [009_projects.sql](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/migrations/009_projects.sql):
-* `id` (UUID, Primary Key)
-* `tenant_id` (UUID, Foreign Key to `tenants`)
-* `lead_id` (UUID, Foreign Key to `leads`, nullable)
-* `client_name` (VARCHAR, client name copied on creation/conversion)
-* `client_phone` (VARCHAR)
-* `client_email` (VARCHAR)
-* `name` (VARCHAR, project name)
-* `project_type` (VARCHAR, e.g., `'residential'`, `'commercial'`)
-* `pm_id` (UUID, Foreign Key to `users` representing the Project Manager)
-* `designer_id` (UUID, Foreign Key to `users` representing the Designer)
-* `contract_value` (DECIMAL, overall project budget)
-* `status` (VARCHAR, defaults to `'active'`, values: `'active'`, `'on_hold'`, `'completed'`, `'cancelled'`)
-* `start_date` (DATE)
-* `target_date` (DATE, handover target)
-* `site_address` (TEXT)
-* `custom_fields` (TEXT, JSONB data storing extra checklist details)
-
-### Project Phases (`project_phases`)
-Defined in [010_project_phases.sql](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/migrations/010_project_phases.sql):
-* `id` (UUID, Primary Key)
-* `project_id` (UUID, Foreign Key to `projects`)
-* `name` (VARCHAR, e.g., `'Civil Work'`, `'False Ceiling'`)
-* `sort_order` (INTEGER, execution order sequence)
-* `status` (VARCHAR, defaults to `'pending'`, values: `'pending'`, `'in_progress'`, `'completed'`)
-* `duration_days` (INTEGER)
-* `starts_at` (DATE)
-* `ends_at` (DATE)
-* `sign_off_required` (BOOLEAN, if PM or Client sign-off is needed)
-* `sign_off_by` (VARCHAR, `'pm'` or `'client'`)
-* `signed_off_by` (UUID, Foreign Key to `users`)
-* `signed_off_at` (TIMESTAMP)
-
-### Construction Milestones (`milestones`)
-Defined in [011_milestones.sql](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/migrations/011_milestones.sql):
-* `id` (UUID, Primary Key)
-* `phase_id` (UUID, Foreign Key to `project_phases`)
-* `project_id` (UUID, Foreign Key to `projects`)
-* `name` (VARCHAR, e.g., `'Tiling Completed'`)
-* `description` (TEXT)
-* `status` (VARCHAR, defaults to `'pending'`, values: `'pending'`, `'completed'`)
-* `due_date` (DATE)
-* `completion_date` (DATE)
-* `completed_by` (UUID, Foreign Key to `users`)
-* `triggers_payment` (BOOLEAN, if true, completion updates the linked invoice)
-* `sort_order` (INTEGER)
-
-### Financial Payment Schedule (`payment_milestones`)
-Defined in [015_payment_milestones.sql](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/migrations/015_payment_milestones.sql):
-* `id` (UUID, Primary Key)
-* `project_id` (UUID, Foreign Key to `projects`)
-* `milestone_id` (UUID, Foreign Key to `milestones`, optional link to execution)
-* `name` (VARCHAR, e.g., `'Booking Advance'`, `'Tiling Stage'`)
-* `amount` (DECIMAL, absolute cash amount)
-* `percentage` (DECIMAL, percentage of total contract value)
-* `due_date` (DATE)
-* `status` (VARCHAR, defaults to `'scheduled'`, values: `'scheduled'`, `'invoice_raised'`, `'paid'`)
-* `invoice_reference` (VARCHAR)
-* `paid_at` (TIMESTAMP)
-* `paid_amount` (DECIMAL)
-
-### Bill of Quantities / Quotations (`quotations` & `quotation_items`)
-Defined in [056_boq_and_quotations.sql](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/migrations/056_boq_and_quotations.sql):
-* `quotations` stores metadata, totals, taxes, and status (`'draft'`, `'sent'`, `'accepted'`, `'rejected'`, `'revised'`).
-* `quotation_items` records BOQ lines, including dimensions, rooms/zones, quantities, unit prices, markup percentages, and materials specifications.
+* **`active`**: Project is under active design, procurement, or site construction.
+* **`on_hold` / `paused`**: Execution is temporarily frozen (e.g., client payment delay, site access blocker). Requires a recorded pause reason.
+* **`completed`**: All phases, milestones, snags, and property handover procedures are finalized and signed off.
+* **`cancelled`**: Project terminated prior to completion. Requires mandatory cancellation rationale and financial settlement review.
+* **`archived`**: Historical record preserved for auditing and warranty tracking.
 
 ---
 
-## 4. Execution Lifecycle
+## 2. Complete Project Workspace Structure (36 Specialized Tabs)
 
-A project transitions through several states from kickoff to sign-off:
+The project detail interface ([ProjectDetail.jsx](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/client/src/pages/projects/ProjectDetail.jsx)) is organized into **10 logical execution stages** comprising **36 specialized functional tabs**:
 
-```mermaid
-flowchart TD
-    A[Create Project POST /api/projects] --> B{Template Provided?}
-    B -- Yes --> C[Hydrate Phases & Milestones from Template]
-    B -- No --> D[Set up manual execution schedule]
-    C --> E[Project Status: active]
-    D --> E
-    
-    E --> F[In-Progress: Execute Tasks & Milestones]
-    F --> G{Milestone Completed?}
-    G -- Yes --> H{Triggers Payment?}
-    H -- Yes --> I[Set Payment Milestone status='invoice_raised']
-    H -- No --> J[Check next milestone]
-    I --> J
-    G -- No --> F
-    
-    J --> K{All milestones in phase completed?}
-    K -- Yes --> L[Phase Sign-Off POST /sign-off]
-    L --> M{Is it the final phase?}
-    M -- Yes --> N[Auto-set Project Status='completed']
-    M -- No --> O[Auto-advance next phase to in_progress]
-    O --> F
-    
-    N --> P[Verify Handover Checklist snag list]
-    P --> Q{All items checked?}
-    Q -- Yes --> R[Final Client Sign-Off]
-    R --> S([Project Handed Over])
-```
+### Stage 1: Initiation & Setup
+1. **Overview**: Project health KPIs, base vs revised target dates (accounting for approved change order timeline impacts), days remaining, client stakeholder contacts directory, staff absence/leave coverages, and project lifecycle action triggers (Pause, Resume, Cancel, Reopen, Archive, Delete).
+2. **Phases & Schedule**: Interactive Gantt Chart and Phase Timeline with drag-and-drop phase reordering, milestone dependencies, and critical path tracking.
+3. **Client Profile**: Primary customer profile, co-owners, decision authority levels, and communication channel preferences.
+4. **Site Details**: Property dimensions, site address, access restrictions, utility connections, and geo-location.
+5. **Team & Roles**: Internal resource allocations (Project Manager, Interior Designer, Site Engineer, QC Inspector) and contractor teams.
+6. **Booking**: Initial booking confirmation, advance token collection, contract signing, and the `verifyProjectBooked` security gate.
+7. **Baseline Assessment**: Pre-kickoff site survey, baseline photos, civil condition audits, and structural constraints.
 
----
+### Stage 2: Design, Planning & Architectural Drawings
+8. **Design & Approvals**: Visual progression across design stages: *Concept Brief → 2D Space Planning → 3D Photorealistic Renders → Working Construction Drawings*.
+9. **Drawing Register**: Centralized architectural drawing repository. Tracks drawing types (Architectural, Structural, Electrical, Plumbing, HVAC, Joinery), revision numbers (`R0`, `R1`, `R2`), revision reasons, and attachments.
+10. **Design Brief**: Comprehensive client design requirements, space utilization goals, and room-by-room briefs.
+11. **Design Assets**: Moodboards, high-resolution 3D renders, CAD drawings, and design reference attachments.
+12. **Design Reviews**: Internal design QA reviews, client design review feedback rounds, and digital design approvals.
+13. **Material Palettes**: Curated finish specifications: Flooring, Wall Finishes, Veneers, Laminates, Hardware, Sanitaryware, and Lighting.
+14. **Substitutions**: Material substitution requests, cost difference calculations, timeline impacts, and client authorization.
+15. **Coordination**: Alignment matrix between Designer, Site PM, Factory, and Suppliers to avoid site clashes.
 
-## 5. API Interface Definition
+### Stage 3: Financials, Budget & Client Cash Flow
+16. **Financial Overview**: Real-time project financials: Committed Contract Value, Total Billed, Cash Collected, Pending Collections, Actual Costs Incurred, and Realized Gross Margin.
+17. **Budget**: Category-level budget allocations (Civil, Carpentry, Electrical, Plumbing, Finishes, Labor, Contingency).
+18. **Quotations & Budget**: Bill of Quantities (BOQ) builder supporting itemized dimensions, unit rates, markups, GST tax calculations, and quotation revision versions (`draft`, `sent`, `accepted`, `revised`).
+19. **Payments**: Scheduled payment milestones, automated invoice generation, payment receipts, payment aging, and overdue payment escalations.
+20. **Change Orders**: Formal scope variations, extra work indents, budget impact approvals, and schedule adjustments.
+21. **Budget Variance**: Baseline estimated BOQ cost vs actual site expenditure analysis.
+22. **Commercial Approval**: Special commercial discounts, credit notes, and cost variation reviews.
 
-### Project Management Core
-* **Create Project**: `POST /api/projects`
-  - *Controller Handler*: [createProject](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/projects/createProject.js#L7)
-  - *Permission*: `projects:create`
-* **Get Details**: `GET /api/projects/:id`
-  - Fetches project records joined with stats (task completion %, payments collected vs overall value).
-* **Update Project**: `PATCH /api/projects/:id`
-  - *Controller Handler*: [updateProject](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/projects/updateProject.js#L7)
-  - Updates PM, Designer, Target Dates, etc.
+### Stage 4: Procurement & Vendor Sourcing
+23. **Purchase Requests**: Site material indents and purchase requests (PR) submitted by site engineers.
+24. **Purchase Orders**: Official purchase orders (PO) issued to approved vendors with delivery deadlines.
+25. **Vendors**: Project-specific vendor assignments, payment terms, and vendor performance history.
+26. **Material Deliveries**: Inward Goods Receipt Notes (Site GRN), delivery inspections, shortage/damage tracking.
+27. **Factory Production**: Modular millwork orders, joinery panel cutting lists, CNC programming requests, and dispatch schedules.
 
-### Phases & Milestones
-* **Phase Reordering**: `PATCH /api/projects/:projectId/phases/reorder`
-* **Phase Sign-Off**: `POST /api/projects/:projectId/phases/:phaseId/sign-off`
-  - *Service Handler*: [completePhase](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/projects/completePhase.js#L7)
-* **Milestone Completion**: `POST /api/phases/:phaseId/milestones/:mid/complete`
-  - Marks execution milestone complete. Triggers linked payment invoice.
+### Stage 5: Execution & Site Monitoring
+28: **Tasks**: Comprehensive project task board with subtasks, checklists, task attachments, and dependency links (`taskDependencies`).
+29. **Room Progress**: Zone-by-zone completion percentages (e.g., Living Room 85%, Master Bed 60%, Kitchen 95%).
+30. **Site Visits**: Logged PM and site supervisor visits with GPS geo-fencing verification, observations, and photo evidence.
+31. **Daily Site Reports (DSR)**: Daily operational logs: weather conditions, trade-wise labor headcounts, work completed, materials received, and site blockers.
+32. **Weekly Reports**: Executive weekly summary reports compiled for senior management and clients.
+33. **Documents**: Secure document vault organized by categories (Contracts, Permits, Drawings, Site Photos, Invoices).
+34. **Meeting Notes**: Minutes of Meeting (MOM) recording attendees, discussions, decisions, and assigned action items with deadlines.
+35. **Delay Notifications**: Formal delay advisories sent to clients or subcontractors with root-cause categorization.
+36. **MEP Checklist**: Mechanical, Electrical, and Plumbing pre-commissioning verification checklists.
 
-### Payment Milestones
-* **List Milestones**: `GET /api/projects/:id/payment-milestones`
-* **Record Payment**: `PATCH /api/payment-milestones/:id`
-  - Updates status to `'paid'`, records reference ID and date.
+### Stage 6: Quality Control, Snags & Readiness (Pre-Handover)
+* **Snags**: Comprehensive snag/punch-list defect logging with room tag, severity (`critical`, `major`, `minor`), before/after photo proofs, contractor assignment, and rectification verification.
+* **Handover Readiness**: Multi-point gate audit ensuring all snags are cleared, MEP tests pass, and deep cleaning is completed before inviting the client for possession.
+* **Handovers**: Inspection logs and preliminary handover sessions.
 
-### Handover Checklist
-* **Get Snag List**: `GET /api/projects/:id/handover/checklists`
-* **Add Snag Item**: `POST /api/projects/:id/handover/items`
-* **Sign-Off Handover**: `POST /api/handover/checklists/:id/sign-off`
-  - Validates that all items are checked off before allowing project completion.
+### Stage 7: Property Handover (Completion)
+* **Handover**: Official property handover protocol, handover kit sign-off (keys, appliance manuals, warranty cards), and client satisfaction sign-off.
 
----
+### Stage 8: Project Closure & Retrospective
+* **Project Closure**: Final commercial reconciliation, retention money release schedule, and formal project closure certificate.
+* **Retrospective**: Post-project debrief analyzing budget variances, scheduling accuracy, vendor performance scores, and internal team learnings.
 
-## 6. Service Call Workflows & DB Transactions
+### Stage 9: Post-Handover & Maintenance
+* **Warranties**: Digital warranty certificates issued for structural woodwork, modular hardware, electrical fixtures, and civil waterproofing.
+* **AMCs**: Annual Maintenance Contracts, scheduled maintenance visit calendar, and renewal tracking.
+* **Service Tickets**: Post-handover customer defect reports with SLA resolution timers and technician dispatch.
+* **Customer Retention**: Client follow-up milestones, referral tracking, and loyalty incentives.
 
-### 6.1 Phase Sign-Off & Automation Call Flow
-Defined in [completePhase.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/projects/completePhase.js):
-1. **Validation**: Checks if phase exists and if all associated milestones are marked `'completed'`.
-2. **Phase DB Update**:
-   ```sql
-   UPDATE project_phases 
-   SET status = 'completed', signed_off_by = $1, signed_off_at = NOW() 
-   WHERE id = $2
-   ```
-3. **Cascade Updates**:
-   - Finds the next phase (by `sort_order + 1`) and updates its status to `'in_progress'`.
-   - If no further phases exist, automatically marks the parent project `status = 'completed'`.
-4. **Side Effects**: Enqueues notification events to alert assigned Project Managers.
-
-### 6.2 Milestone Completion & Payment Trigger Flow
-Managed via [milestoneRepository.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/repositories/milestoneRepository.js):
-1. Updates milestone:
-   ```sql
-   UPDATE milestones 
-   SET status = 'completed', completion_date = NOW(), completed_by = $1 
-   WHERE id = $2
-   ```
-2. Checks if `triggers_payment` is true. If yes, it searches for a linked `payment_milestones` record and updates its status:
-   ```sql
-   UPDATE payment_milestones 
-   SET status = 'invoice_raised' 
-   WHERE milestone_id = $1 AND status = 'scheduled'
-   ```
-
-### 6.3 BOQ Total Calculations
-Managed via [quotationService.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/projects/quotationService.js):
-- Whenever a quotation line item (`quotation_items`) is added, updated, or deleted, the system queries the aggregate cost and updates the parent quotation record:
-  ```sql
-  subtotal = SUM(quantity * unit_price * (1 + markup/100))
-  total_amount = subtotal + tax_amount - discount_amount
-  ```
+### Stage 10: Audit & Governance
+* **Activity Logs**: Immutable audit log of every creation, edit, status transition, document upload, and sign-off across the project.
 
 ---
 
-## 7. Relevant Code Files & Implementation References
+## 3. Sub-Router API Architecture
 
-The project management modules are implemented across the following source files:
+All project sub-resources are mounted hierarchically under `/api/projects/:projectId/...`:
 
-* **Routes**:
-  - [projects.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/projects.js) — Base project routes
-  - [phases.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/phases.js) — Phase routes & drag-and-drop ordering
-  - [milestones.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/milestones.js) — Milestone routes
-  - [paymentMilestones.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/paymentMilestones.js) — Payment logging routes
-  - [handover.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/handover.js) — Handover checklist routes
-* **Services**:
-  - [createProject.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/projects/createProject.js) — Project initialization and transaction handling
-  - [updateProject.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/projects/updateProject.js) — Audited update controller
-  - [completePhase.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/projects/completePhase.js) — Phase sign-off cascade operations
-  - [paymentMilestoneService.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/projects/paymentMilestoneService.js) — Installment logging
-  - [quotationService.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/projects/quotationService.js) — BOQ computations
-* **Repositories**:
-  - [projectRepository.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/repositories/projectRepository.js) — DB mappings for projects
-  - [phaseRepository.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/repositories/phaseRepository.js) — DB mappings for phases
-  - [milestoneRepository.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/repositories/milestoneRepository.js) — DB mappings for milestones
+| Sub-Route | Implementation File | Primary Responsibilities |
+| :--- | :--- | :--- |
+| `/phases` | [phases.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/phases.js) | Phase CRUD, drag-and-drop order updates, and phase completion sign-off cascade |
+| `/tasks` | [tasks.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/tasks.js) | Project tasks, milestone grouping, checklists, and attachments |
+| `/documents` | [documents.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/documents.js) | S3 presigned document upload URLs, file metadata, categories |
+| `/design-assets` | [designAssets.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/designAssets.js) | 2D/3D design assets, rendering uploads, moodboards |
+| `/design-reviews` | [designReviews.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/designReviews.js) | Client design review rounds, feedback, sign-offs |
+| `/material-palettes`| [materialPalettes.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/materialPalettes.js) | Finish palettes, tile/laminate selection, approvals |
+| `/change-orders` | [changeOrders.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/changeOrders.js) | Scope variations, cost delta, timeline revisions |
+| `/quotations` | [quotations.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/quotations.js) | BOQ lines, dimensions, markup calculations, quotes |
+| `/budget` | [budget.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/budget.js) | Budget categories, line item allocations, spending |
+| `/purchase-orders` | [purchaseOrders.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/purchaseOrders.js) | Vendor purchase orders, delivery status, costs |
+| `/purchase-requests`| [purchaseRequests.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/purchaseRequests.js) | Site material indents and approval workflows |
+| `/material-deliveries`| [materialDeliveries.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/materialDeliveries.js) | Site GRN, physical receipts, inspection checks |
+| `/production-orders`| [productionOrders.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/productionOrders.js) | Factory modular joinery orders, CNC cutting lists |
+| `/work-activities` | [workActivities.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/workActivities.js) | Site execution trade activities, dependencies |
+| `/daily-reports` | [dailySiteReports.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/dailySiteReports.js) | DSR logs: labor count, work done, weather |
+| `/room-progress` | [roomProgress.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/roomProgress.js) | Zone-wise and room-wise completion percentages |
+| `/meeting-notes` | [meetingNotes.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/meetingNotes.js) | MOM logs, attendee registers, action items |
+| `/delay-notifications`| [delayNotifications.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/delayNotifications.js)| Delay notices, impact days, root-cause taxonomy |
+| `/drawing-register` | [drawingRegister.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/drawingRegister.js) | Drawing sheet revisions, CAD/PDF attachments |
+| `/punch-lists` | [punchLists.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/punchLists.js) | Snag list items, photo proofs, rectifications |
+| `/warranties` | [warranties.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/warranties.js) | Product & workmanship warranty certificates |
+| `/amcs` | [amcs.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/amcs.js) | Maintenance contracts, inspection schedules |
+| `/service-tickets` | [serviceTickets.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/serviceTickets.js) | Post-handover customer issues, SLA tracking |
+| `/closure-checklist`| [projectClosures.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/projectClosures.js)| Final commercial settlement, handoff sign-off |
+| `/retrospective` | [projectRetrospectives.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/projectRetrospectives.js)| Post-mortem findings, vendor ratings |
+| `/attendance` | [labourAttendance.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/labourAttendance.js)| Daily trade labor attendance headcounts |
+| `/payment-escalations`| [paymentEscalations.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/paymentEscalations.js)| Overdue milestone payment escalation rules |
+
+---
+
+## 4. Key Business Logic & Cascade Rules
+
+### Phase Completion Cascade
+When a project phase is signed off via `POST /api/projects/:projectId/phases/:phaseId/sign-off`:
+1. Validates that all milestones linked to the phase are in the `'completed'` status.
+2. Marks the current phase `status = 'completed'`, logs the signing user and timestamp.
+3. Automatically advances the next phase (by `sort_order + 1`) to `status = 'in_progress'`.
+4. If no subsequent phases exist, updates the parent project `status = 'completed'` and initiates the pre-handover readiness review.
+
+### Milestone Payment Trigger
+When an execution milestone is marked completed via `POST /api/phases/:phaseId/milestones/:mid/complete`:
+* If `triggers_payment` is `true`, the system automatically locates the linked record in `payment_milestones` and shifts its status from `'scheduled'` to `'invoice_raised'`, alerting the finance team to generate the client tax invoice.
+
+### Change Order Budget & Schedule Adjustment
+When a variation request is approved:
+* Adjusts `projects.contract_value` by adding the approved change order amount.
+* Recalculates `projects.target_date` by adding approved `timeline_impact_days`.

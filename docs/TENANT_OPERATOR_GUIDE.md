@@ -1,206 +1,107 @@
-# Multi-Tenant Operations & Developer Guide
+# Multi-Tenant Architecture, Enterprise Security & Platform Operations Guide
 
-This guide details the operations, verification procedures, and architecture of the existing multi-tenant implementation within the CRM system.
-
----
-
-## 1. Tenant Architecture
-
-The application implements logical multi-tenancy using a **Shared Database + Shared Schema** model:
-* **Database Layer**: Every tenant occupies a row in the `tenants` table. Transactional data tables partition information using `tenant_id UUID` foreign keys.
-* **Tenant-Scoped Users**: The `users` table enforces a composite unique constraint `UNIQUE(tenant_id, email)` enabling identical emails to register across separate client organizations.
-* **Tenant-Scoped Roles & Permissions**: Roles are bound to `tenant_id` and contain JSON-encoded action lists (e.g., `["leads:read"]`).
-* **Tenant Security Settings**: Dynamic security controls (timeouts, MFA, geofencing) are mapped per-tenant in `tenant_security_settings`.
+This document describes the multi-tenant architecture, database-level data isolation policies, workspace provisioning procedures, role-based access control, security controls, and the Platform Command Center within the CRM.
 
 ---
 
-## 2. Tenant Provisioning
+## 1. Multi-Tenant Architecture & Data Isolation
 
-* **Script Path**: [server/scripts/provisionTenant.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/scripts/provisionTenant.js)
-* **Execution Command**:
-  ```bash
-  node server/scripts/provisionTenant.js "<name>" "<slug>" "<adminEmail>" "<adminName>" "<adminPassword>"
-  ```
-* **Required Parameters**:
-  1. `name`: Full legal display name of the client organization.
-  2. `slug`: URL-safe unique lowercase routing handle (e.g., `client-a`).
-  3. `adminEmail`: Initial workspace administrator email.
-  4. `adminName`: Personal display name of the administrator.
-  5. `adminPassword`: Password string (minimum 8 characters).
+The application implements enterprise multi-tenancy using a **Shared Database + Shared Schema** model:
 
----
+* **Database Partitioning**: Every client workspace (tenant) is represented as a unique row in the `tenants` table. All business and transactional tables enforce logical partitioning via `tenant_id UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE`.
+* **Tenant-Scoped Users**: The `users` table enforces a composite unique constraint `UNIQUE(tenant_id, email)`, enabling identical email addresses to exist independently across distinct tenant workspaces.
+* **Tenant-Scoped Roles & Permissions**: Roles are bound to `tenant_id` and contain JSON-encoded action lists (e.g., `["leads:read", "projects:write"]`) or master bypass markers (`["*"]`).
+* **Tenant Security Settings**: Tenant-specific security policies (session timeouts, MFA, IP allowlisting) are maintained per-tenant in `tenant_security_settings`.
 
-## 3. Creating a New Client (Workflow)
-
-```
-Create Tenant Row (slug lookup)
-      ↓
-Initialize Security Settings (timeout/IP rules)
-      ↓
-Generate Tenant Roles (Admin, Manager, User)
-      ↓
-Create Admin User (bcrypt password hashing)
-      ↓
-Initialize User Security Status (MFA checks)
-      ↓
-Verify Login Routing & Token Session
-      ↓
-Verify Tenant Isolation Boundaries
+### Application-Level Data Scoping
+All SQL queries executed by services and repositories strictly bind `tenant_id = $tenantId` extracted from the authenticated user's JWT token session:
+```javascript
+const { rows } = await pool.query(
+  'SELECT * FROM projects WHERE id = $1 AND tenant_id = $2',
+  [projectId, req.tenantId]
+);
 ```
 
 ---
 
-## 4. Three Client Setup Example
+## 2. Platform Command Center (SuperAdmin UI)
 
-### Client A Setup
+Component: [SuperAdminSettings.jsx](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/client/src/pages/config/SuperAdminSettings.jsx)  
+Route: `/settings/superadmin`  
+Access: Restricted strictly to Platform Developer / Superadmin (`isSuperMasterDeveloper(user)`).
+
+### Core Capabilities
+1. **Workspace Management**:
+   * View all provisioned client tenants with status (`Active`, `Suspended`), subscription tier (`Starter`, `Growth`, `Enterprise`), admin email, created date, and active user counts.
+   * Search and filter workspaces by name, slug, or tier.
+   * Provision new workspaces directly via an intuitive modal form.
+   * Edit workspace details, upgrade/downgrade subscription tiers, or suspend/reactivate client access.
+2. **Sidebar Plan Configurator**:
+   * Visual configuration matrix to customize which navigation tabs and modules are visible to users on each subscription package (`Starter`, `Growth`, `Enterprise`).
+   * Real-time saving to database with instant synchronization across connected client sessions via WebSocket / storage events.
+3. **Tenant Security Policies**:
+   * Configure tenant-level Multi-Factor Authentication (MFA) enforcement (`mfa_required_all`).
+   * Set maximum session idle timeout intervals (`session_timeout_minutes`).
+   * Enforce concurrent active login limits.
+   * Define geofence IP allowlists and allowed country codes.
+4. **Global Health & Database Analytics**:
+   * Real-time monitoring of total registered tenants, total active users, lead volume, project counts, database connections, and storage utilization.
+
+---
+
+## 3. CLI Tenant Provisioning Utility
+
+For automated deployments and headless operations, a command-line provisioning script is available at [server/scripts/provisionTenant.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/scripts/provisionTenant.js).
+
+### Syntax
 ```bash
-node server/scripts/provisionTenant.js "Client Organization A" "client-a" "admin@client-a.com" "Admin A" "SecurePasswordA1!"
+node server/scripts/provisionTenant.js "<name>" "<slug>" "<adminEmail>" "<adminName>" "<adminPassword>"
 ```
 
-### Client B Setup
-```bash
-node server/scripts/provisionTenant.js "Client Organization B" "client-b" "admin@client-b.com" "Admin B" "SecurePasswordB2!"
-```
+### Parameters
+1. `name`: Display name of the client company (e.g., `"Apex Interior Architects"`).
+2. `slug`: URL-safe unique lowercase routing identifier (e.g., `"apex-interiors"`).
+3. `adminEmail`: Initial workspace administrator email (e.g., `"admin@apex.com"`).
+4. `adminName`: Full name of the initial administrator.
+5. `adminPassword`: Initial password string (minimum 8 characters).
 
-### Client C Setup
-```bash
-node server/scripts/provisionTenant.js "Client Organization C" "client-c" "admin@client-c.com" "Admin C" "SecurePasswordC3!"
-```
-
----
-
-## 5. Organization Settings Map
-
-| Setting Name | Database Location | Configuration Method | Default Value | Active Effect | Scope |
-| :--- | :--- | :--- | :--- | :--- | :--- |
-| **Workspace Name** | `tenants.name` | Script argument / SQL update | *User input* | Client UI branding contexts | Tenant |
-| **Workspace Slug** | `tenants.slug` | Script argument / SQL update | *User input* | Workspace login path lookup | Tenant |
-| **Tenant Status** | `tenants.is_active` | SQL update statement | `true` | Session verification block | Tenant |
-| **MFA Required** | `tenant_security_settings.mfa_required_all` | SQL update statement | `false` | Next login attempt | Tenant |
-| **Session Timeout** | `tenant_security_settings.session_timeout_minutes` | SQL update statement | `120` | Dynamic validation interval | Tenant |
-| **Concurrent Limit** | `tenant_security_settings.concurrent_login_limit` | SQL update statement | `3` | Next login verification check | Tenant |
-| **Password Policy** | `tenant_security_settings.password_min_length` | SQL update statement | `8` | Next password modification | Tenant |
-| **Allowed Countries** | `tenant_security_settings.allowed_countries` | SQL update statement | `[]` (unrestricted) | Next session validation | Tenant |
-| **Allowed Networks** | `tenant_security_settings.allowed_ips` | SQL update statement | `[]` (unrestricted) | Next request validation check | Tenant |
-
----
-
-## 6. Roles & Permissions (RBAC)
-
-* **Storage Location**: Roles and JSON-encoded permissions arrays are stored in the `roles` table.
-* **Tenant Scoping**: Roles are bound to a specific tenant using `tenant_id`. Users refer to a role via `role_id REFERENCES roles(id)`.
-* **Authorization Checks**: [authorize.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/middleware/authorize.js) parses the JWT payload permissions array (`req.user.permissions`) on every endpoint request.
-
----
-
-## 7. User Creation Flow
-
-1. **Routing and Slug Resolution**: Handled in [auth.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/auth.js#L35-L45) where `tenantSlug` resolves to the corresponding `tenantId`.
-2. **User Data Insertion**: Scoped in [register.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/auth/register.js#L26-L40).
-3. **User Security Record**: Set up in [register.js:L44](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/auth/register.js#L44) inside `user_security`.
-4. **Session Association**: Decoded context and resolved pool is initialized on request routing inside [authenticate.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/middleware/authenticate.js#L175-L178).
-
----
-
-## 8. Data Isolation
-
-All business data repositories restrict operations using combined identifier lookups:
-* **Leads**: [leadRepository.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/repositories/leadRepository.js#L142) query contains `WHERE l.tenant_id = $1 AND l.id = $2`.
-* **Projects**: [projectRepository.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/repositories/projectRepository.js#L166) query contains `WHERE p.tenant_id = $1 AND p.id = $2`.
-* **Search**: [searchController.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/controllers/searchController.js) filters all subqueries.
-
----
-
-## 9. Security Verification Procedure
-
-Evaluate boundaries by running cross-tenant verification request scripts:
-* **Positive Validation (A → A)**: Log in as `admin@client-a.com` and verify that Lead A returns a `200 OK`.
-* **Negative Validation (A → B)**: Authenticated as `admin@client-a.com`, attempt to retrieve Lead B using its ID. The request must return `404 Not Found` or `403 Forbidden`.
-* **IDOR Validation**: Attempt to patch Project B authenticated under a Client A session token. Confirm the payload fails with an access error.
-
----
-
-## 10. Production Checklist
-
-- [ ] New tenant configured in the `tenants` table.
-- [ ] Mapped unique routing slug.
-- [ ] Initialize default entries in `tenant_security_settings`.
-- [ ] Create initial administrative role.
-- [ ] Provision administrator account under the client slug.
-- [ ] Verify administrator login and JWT parsing.
-- [ ] Run cross-tenant request tests using Lead IDs from another tenant.
-- [ ] Validate search outputs return only active tenant information.
-- [ ] Confirm export scripts output only scoped CSV data.
-
----
-
-## 11. "Where Do I Configure This?" Quick Map
-
-* **Tenant creation**:
-  * [provisionTenant.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/scripts/provisionTenant.js) → `provisionTenant()` → `node server/scripts/provisionTenant.js`
-* **Tenant security**:
-  * [provisionTenant.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/scripts/provisionTenant.js) → `INSERT INTO tenant_security_settings`
-* **Roles**:
-  * [roles.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/routes/roles.js) → `INSERT INTO roles`
-* **Users**:
-  * [register.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/services/auth/register.js) → `registerUser()` → `INSERT INTO users`
-* **Isolation**:
-  * [authenticate.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/middleware/authenticate.js) → `authenticate` middleware → `req.tenantId` query context
-* **Session**:
-  * [authenticate.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/middleware/authenticate.js) → `SELECT * FROM sessions`
-
----
-
-## 12. What NOT To Touch
-
-Do not modify the following files during standard tenant management procedures to avoid breaking tenant routing schemas:
-* [server/src/middleware/authenticate.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/middleware/authenticate.js) (Auth middleware)
-* [server/src/middleware/authorize.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/middleware/authorize.js) (RBAC routing)
-* [server/src/db/tenantResolver.js](file:///d:/Digicloudify%20softwares/CRM-Interior-Construction/server/src/db/tenantResolver.js) (Connection pool routing)
-
----
-
-## 13. Emergency Tenant Deactivation
-
-To disable a tenant immediately, update the `is_active` flag inside the `tenants` table. Active sessions will be terminated on the next request verification step:
-```sql
-UPDATE tenants SET is_active = false WHERE slug = 'client-a';
+### Provisioning Sequence
+```mermaid
+flowchart TD
+    A[Start Provisioning] --> B[Insert Tenant Row into 'tenants']
+    B --> C[Initialize 'tenant_security_settings']
+    C --> D[Seed Standard Roles: Admin, PM, Designer, Sales, Site Engineer]
+    D --> E[Create Admin User with Bcrypt Password Hash]
+    E --> F[Initialize User Security & MFA Profile]
+    F --> G[Seed Default Lead Stages & Workflow Milestones]
+    G --> H[Seed Standard QC & Handover Templates]
+    H --> I([Tenant Ready for Login])
 ```
 
 ---
 
-## 14. Architecture & Request Flow
+## 4. Tenant Subscription Tiers & Default Tabs
 
-### Architecture Diagram
-```
-Tenant (tenants table)
-  ↓
-Users (users table)
-  ↓
-Roles (roles table)
-  ↓
-Permissions (actions permissions arrays)
-  ↓
-Tenant-Scoped Resources (leads, projects, tasks)
-  ↓
-tenant_id constraint filtering
-  ↓
-PostgreSQL Database
-```
+The CRM organizes module accessibility into three subscription tiers:
 
-### Request Flow
-```
-User Login Request (with tenantSlug)
-      ↓
-Tenant ID mapped to JWT token payload
-      ↓
-Token validated via authenticate middleware
-      ↓
-req.tenantId populated on request context
-      ↓
-authorize / dataScope checks verified
-      ↓
-Database query executes: WHERE tenant_id = req.tenantId
-      ↓
-Response returned containing only tenant-owned data
-```
+| Plan Tier | Target Segment | Default Included Modules & Tabs |
+| :--- | :--- | :--- |
+| **Starter** | Independent Designers & Boutiques | Workspace Dashboard, Leads (List, Kanban, Calendar), Projects, My Tasks, Reports Hub, Team Members, Roles & Permissions, Organization. |
+| **Growth** | Growing Interior Studios & Contractors | All Starter features + Lead Map, Lead Analytics, Project Analytics, Client Satisfaction (CSAT), Delay Analysis, Project Coordination, Handover Dashboard, Retention Dashboard, Team Capacity, Leave Management, Vendor Performance, Vendor Capacity. |
+| **Enterprise** | Full-Service Turnkey & Commercial Firms | All Growth features + BOQ Variance, Team Workload, Lead Stages Setup, Custom Fields, Lead Forms Builder, Project Templates, Trade Activities, QC Checklists, Conversion Checklist, Workflow Automations, Vendor Lead Times, Finance Overview, Financial Approvals, Project Profitability, Payment Forecast, Financial Thresholds, Login History, Audit Trail, Platform Command Center, Developer API Keys & Webhooks Suite, Activity Logs. |
+
+---
+
+## 5. Security & Isolation Verification Procedures
+
+To verify isolation boundaries across tenants:
+
+1. **Positive Workspace Isolation (Tenant A → Data A)**:
+   * Authenticate as `admin@client-a.com`.
+   * Query `GET /api/leads` and verify that all returned records belong strictly to Client A.
+2. **Cross-Tenant IDOR Prevention (Tenant A → Data B)**:
+   * Authenticate as `admin@client-a.com`.
+   * Attempt to query or patch a project belonging to Client B using its UUID (`GET /api/projects/:clientB_projectId`).
+   * The backend must reject the request with `404 Not Found` or `403 Forbidden`.
+3. **Search & Global Query Scoping**:
+   * Execute global searches (`GET /api/search?q=...`) to ensure results never leak contacts, leads, or files across tenant partitions.
